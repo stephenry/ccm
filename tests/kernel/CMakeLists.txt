@@ -25,7 +25,11 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-add_executable(basic basic.cpp)
-target_link_libraries(basic ${GTEST_LIBRARIES} pthread)
+macro (create_test fn)
+  add_executable(${fn} ${fn}.cpp)
+  target_link_libraries(${fn} ${GTEST_LIBRARIES} pthread)
+  add_test(NAME ${fn} COMMAND ${fn})
+endmacro ()
 
-add_test(NAME basic COMMAND basic)
+create_test(wake_on_event)
+create_test(sleep_for)

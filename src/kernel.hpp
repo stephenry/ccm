@@ -28,8 +28,49 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
+#include <vector>
+
 namespace ccm {
 
+  class Event {
+  public:
+  };
+
+  enum SimState : int {
+    Initialization,
+    Running
+  };
+  
+  class InvokeReq {
+  public:
+    SimState state() const { return Initialization; }
+    std::size_t now() const { return 0; }
+  };
+
+  class InvokeRsp {
+  public:
+    void sleep_for(std::size_t t) {};
+    void notify_after(Event & e, std::size_t t) {};
+    void terminate() {}
+  };
+
+  class Process {
+  public:
+    virtual InvokeRsp invoke (InvokeReq const & req) {};
+    virtual ~Process() {}
+  };
+
+  class Module {
+  public:
+  };
+
+  class Scheduler {
+  public:
+    void run() {}
+    void add_process (Process * p) {}
+    void remove_process (Process * p) {}
+  };
+  
 } // namespace ccm
 
 
