@@ -29,11 +29,16 @@ cmake_minimum_required(VERSION 3.10)
 
 project(ccm)
 
-find_package(GTest REQUIRED)
-enable_testing()
 
 set(CMAKE_CXX_STANDARD 17)
 
 include_directories(${CMAKE_SOURCE_DIR})
+
+set(BUILD_GMOCK OFF)
+add_subdirectory(third_party)
 add_subdirectory(src)
-add_subdirectory(tests)
+option(BUILD_TESTS "Enable build of unit tests." ON)
+if (BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
+endif ()

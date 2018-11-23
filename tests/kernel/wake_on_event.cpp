@@ -35,6 +35,7 @@ namespace {
     enum ProcessID : uint8_t {
       P0, P1, P2
     };
+    
     struct State {
       State(ccm::Scheduler & sch) {
         e0_ = sch.create_event();
@@ -47,12 +48,13 @@ namespace {
 
       ProcessID prior_id_{ProcessID::P2};
     } state_;
+    
     class P0 : public ccm::Process {
     public:
       P0 (State & st, std::size_t n = 10)
         : st_(st), n_(n) {
       }
-      ccm::InvokeRsp invoke(const ccm::InvokeReq & req) {
+      ccm::InvokeRsp invoke(ccm::InvokeReq const & req) {
         ccm::InvokeRsp rsp;
         switch (req.state()) {
         case ccm::SimState::Initialization: {
@@ -75,12 +77,13 @@ namespace {
       State & st_;
       std::size_t n_;
     } p0_;
+    
     class P1 : public ccm::Process {
     public:
       P1 (State & st, std::size_t n = 10)
         : st_(st), n_(n) {
       }
-      ccm::InvokeRsp invoke(const ccm::InvokeReq & req) {
+      ccm::InvokeRsp invoke(ccm::InvokeReq const & req) {
         ccm::InvokeRsp rsp;
         rsp.wake_on(st_.e1_);
         
@@ -101,12 +104,13 @@ namespace {
       State & st_;
       std::size_t n_;
     } p1_;
+    
     class P2 : public ccm::Process {
     public:
       P2 (State & st, std::size_t n = 10)
         : st_(st), n_(n) {
       }
-      ccm::InvokeRsp invoke(const ccm::InvokeReq & req) {
+      ccm::InvokeRsp invoke(ccm::InvokeReq const & req) {
         ccm::InvokeRsp rsp;
         rsp.wake_on(st_.e2_);
         
@@ -133,8 +137,6 @@ namespace {
       sch_.add_process(std::addressof(p0_));
       sch_.add_process(std::addressof(p1_));
       sch_.add_process(std::addressof(p2_));
-
-      //      notify(e0_, 100);
     }
     ~WakeOnEventTop() {
       sch_.remove_process(std::addressof(p0_));

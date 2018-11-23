@@ -31,7 +31,7 @@
 
 namespace {
 
-  class SleepForTestTop : public ccm::Module {
+  class WakeAfterTestTop : public ccm::Module {
     class P0 : public ccm::Process {
     public:
       P0(ccm::Module * m) : ccm::Process() {
@@ -50,26 +50,26 @@ namespace {
     private:
       ccm::InvokeRsp init(ccm::InvokeReq const & req) {
         ccm::InvokeRsp rsp;
-        rsp.sleep_for(100);
+        rsp.wake_after(100);
       }
       ccm::InvokeRsp run(ccm::InvokeReq const & req) {
         ccm::InvokeRsp rsp;
         switch (n_++) {
         case 0: {
           EXPECT_EQ(req.now(), 100);
-          rsp.sleep_for(100);
+          rsp.wake_after(100);
         } break;
         case 1: {
           EXPECT_EQ(req.now(), 200);
-          rsp.sleep_for(100);
+          rsp.wake_after(100);
         } break;
         case 2: {
           EXPECT_EQ(req.now(), 300);
-          rsp.sleep_for(100);
+          rsp.wake_after(100);
         } break;
         case 3: {
           EXPECT_EQ(req.now(), 400);
-          rsp.sleep_for(100);
+          rsp.wake_after(100);
         } break;
         case 4: {
           EXPECT_EQ(req.now(), 500);
@@ -81,11 +81,11 @@ namespace {
       std::size_t n_{0};
     };
   public:
-    SleepForTestTop(ccm::Scheduler & sch) : ccm::Module(), sch_(sch) {
+    WakeAfterTestTop(ccm::Scheduler & sch) : ccm::Module(), sch_(sch) {
       p_ = new P0(this);
       sch_.add_process(p_);
     }
-    ~SleepForTestTop() {
+    ~WakeAfterTestTop() {
       sch_.remove_process(p_);
       delete p_;
     }
@@ -94,9 +94,9 @@ namespace {
     ccm::Scheduler & sch_;
   };
 
-  TEST(SleepForTest, t0) {
+  TEST(WakeAfterTest, t0) {
     ccm::Scheduler sch;
-    SleepForTestTop top(sch);
+    WakeAfterTestTop top(sch);
     sch.run();
   }
 
