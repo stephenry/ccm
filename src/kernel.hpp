@@ -28,32 +28,66 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include <vector>
+#include <memory>
 
 namespace ccm {
 
-  class Event {
-  public:
-  };
+  class Scheduler;
+  class EventDescriptor;
+  class SchedulerImpl;
 
   enum SimState : int {
+    Elaboration,
     Initialization,
-    Running
+    Running,
+    Termination
+  };
+
+  enum Wake { WEvent, WTime, WTerminate };
+  
+  class Event {
+    friend class Scheduler;
+    friend class SchedulerImpl;
+    Event(EventDescriptor * ed) : ed_(ed) {}
+  public:
+    Event() : ed_{nullptr} {}
+    bool is_valid() const { return ed_ != nullptr; }
+  private:
+    EventDescriptor *ed_{nullptr};
   };
   
   class InvokeReq {
+    friend class SchedulerImpl;
+
+    InvokeReq(SchedulerImpl * sch) : sch_(sch) {}
   public:
-    SimState state() const { return Initialization; }
-    std::size_t now() const { return 0; }
+    SimState state() const;
+    std::size_t now() const;
+  private:
+    SchedulerImpl const * sch_;
   };
 
   class InvokeRsp {
+    friend SchedulerImpl;
   public:
-    void wake_on(Event & e) {}
-    void wake_after(std::size_t t) {}
-    void terminate() {}
-    
-    void notify_after(Event & e, std::size_t t = 0) {}
+    InvokeRsp() : wake_(Wake::WTerminate) {}
+    void wake_on(Event & e) {
+      wake_ = Wake::WEvent;
+      e_ = e;
+    }
+    void wake_after(std::size_t t) {
+      wake_ = Wake::WTime;
+      t_ = t;
+    }
+    void terminate() { wake_ = Wake::WTerminate; }
+    void notify_after(Event & e, std::size_t t = 0) {
+      wake_ = Wake::WTime;
+      t_ = t;
+    }
+  private:
+    Wake wake_;
+    Event e_;
+    std::size_t t_;
   };
 
   class Process {
@@ -68,10 +102,24 @@ namespace ccm {
 
   class Scheduler {
   public:
-    Event create_event() {}
-    void run() {}
-    void add_process (Process * p) {}
-    void remove_process (Process * p) {}
+    Scheduler();
+    ~Scheduler();
+    
+    //
+    void run();
+
+    //
+    Event create_event();
+    
+    //
+    void add_process (Process * p);
+    void remove_process (Process * p);
+
+    //
+    SimState state() const;
+    std::size_t now() const;
+  private:
+    std::unique_ptr<SchedulerImpl> impl_;
   };
   
 } // namespace ccm

@@ -27,9 +27,9 @@
 
 macro (create_test fn)
   add_executable(${fn} ${fn}.cpp)
-  target_link_libraries(${fn} gtest_main gtest pthread)
+  target_link_libraries(${fn} ccm gtest_main gtest pthread)
   add_test(NAME ${fn} COMMAND ${fn})
 endmacro ()
 
 create_test(wake_on_event)
-create_test(sleep_for)
+create_test(wake_after)

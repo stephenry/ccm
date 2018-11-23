@@ -37,11 +37,12 @@ namespace {
     };
     
     struct State {
-      State(ccm::Scheduler & sch) {
-        e0_ = sch.create_event();
-        e1_ = sch.create_event();
-        e2_ = sch.create_event();
-      }
+      State(ccm::Scheduler & sch)
+        : e0_(sch.create_event())
+        , e1_(sch.create_event())
+        , e2_(sch.create_event())
+      {}
+
       ccm::Event e0_;
       ccm::Event e1_;
       ccm::Event e2_;
