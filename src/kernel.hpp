@@ -49,9 +49,11 @@ namespace ccm {
 
   class InvokeRsp {
   public:
-    void sleep_for(std::size_t t) {};
-    void notify_after(Event & e, std::size_t t) {};
+    void wake_on(Event & e) {}
+    void wake_after(std::size_t t) {}
     void terminate() {}
+    
+    void notify_after(Event & e, std::size_t t = 0) {}
   };
 
   class Process {
@@ -66,6 +68,7 @@ namespace ccm {
 
   class Scheduler {
   public:
+    Event create_event() {}
     void run() {}
     void add_process (Process * p) {}
     void remove_process (Process * p) {}
