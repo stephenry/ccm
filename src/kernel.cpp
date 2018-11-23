@@ -43,6 +43,8 @@ namespace ccm {
     bool run_advance_time();
 
     SimState state() const { return state_; }
+    void update_state(SimState ss) { state_ = ss; }
+
     std::size_t now() const { return now_; }
 
     //
@@ -90,24 +92,25 @@ namespace ccm {
   }
 
   void SchedulerImpl::run() {
-    state_ = SimState::Elaboration;
+    update_state(SimState::Elaboration);
     
-    state_ = SimState::Initialization;
+    update_state(SimState::Initialization);
 
     now_ = 0;
     while (run_delta())
       delta_++;
     
-    state_ = SimState::Running;
+    update_state(SimState::Running);
 
     while (run_advance_time())
       ;
     
-    state_ = SimState::Termination;
+    update_state(SimState::Termination);
   }
 
   bool SchedulerImpl::run_delta() {
     std::swap(current_delta_, next_delta_);
+    next_delta_.clear();
     for (Process * p : current_delta_) {
       InvokeReq req(this);
       const InvokeRsp rsp = p->invoke(req);
