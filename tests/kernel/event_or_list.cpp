@@ -62,7 +62,6 @@ class EventOrListTop : public ccm::Module {
   class P1 : public ccm::Process {
    public:
     P1(SharedState & state) : state_(state) {}
-    std::size_t n() const { return n_; }
    private:
     ccm::InvokeRsp invoke_initialization(ccm::InvokeReq const & req) override {
       ccm::InvokeRsp rsp;
@@ -78,7 +77,6 @@ class EventOrListTop : public ccm::Module {
     }
    private:
     SharedState & state_;
-    std::size_t n_{0};
   } p1_;
 
  public:
@@ -104,7 +102,7 @@ TEST(EventOrList, t0) {
   ccm::Scheduler sch;
   EventOrListTop top(sch);
 
-  ccm::RunOptions opts{10000};
+  const ccm::RunOptions opts{10000};
   sch.run(opts);
 }
 
