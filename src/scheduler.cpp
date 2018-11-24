@@ -27,6 +27,7 @@
 
 #include "src/scheduler.hpp"
 #include "src/process.hpp"
+#include "src/module.hpp"
 
 namespace ccm {
 
@@ -56,9 +57,10 @@ Scheduler::Scheduler() {
 Scheduler::~Scheduler() {
 }
 
-void Scheduler::run() {
+void Scheduler::run(RunOptions const & run_options) {
   //
   set_state(Elaboration);
+  top_->elaboration();
 
   //
   set_state(Initialization);
@@ -68,7 +70,11 @@ void Scheduler::run() {
   set_state(Running);
 
   while (frontier_.work_remains()) {
-    now_ = frontier_.next_time();
+    const std::size_t next_time = frontier_.next_time();
+    if (!run_options.can_run_at_time(next_time))
+      break;
+
+    now_ = next_time;
     delta_ = 0;
 
     current_delta_.clear();
@@ -80,7 +86,7 @@ void Scheduler::run() {
     do_next_delta();
     while (!next_delta_.empty()) {
       ++delta_;
-      do_next_delta(true);
+      do_next_delta();
     }
     frontier_.advance();
 
@@ -95,14 +101,16 @@ void Scheduler::run() {
 
   //
   set_state(Termination);
+  top_->termination();
 }
 
-void Scheduler::do_next_delta(bool is_running) {
+void Scheduler::do_next_delta() {
   std::swap(current_delta_, next_delta_);
   for (Process * p : current_delta_) {
     InvokeReq req{this};
-    const InvokeRsp rsp{is_running ? p->invoke_running(req) :
-          p->invoke_elaboration(req)};
+    const InvokeRsp rsp{
+      (state() == SimState::Running) ? p->invoke_running(req) :
+          p->invoke_initialization(req)};
     switch (rsp.type()) {
       case ResponseType::WakeOn: {
         Event e;

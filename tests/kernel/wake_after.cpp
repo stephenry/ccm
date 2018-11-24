@@ -73,6 +73,7 @@ class WakeAfterTestTop : public ccm::Module {
   WakeAfterTestTop(ccm::Scheduler & sch) : ccm::Module(), sch_(sch) {
     p_ = new P0(this);
     sch_.add_process(p_);
+    sch_.set_top(this);
   }
   ~WakeAfterTestTop() {
     delete p_;

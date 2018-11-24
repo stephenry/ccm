@@ -33,6 +33,12 @@ namespace ccm {
 // TODO: TBD
 struct Module {
 
+  //
+  virtual void elaboration() {}
+
+  //
+  virtual void termination() {}
+
 };
 
 } // namespace ccm

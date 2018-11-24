@@ -38,6 +38,7 @@ namespace ccm {
 
 class Process;
 class Scheduler;
+class Module;
 
 struct FrontierTask {
   virtual bool is_nop() const { return true; }
@@ -73,6 +74,20 @@ enum SimState : int {
   Termination
 };
 
+enum RunMode : int { UntilTime, UntilExhaustion };
+
+struct RunOptions {
+  bool can_run_at_time(std::size_t now) const {
+    if (run_mode == RunMode::UntilExhaustion)
+      return true;
+
+    return (now <= max_time);
+  }
+  
+  RunMode run_mode{RunMode::UntilExhaustion};
+  std::size_t max_time;
+};
+
 class Scheduler {
   friend class EventDescriptor;
   friend class WakeProcessTask;
@@ -87,18 +102,21 @@ class Scheduler {
   std::size_t delta() const { return delta_; }
     
   //
-  void run();
+  void run(RunOptions const & run_options = RunOptions());
 
   //
-  void add_event(Event & e);
-  void add_process (Process * p);
+  void add_event(Event & e); // remove
+  void add_process (Process * p); // remove
+
+  //
+  void set_top (Module * top) { top_ = top; }
 
  private:
   void set_state(SimState sim_state) { sim_state_ = sim_state; };
   
   void add_to_runnable_set(Process * p);
 
-  void do_next_delta(bool is_running = false);
+  void do_next_delta();
   
   //
   std::vector<EventDescriptorPtr> events_;
@@ -114,6 +132,9 @@ class Scheduler {
 
   //
   SimState sim_state_{SimState::Initialization};
+
+  //
+  Module * top_;
 
   //
   std::size_t delta_{0};

@@ -115,6 +115,8 @@ class WakeOnEventTop : public ccm::Module {
     sch_.add_process(std::addressof(p0_));
     sch_.add_process(std::addressof(p1_));
     sch_.add_process(std::addressof(p2_));
+    
+    sch_.set_top(this);
   }
   ~WakeOnEventTop() {
   }
