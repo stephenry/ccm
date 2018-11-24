@@ -32,12 +32,12 @@
 namespace ccm {
 
 struct NotifyEventTask : FrontierTask {
-  NotifyEventTask(Event e) : e_(e) {}
+  NotifyEventTask(EventHandle e) : e_(e) {}
   ~NotifyEventTask() {}
   bool is_nop() const override { return false; }
   void apply(Scheduler * sch) override { e_.notify(); }
  private:
-  Event e_;
+  EventHandle e_;
 };
 
 struct WakeProcessTask : FrontierTask {
@@ -115,7 +115,7 @@ void Scheduler::do_next_delta() {
           p->invoke_initialization(req)};
     switch (rsp.type()) {
       case ResponseType::WakeOn: {
-        Event e;
+        EventHandle e = rsp.event();
         e.add_to_wait_set(p);
       } break;
       case ResponseType::WakeAfter: {
@@ -133,10 +133,18 @@ void Scheduler::do_next_delta() {
   }
 }
 
-void Scheduler::add_event(Event & e) {
+EventHandle Scheduler::create_event() {
   EventDescriptorPtr ed{new EventDescriptor{this}};
-  e = Event{ed.get()};
+  EventHandle e{ed.get()};
   events_.push_back(std::move(ed));
+  return e;
+}
+
+EventHandle Scheduler::create_event(EventOrList const & el) {
+  EventDescriptorPtr ed{new EventOrDescriptor{this, el}};
+  EventHandle e{ed.get()};
+  events_.push_back(std::move(ed));
+  return e;
 }
 
 void Scheduler::add_process (Process * p) {

@@ -54,7 +54,7 @@ enum ResponseType { WakeOn, WakeAfter, NotifyAfter, Terminate };
 class InvokeRsp {
  public:
   InvokeRsp() : type_(ResponseType::Terminate) {}
-  void wake_on(Event & e) {
+  void wake_on(EventHandle e) {
     type_ = ResponseType::WakeOn;
     e_ = e;
   }
@@ -65,16 +65,16 @@ class InvokeRsp {
   void terminate() {
     type_ = ResponseType::Terminate;
   }
-  void notify_after(Event & e, std::size_t t = 0) {
+  void notify_after(EventHandle e, std::size_t t = 0) {
     type_ = ResponseType::NotifyAfter;
     t_ = t;
   }
   ResponseType type() const { return type_; }
   std::size_t time() const { return t_; }
-  Event event() const { return e_; }
+  EventHandle event() const { return e_; }
  private:
   ResponseType type_;
-  Event e_;
+  EventHandle e_;
   std::size_t t_;
 };
 

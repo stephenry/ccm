@@ -94,6 +94,7 @@ struct RunOptions {
 
 class Scheduler {
   friend class EventDescriptor;
+  friend class EventOrDescriptor;
   friend class WakeProcessTask;
   
  public:
@@ -109,8 +110,11 @@ class Scheduler {
   void run(RunOptions const & run_options = RunOptions());
 
   //
-  void add_event(Event & e); // remove
-  void add_process (Process * p); // remove
+  EventHandle create_event();
+  EventHandle create_event(EventOrList const & e);
+
+  void add_process (Process * p);
+  void add_process (Process & p) { add_process(std::addressof(p)); }
 
   //
   void set_top (Module * top) { top_ = top; }

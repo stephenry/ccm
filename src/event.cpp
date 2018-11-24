@@ -32,7 +32,31 @@
 
 namespace ccm {
 
-void EventDescriptor::notify() {
+bool operator==(EventHandle const & a, EventHandle const & b) {
+  return (a.ed_ == b.ed_);
+}
+
+bool operator!=(EventHandle const & a, EventHandle const & b) {
+  return !(a.ed_ == b.ed_);
+}
+
+bool EventHandle::is_valid() const {
+  return ed_ != nullptr;
+}
+
+void EventHandle::notify() {
+  ed_->notify(*this);
+};
+
+void EventHandle::add_to_wait_set(Process * p) {
+  ed_->add_to_wait_set(p);
+}
+
+void EventHandle::remove_from_wait_set(Process * p) {
+  ed_->remove_from_wait_set(p);
+}
+
+void EventDescriptor::notify(EventHandle h) {
   for (Process * p : suspended_on_)
     if (p != nullptr)
       sch_->add_to_runnable_set(p);
@@ -48,6 +72,18 @@ void EventDescriptor::remove_from_wait_set(Process * p) {
   //
   Process * replace{nullptr};
   std::replace(suspended_on_.begin(), suspended_on_.end(), p, replace);
+}
+
+void EventOrDescriptor::notify(EventHandle h) {
+  for (Process * p : suspended_on_) {
+    if (p != nullptr)
+      sch_->add_to_runnable_set(p);
+
+    for (EventHandle e : el_) {
+      if (e != h)
+        e.remove_from_wait_set(p);
+    }
+  }
 }
 
 } // namespace ccm

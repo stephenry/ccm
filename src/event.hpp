@@ -35,34 +35,53 @@ namespace ccm {
 
 class Process;
 class Scheduler;
+class EventDescriptor;
+
+class EventHandle {
+  friend class Scheduler;
+  
+  friend bool operator==(EventHandle const & a, EventHandle const & b);
+  friend bool operator!=(EventHandle const & a, EventHandle const & b);
+
+  EventHandle(EventDescriptor * ed) : ed_(ed) {}
+ public:
+  EventHandle() : ed_{nullptr} {}
+  bool is_valid() const;
+  void notify();
+  void add_to_wait_set(Process * p);
+  void remove_from_wait_set(Process *p);
+ private:
+  EventDescriptor *ed_{nullptr};
+};
+
+using EventOrList = std::vector<EventHandle>;
 
 class EventDescriptor {
   friend class Scheduler;
-  
+ protected:
   EventDescriptor(Scheduler * sch) : sch_(sch) {}
  public:
-  void notify();
-  void add_to_wait_set(Process * p);
-  void remove_from_wait_set(Process * p);
- private:
+  virtual void notify(EventHandle h);
+  virtual void add_to_wait_set(Process * p);
+  virtual void remove_from_wait_set(Process * p);
+  virtual ~EventDescriptor() {}
+ protected:
   std::vector<Process *> suspended_on_;
   Scheduler * sch_;
 };
 
-using EventDescriptorPtr = std::unique_ptr<EventDescriptor>;
-
-class Event {
+class EventOrDescriptor : public EventDescriptor {
   friend class Scheduler;
 
-  Event(EventDescriptor * ed) : ed_(ed) {}
+  EventOrDescriptor(Scheduler * sch, EventOrList const & el)
+      : EventDescriptor(sch), el_(el) {}
  public:
-  Event() : ed_{nullptr} {}
-  bool is_valid() const { return ed_ != nullptr; }
-  void notify() { ed_->notify(); };
-  void add_to_wait_set(Process * p) { ed_->add_to_wait_set(p); }
+  void notify(EventHandle h) override;
  private:
-  EventDescriptor *ed_{nullptr};
+  EventOrList const & el_;
 };
+
+using EventDescriptorPtr = std::unique_ptr<EventDescriptor>;
 
 } // namespace ccm
 
