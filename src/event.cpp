@@ -1,6 +1,3 @@
-#ifndef __KERNEL_HPP__
-#define __KERNEL_HPP__
-
 //========================================================================== //
 // Copyright (c) 2018, Stephen Henry
 // All rights reserved.
@@ -28,9 +25,18 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "src/event.hpp"
-#include "src/process.hpp"
-#include "src/scheduler.hpp"
-#include "src/module.hpp"
+#include "event.hpp"
+#include "scheduler.hpp"
 
-#endif
+namespace ccm {
+
+void EventDescriptor::notify() {
+  for (Process * p : suspended_on_)
+    sch_->add_to_runnable_set(p);
+}
+
+void EventDescriptor::add_to_wait_set(Process * p) {
+  suspended_on_.push_back(p);
+}
+
+} // namespace ccm

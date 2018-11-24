@@ -1,5 +1,5 @@
-#ifndef __KERNEL_HPP__
-#define __KERNEL_HPP__
+#ifndef __EVENT_HPP__
+#define __EVENT_HPP__
 
 //========================================================================== //
 // Copyright (c) 2018, Stephen Henry
@@ -28,9 +28,41 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "src/event.hpp"
-#include "src/process.hpp"
-#include "src/scheduler.hpp"
-#include "src/module.hpp"
+#include <memory>
+#include <vector>
+
+namespace ccm {
+
+class Process;
+class Scheduler;
+
+class EventDescriptor {
+  friend class Scheduler;
+  
+  EventDescriptor(Scheduler * sch) : sch_(sch) {}
+ public:
+  void notify();
+  void add_to_wait_set(Process * p);
+ private:
+  std::vector<Process *> suspended_on_;
+  Scheduler * sch_;
+};
+
+using EventDescriptorPtr = std::unique_ptr<EventDescriptor>;
+
+class Event {
+  friend class Scheduler;
+
+  Event(EventDescriptor * ed) : ed_(ed) {}
+ public:
+  Event() : ed_{nullptr} {}
+  bool is_valid() const { return ed_ != nullptr; }
+  void notify() { ed_->notify(); };
+  void add_to_wait_set(Process * p) { ed_->add_to_wait_set(p); }
+ private:
+  EventDescriptor *ed_{nullptr};
+};
+
+} // namespace ccm
 
 #endif

@@ -1,6 +1,3 @@
-#ifndef __KERNEL_HPP__
-#define __KERNEL_HPP__
-
 //========================================================================== //
 // Copyright (c) 2018, Stephen Henry
 // All rights reserved.
@@ -28,9 +25,13 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "src/event.hpp"
 #include "src/process.hpp"
 #include "src/scheduler.hpp"
-#include "src/module.hpp"
 
-#endif
+namespace ccm {
+
+SimState InvokeReq::state() const { return sch_->state(); }
+std::size_t InvokeReq::now() const { return sch_->now(); }
+
+
+} // namespace ccm

@@ -1,5 +1,5 @@
-#ifndef __KERNEL_HPP__
-#define __KERNEL_HPP__
+#ifndef __MODULE_HPP__
+#define __MODULE_HPP__
 
 //========================================================================== //
 // Copyright (c) 2018, Stephen Henry
@@ -28,9 +28,11 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "src/event.hpp"
-#include "src/process.hpp"
-#include "src/scheduler.hpp"
-#include "src/module.hpp"
+namespace ccm {
+
+// TODO: TBD
+struct Module {};
+
+} // namespace ccm
 
 #endif

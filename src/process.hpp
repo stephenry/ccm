@@ -1,6 +1,5 @@
-#ifndef __KERNEL_HPP__
-#define __KERNEL_HPP__
-
+#ifndef __PROCESS_HPP__
+#define __PROCESS_HPP__
 //========================================================================== //
 // Copyright (c) 2018, Stephen Henry
 // All rights reserved.
@@ -28,9 +27,62 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "src/event.hpp"
-#include "src/process.hpp"
 #include "src/scheduler.hpp"
-#include "src/module.hpp"
+
+namespace ccm {
+
+class Scheduler;
+
+class InvokeReq {
+  friend class Scheduler;
+
+  InvokeReq(Scheduler * sch) : sch_(sch) {}
+ public:
+
+  //
+  SimState state() const;
+  std::size_t now() const;
+ private:
+  Scheduler const * sch_;
+};
+
+enum ResponseType { WakeOn, WakeAfter, NotifyAfter, Terminate };
+
+class InvokeRsp {
+ public:
+  InvokeRsp() : type_(ResponseType::Terminate) {}
+  void wake_on(Event & e) {
+    type_ = ResponseType::WakeOn;
+    e_ = e;
+  }
+  void wake_after(std::size_t t) {
+    type_ = ResponseType::WakeAfter;
+    t_ = t;
+  }
+  void terminate() {
+    type_ = ResponseType::Terminate;
+  }
+  void notify_after(Event & e, std::size_t t = 0) {
+    type_ = ResponseType::NotifyAfter;
+    t_ = t;
+  }
+  ResponseType type() const { return type_; }
+  std::size_t time() const { return t_; }
+  Event event() const { return e_; }
+ private:
+  ResponseType type_;
+  Event e_;
+  std::size_t t_;
+};
+
+class Process {
+ public:
+  virtual InvokeRsp invoke (InvokeReq const & req) {
+    return InvokeRsp();
+  };
+  virtual ~Process() {}
+};
+
+} // namespace ccm
 
 #endif
