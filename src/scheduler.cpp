@@ -109,7 +109,7 @@ void Scheduler::run(RunOptions const & run_options) {
 void Scheduler::do_next_delta() {
   std::swap(current_delta_, next_delta_);
   for (Process * p : current_delta_) {
-    InvokeReq req{this};
+    const InvokeReq req{this};
     const InvokeRsp rsp{
       (state() == SimState::Running) ? p->invoke_running(req) :
           p->invoke_initialization(req)};

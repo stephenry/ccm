@@ -48,10 +48,9 @@ class EventOrListTop : public ccm::Module {
       return rsp;
     }
     ccm::InvokeRsp invoke_running(ccm::InvokeReq const & req) override {
-      ccm::InvokeRsp rsp;
-
       state_.e[state_.n_p0++ % 3].notify();
-      
+
+      ccm::InvokeRsp rsp;
       rsp.wake_after(10);
       return rsp;
     }
