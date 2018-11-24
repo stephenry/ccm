@@ -43,6 +43,7 @@ class EventDescriptor {
  public:
   void notify();
   void add_to_wait_set(Process * p);
+  void remove_from_wait_set(Process * p);
  private:
   std::vector<Process *> suspended_on_;
   Scheduler * sch_;

@@ -120,11 +120,11 @@ void Scheduler::do_next_delta() {
       } break;
       case ResponseType::WakeAfter: {
         FrontierTaskPtr task{new WakeProcessTask(p)};
-        frontier_.add_work(rsp.time(), std::move(task));
+        frontier_.add_work(now() + rsp.time(), std::move(task));
       } break;
       case ResponseType::NotifyAfter: {
         FrontierTaskPtr task{new NotifyEventTask(rsp.event())};
-        frontier_.add_work(rsp.time(), std::move(task));
+        frontier_.add_work(now() + rsp.time(), std::move(task));
       } break;
       case ResponseType::Terminate: {
         reaped_processes_.push_back(p);

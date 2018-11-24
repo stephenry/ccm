@@ -28,15 +28,26 @@
 #include "event.hpp"
 #include "scheduler.hpp"
 
+#include <algorithm>
+
 namespace ccm {
 
 void EventDescriptor::notify() {
   for (Process * p : suspended_on_)
-    sch_->add_to_runnable_set(p);
+    if (p != nullptr)
+      sch_->add_to_runnable_set(p);
+  suspended_on_.clear();
 }
 
 void EventDescriptor::add_to_wait_set(Process * p) {
   suspended_on_.push_back(p);
+}
+
+void EventDescriptor::remove_from_wait_set(Process * p) {
+  // Convert pointer to nullptr for speed, skip nullptrs on notify.
+  //
+  Process * replace{nullptr};
+  std::replace(suspended_on_.begin(), suspended_on_.end(), p, replace);
 }
 
 } // namespace ccm

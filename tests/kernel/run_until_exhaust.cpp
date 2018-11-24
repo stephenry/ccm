@@ -31,40 +31,47 @@
 
 namespace {
 
-struct RunForTime : public ccm::Module {
+struct RunUntilExhaust : public ccm::Module {
 
   class P0 : public ccm::Process {
     ccm::InvokeRsp invoke_initialization(ccm::InvokeReq const & req) override {
       EXPECT_EQ(sch_.now(), 0);
+      
+      ccm::InvokeRsp rsp_;
+      rsp_.wake_after(sch_.now() + 10);
       return rsp_;
     }
     ccm::InvokeRsp invoke_running(ccm::InvokeReq const & req) override {
       EXPECT_EQ(sch_.now(), 10 * ++n_);
+      
+      ccm::InvokeRsp rsp_;
+
+      if (n_ == 10)
+        rsp_.terminate();
+      else
+        rsp_.wake_after(sch_.now() + 10);
       return rsp_;
     }
     ccm::Scheduler & sch_;
     std::size_t n_{0};
-    ccm::InvokeRsp rsp_;
    public:
     P0(ccm::Scheduler & sch) : sch_(sch) {
-      rsp_.wake_after(10);
     }
   } p_;
 
-  RunForTime(ccm::Scheduler & sch) : p_(sch) {
+  RunUntilExhaust(ccm::Scheduler & sch) : p_(sch) {
     sch.add_process(std::addressof(p_));
   }
-  ~RunForTime() {}
+  ~RunUntilExhaust() {}
 };
 
 } // namespace
 
-TEST(RunForTime, t_100) {
+TEST(RunUntilExhaust, t_100) {
   ccm::Scheduler sch;
-  RunForTime top{sch};
+  RunUntilExhaust top{sch};
 
-  ccm::RunOptions opts{100};
-  sch.run(opts);
+  sch.run();
   EXPECT_EQ(sch.now(), 100);
 }
 

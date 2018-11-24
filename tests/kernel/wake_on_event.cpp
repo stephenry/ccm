@@ -57,6 +57,10 @@ class WakeOnEventTop : public ccm::Module {
         rsp.terminate();
       return rsp;
     }
+    ccm::InvokeRsp invoke_termination(ccm::InvokeReq const & req) override {
+      EXPECT_EQ(n_, 0);
+      return {};
+    }
    private:
     State & st_;
     std::size_t n_;
@@ -81,6 +85,10 @@ class WakeOnEventTop : public ccm::Module {
         
       return rsp;
     }
+    ccm::InvokeRsp invoke_termination(ccm::InvokeReq const & req) override {
+      EXPECT_EQ(n_, 0);
+      return {};
+    }
    private:
     State & st_;
     std::size_t n_;
@@ -104,6 +112,10 @@ class WakeOnEventTop : public ccm::Module {
       st_.prior_id_ = ProcessID::P2;
         
       return rsp;
+    }
+    ccm::InvokeRsp invoke_termination(ccm::InvokeReq const & req) override {
+      EXPECT_EQ(n_, 0);
+      return {};
     }
    private:
     State & st_;
