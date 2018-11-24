@@ -31,129 +31,116 @@
 
 namespace {
 
-  class WakeOnEventTop : public ccm::Module {
-    enum ProcessID : uint8_t {
-      P0, P1, P2
-    };
-    
-    struct State {
-      State(ccm::Scheduler & sch)
-        : e0_(sch.create_event())
-        , e1_(sch.create_event())
-        , e2_(sch.create_event())
-      {}
-
-      ccm::Event e0_;
-      ccm::Event e1_;
-      ccm::Event e2_;
-
-      ProcessID prior_id_{ProcessID::P2};
-    } state_;
-    
-    class P0 : public ccm::Process {
-    public:
-      P0 (State & st, std::size_t n = 10)
-        : st_(st), n_(n) {
-      }
-      ccm::InvokeRsp invoke(ccm::InvokeReq const & req) {
-        ccm::InvokeRsp rsp;
-        switch (req.state()) {
-        case ccm::SimState::Initialization: {
-          rsp.wake_after(100);
-        } break;
-        case ccm::SimState::Running: {
-          rsp.wake_on(st_.e0_);
-          if (n_-- != 0)
-            rsp.notify_after(st_.e1_, 100);
-          else
-            rsp.terminate();
-
-          EXPECT_EQ(st_.prior_id_, ProcessID::P2);
-          st_.prior_id_ = ProcessID::P0;
-        } break;
-        }
-        return rsp;
-      }
-    private:
-      State & st_;
-      std::size_t n_;
-    } p0_;
-    
-    class P1 : public ccm::Process {
-    public:
-      P1 (State & st, std::size_t n = 10)
-        : st_(st), n_(n) {
-      }
-      ccm::InvokeRsp invoke(ccm::InvokeReq const & req) {
-        ccm::InvokeRsp rsp;
-        rsp.wake_on(st_.e1_);
-        
-        if (req.state() != ccm::SimState::Running)
-          return rsp;
-        
-        if (n_-- != 0)
-          rsp.notify_after(st_.e2_, 100);
-        else
-          rsp.terminate();
-
-        EXPECT_EQ(st_.prior_id_, ProcessID::P0);
-        st_.prior_id_ = ProcessID::P1;
-        
-        return rsp;
-      }
-    private:
-      State & st_;
-      std::size_t n_;
-    } p1_;
-    
-    class P2 : public ccm::Process {
-    public:
-      P2 (State & st, std::size_t n = 10)
-        : st_(st), n_(n) {
-      }
-      ccm::InvokeRsp invoke(ccm::InvokeReq const & req) {
-        ccm::InvokeRsp rsp;
-        rsp.wake_on(st_.e2_);
-        
-        if (req.state() != ccm::SimState::Running)
-          return rsp;
-        
-        if (n_-- != 0)
-          rsp.notify_after(st_.e0_, 100);
-        else
-          rsp.terminate();
-
-        EXPECT_EQ(st_.prior_id_, ProcessID::P1);
-        st_.prior_id_ = ProcessID::P2;
-        
-        return rsp;
-      }
-    private:
-      State & st_;
-      std::size_t n_;
-    } p2_;
-  public:
-    WakeOnEventTop(ccm::Scheduler & sch) :
-      sch_(sch), state_(sch_), p0_(state_), p1_(state_), p2_(state_) {
-      sch_.add_process(std::addressof(p0_));
-      sch_.add_process(std::addressof(p1_));
-      sch_.add_process(std::addressof(p2_));
-    }
-    ~WakeOnEventTop() {
-      sch_.remove_process(std::addressof(p0_));
-      sch_.remove_process(std::addressof(p1_));
-      sch_.remove_process(std::addressof(p2_));
-    }
-  private:
-    ProcessID prior_id_{ProcessID::P2};
-    ccm::Scheduler & sch_;
+class WakeOnEventTop : public ccm::Module {
+  enum ProcessID : uint8_t {
+    P0, P1, P2
   };
 
-  TEST(WakeOnEvent, t0) {
-    ccm::Scheduler sch;
-    WakeOnEventTop top(sch);
-    sch.run();
+  struct State;
+    
+  class P0 : public ccm::Process {
+   public:
+    P0 (State & st, std::size_t n = 10)
+        : st_(st), n_(n) {
+    }
+    ccm::InvokeRsp invoke_initialization(ccm::InvokeReq const & req) override {
+      ccm::InvokeRsp rsp;
+      rsp.wake_after(100);
+      return rsp;
+    }
+    ccm::InvokeRsp invoke_running(ccm::InvokeReq const & req) override {
+      ccm::InvokeRsp rsp;
+      rsp.wake_on(st_.e0_);
+      if (n_-- != 0)
+        rsp.notify_after(st_.e1_, 100);
+      else
+        rsp.terminate();
+      return rsp;
+    }
+   private:
+    State & st_;
+    std::size_t n_;
+  } p0_;
+    
+  class P1 : public ccm::Process {
+   public:
+    P1 (State & st, std::size_t n = 10)
+        : st_(st), n_(n) {
+    }
+    ccm::InvokeRsp invoke_running(ccm::InvokeReq const & req) override {
+      ccm::InvokeRsp rsp;
+      rsp.wake_on(st_.e1_);
+      
+      if (n_-- != 0)
+        rsp.notify_after(st_.e2_, 100);
+      else
+        rsp.terminate();
+
+      EXPECT_EQ(st_.prior_id_, ProcessID::P0);
+      st_.prior_id_ = ProcessID::P1;
+        
+      return rsp;
+    }
+   private:
+    State & st_;
+    std::size_t n_;
+  } p1_;
+    
+  class P2 : public ccm::Process {
+   public:
+    P2 (State & st, std::size_t n = 10)
+        : st_(st), n_(n) {
+    }
+    ccm::InvokeRsp invoke_running(ccm::InvokeReq const & req) override {
+      ccm::InvokeRsp rsp;
+      rsp.wake_on(st_.e2_);
+        
+      if (n_-- != 0)
+        rsp.notify_after(st_.e0_, 100);
+      else
+        rsp.terminate();
+
+      EXPECT_EQ(st_.prior_id_, ProcessID::P1);
+      st_.prior_id_ = ProcessID::P2;
+        
+      return rsp;
+    }
+   private:
+    State & st_;
+    std::size_t n_;
+  } p2_;
+ public:
+  WakeOnEventTop(ccm::Scheduler & sch) :
+      sch_(sch), state_(sch_), p0_(state_), p1_(state_), p2_(state_) {
+    sch_.add_process(std::addressof(p0_));
+    sch_.add_process(std::addressof(p1_));
+    sch_.add_process(std::addressof(p2_));
   }
+  ~WakeOnEventTop() {
+  }
+ private:
+  ProcessID prior_id_{ProcessID::P2};
+  ccm::Scheduler & sch_;
+  struct State {
+    State(ccm::Scheduler & sch) {
+      sch.add_event(e0_);
+      sch.add_event(e1_);
+      sch.add_event(e2_);
+    }
+
+    ccm::Event e0_;
+    ccm::Event e1_;
+    ccm::Event e2_;
+
+    ProcessID prior_id_{ProcessID::P2};
+  } state_;
+};
+
+TEST(WakeOnEvent, t0) {
+  ccm::Scheduler sch;
+  WakeOnEventTop top(sch);
+  sch.run();
+}
 
 } // namespace
 

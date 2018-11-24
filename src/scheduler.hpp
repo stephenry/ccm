@@ -98,13 +98,16 @@ class Scheduler {
   
   void add_to_runnable_set(Process * p);
 
-  void do_next_delta();
+  void do_next_delta(bool is_running = false);
   
   //
   std::vector<EventDescriptorPtr> events_;
 
   //
   std::vector<Process *> current_delta_, next_delta_;
+
+  //
+  std::vector<Process *> reaped_processes_;
 
   //
   Frontier frontier_;

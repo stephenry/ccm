@@ -37,13 +37,16 @@ class InvokeReq {
   friend class Scheduler;
 
   InvokeReq(Scheduler * sch) : sch_(sch) {}
+  void set_reaped(bool reaped = true) { reaped_ = reaped; }
  public:
 
   //
+  bool is_reaped() const { return reaped_; }
   SimState state() const;
   std::size_t now() const;
  private:
   Scheduler const * sch_;
+  bool reaped_;
 };
 
 enum ResponseType { WakeOn, WakeAfter, NotifyAfter, Terminate };
@@ -77,9 +80,28 @@ class InvokeRsp {
 
 class Process {
  public:
-  virtual InvokeRsp invoke (InvokeReq const & req) {
+
+  //
+  virtual InvokeRsp invoke_elaboration(InvokeReq const & req) {
     return InvokeRsp();
-  };
+  }
+
+  //
+  virtual InvokeRsp invoke_initialization(InvokeReq const & req) {
+    return InvokeRsp();
+  }
+
+  //
+  virtual InvokeRsp invoke_running(InvokeReq const & req) {
+    return InvokeRsp();
+  }
+
+  //
+  virtual InvokeRsp invoke_termination(InvokeReq const & req) {
+    return InvokeRsp();
+  }
+
+  //
   virtual ~Process() {}
 };
 

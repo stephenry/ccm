@@ -31,7 +31,9 @@
 namespace ccm {
 
 // TODO: TBD
-struct Module {};
+struct Module {
+
+};
 
 } // namespace ccm
 

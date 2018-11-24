@@ -80,20 +80,29 @@ void Scheduler::run() {
     do_next_delta();
     while (!next_delta_.empty()) {
       ++delta_;
-      do_next_delta();
+      do_next_delta(true);
     }
     frontier_.advance();
+
+    // Cleanup reaped process
+    for (Process * p : reaped_processes_) {
+      InvokeReq req{this};
+      req.set_reaped();
+      p->invoke_termination(req);
+    }
+    reaped_processes_.clear();
   }
 
   //
   set_state(Termination);
 }
 
-void Scheduler::do_next_delta() {
+void Scheduler::do_next_delta(bool is_running) {
   std::swap(current_delta_, next_delta_);
   for (Process * p : current_delta_) {
     InvokeReq req{this};
-    const InvokeRsp rsp = p->invoke(req);
+    const InvokeRsp rsp{is_running ? p->invoke_running(req) :
+          p->invoke_elaboration(req)};
     switch (rsp.type()) {
       case ResponseType::WakeOn: {
         Event e;
@@ -108,6 +117,7 @@ void Scheduler::do_next_delta() {
         frontier_.add_work(rsp.time(), std::move(task));
       } break;
       case ResponseType::Terminate: {
+        reaped_processes_.push_back(p);
       } break;
     }
   }

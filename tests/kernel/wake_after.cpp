@@ -31,30 +31,19 @@
 
 namespace {
 
-  class WakeAfterTestTop : public ccm::Module {
-    class P0 : public ccm::Process {
-    public:
-      P0(ccm::Module * m) : ccm::Process() {
-      }
-      ccm::InvokeRsp invoke(const ccm::InvokeReq & req) {
-        switch (req.state()) {
-        case ccm::SimState::Initialization: {
-          return init(req);
-          break;
-        }
-        default: {
-          return run(req);
-        } break;
-        }
-      }
-    private:
-      ccm::InvokeRsp init(ccm::InvokeReq const & req) {
-        ccm::InvokeRsp rsp;
-        rsp.wake_after(100);
-      }
-      ccm::InvokeRsp run(ccm::InvokeReq const & req) {
-        ccm::InvokeRsp rsp;
-        switch (n_++) {
+class WakeAfterTestTop : public ccm::Module {
+  class P0 : public ccm::Process {
+   public:
+    P0(ccm::Module * m) : ccm::Process() {}
+   private:
+    ccm::InvokeRsp invoke_initialization(ccm::InvokeReq const & req) override {
+      ccm::InvokeRsp rsp;
+      rsp.wake_after(100);
+      return rsp;
+    }
+    ccm::InvokeRsp invoke_running(ccm::InvokeReq const & req) override {
+      ccm::InvokeRsp rsp;
+      switch (n_++) {
         case 0: {
           EXPECT_EQ(req.now(), 100);
           rsp.wake_after(100);
@@ -75,30 +64,29 @@ namespace {
           EXPECT_EQ(req.now(), 500);
           rsp.terminate();
         } break;
-        }
-        return rsp;
       }
-      std::size_t n_{0};
-    };
-  public:
-    WakeAfterTestTop(ccm::Scheduler & sch) : ccm::Module(), sch_(sch) {
-      p_ = new P0(this);
-      sch_.add_process(p_);
+      return rsp;
     }
-    ~WakeAfterTestTop() {
-      sch_.remove_process(p_);
-      delete p_;
-    }
-  private:
-    P0 * p_;
-    ccm::Scheduler & sch_;
+    std::size_t n_{0};
   };
-
-  TEST(WakeAfterTest, t0) {
-    ccm::Scheduler sch;
-    WakeAfterTestTop top(sch);
-    sch.run();
+ public:
+  WakeAfterTestTop(ccm::Scheduler & sch) : ccm::Module(), sch_(sch) {
+    p_ = new P0(this);
+    sch_.add_process(p_);
   }
+  ~WakeAfterTestTop() {
+    delete p_;
+  }
+ private:
+  P0 * p_;
+  ccm::Scheduler & sch_;
+};
+
+TEST(WakeAfterTest, t0) {
+  ccm::Scheduler sch;
+  WakeAfterTestTop top(sch);
+  sch.run();
+}
 
 } // namespace
 
