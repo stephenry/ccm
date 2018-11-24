@@ -1,6 +1,3 @@
-#ifndef __MODULE_HPP__
-#define __MODULE_HPP__
-
 //========================================================================== //
 // Copyright (c) 2018, Stephen Henry
 // All rights reserved.
@@ -28,22 +25,49 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-namespace ccm {
+#include <gtest/gtest.h>
 
-// TODO: TBD
-struct Module {
+#include "src/kernel.hpp"
 
-  //
-  virtual void on_elaboration() {}
+namespace {
 
-  //
-  virtual void on_termination() {}
+struct RunForTime : public ccm::Module {
 
-  //
-  virtual ~Module() {}
+  class P0 : public ccm::Process {
+    ccm::InvokeRsp invoke_initialization(ccm::InvokeReq const & req) override {
+      ccm::InvokeRsp rsp_;
+      rsp_.wake_after(sch_.now() + 10);
+      return rsp_;
+    }
+    ccm::InvokeRsp invoke_running(ccm::InvokeReq const & req) override {
+      ccm::InvokeRsp rsp_;
+      rsp_.wake_after(sch_.now() + 10);
+      return rsp_;
+    }
+    ccm::Scheduler & sch_;
+   public:
+    P0(ccm::Scheduler & sch) : sch_(sch) {
+    }
+  } p_;
 
+  RunForTime(ccm::Scheduler & sch) : p_(sch) {
+    sch.add_process(std::addressof(p_));
+  }
+  ~RunForTime() {}
 };
 
-} // namespace ccm
+} // namespace
 
-#endif
+TEST(RunForTime, t_100) {
+  ccm::Scheduler sch;
+  RunForTime top{sch};
+
+  ccm::RunOptions opts{100};
+  sch.run(opts);
+  EXPECT_EQ(sch.now(), 100);
+}
+
+int main(int argc, char ** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

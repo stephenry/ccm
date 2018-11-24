@@ -77,6 +77,10 @@ enum SimState : int {
 enum RunMode : int { UntilTime, UntilExhaustion };
 
 struct RunOptions {
+  RunOptions(std::size_t max_time)
+      : run_mode(RunMode::UntilTime), max_time(max_time)
+  {}
+  RunOptions() {}
   bool can_run_at_time(std::size_t now) const {
     if (run_mode == RunMode::UntilExhaustion)
       return true;
@@ -134,7 +138,7 @@ class Scheduler {
   SimState sim_state_{SimState::Initialization};
 
   //
-  Module * top_;
+  Module * top_{nullptr};
 
   //
   std::size_t delta_{0};

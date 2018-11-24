@@ -60,7 +60,8 @@ Scheduler::~Scheduler() {
 void Scheduler::run(RunOptions const & run_options) {
   //
   set_state(Elaboration);
-  top_->elaboration();
+  if (top_)
+    top_->on_elaboration();
 
   //
   set_state(Initialization);
@@ -101,7 +102,8 @@ void Scheduler::run(RunOptions const & run_options) {
 
   //
   set_state(Termination);
-  top_->termination();
+  if (top_)
+    top_->on_termination();
 }
 
 void Scheduler::do_next_delta() {

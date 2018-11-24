@@ -33,3 +33,4 @@ endmacro ()
 
 create_test(wake_on_event)
 create_test(wake_after)
+create_test(run_for_time)
