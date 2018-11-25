@@ -70,7 +70,7 @@ class WakeAfterTestTop : public ccm::Module {
     std::size_t n_{0};
   };
  public:
-  WakeAfterTestTop(ccm::Scheduler & sch) : ccm::Module(), sch_(sch) {
+  WakeAfterTestTop(ccm::Scheduler & sch) : sch_(sch) {
     p_ = new P0(this);
     sch_.add_process(p_);
     sch_.set_top(this);
@@ -85,7 +85,7 @@ class WakeAfterTestTop : public ccm::Module {
 
 TEST(WakeAfterTest, t0) {
   ccm::Scheduler sch;
-  WakeAfterTestTop top(sch);
+  ModulePtr top = sch.construct_module<WakeAfterTestTop>(sch);
   sch.run();
 }
 

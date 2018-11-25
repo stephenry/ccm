@@ -59,16 +59,16 @@ Scheduler::~Scheduler() {
 
 void Scheduler::run(RunOptions const & run_options) {
   //
-  set_state(Elaboration);
+  set_state(SimState::Elaboration);
   if (top_)
-    top_->on_elaboration();
+    top_->cb__on_elaboration();
 
   //
-  set_state(Initialization);
+  set_state(SimState::Initialization);
   do_next_delta();
 
   //
-  set_state(Running);
+  set_state(SimState::Running);
 
   while (frontier_.work_remains()) {
     const std::size_t next_time = frontier_.next_time();
@@ -101,9 +101,9 @@ void Scheduler::run(RunOptions const & run_options) {
   }
 
   //
-  set_state(Termination);
+  set_state(SimState::Termination);
   if (top_)
-    top_->on_termination();
+    top_->cb__on_termination();
 }
 
 void Scheduler::do_next_delta() {

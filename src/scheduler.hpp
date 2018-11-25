@@ -28,17 +28,15 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "src/event.hpp"
+#include "event.hpp"
+#include "module.hpp"
+#include "common.hpp"
 
 #include <vector>
 #include <map>
 #include <memory>
 
 namespace ccm {
-
-class Process;
-class Scheduler;
-class Module;
 
 struct FrontierTask {
   virtual bool is_nop() const { return true; }
@@ -67,37 +65,14 @@ class Frontier {
   std::map<std::size_t, std::vector<FrontierTaskPtr> > f_;
 };
 
-enum SimState : int {
-  Elaboration,
-  Initialization,
-  Running,
-  Termination
-};
-
-enum RunMode : int { UntilTime, UntilExhaustion };
-
-struct RunOptions {
-  RunOptions(std::size_t max_time)
-      : run_mode(RunMode::UntilTime), max_time(max_time)
-  {}
-  RunOptions() {}
-  bool can_run_at_time(std::size_t now) const {
-    if (run_mode == RunMode::UntilExhaustion)
-      return true;
-
-    return (now <= max_time);
-  }
-  
-  RunMode run_mode{RunMode::UntilExhaustion};
-  std::size_t max_time;
-};
-
 class Scheduler {
+  friend class Module;
   friend class EventDescriptor;
   friend class EventOrDescriptor;
   friend class WakeProcessTask;
   
  public:
+  //
   Scheduler();
   ~Scheduler();
 
@@ -105,9 +80,22 @@ class Scheduler {
   SimState state() const { return sim_state_; }
   std::size_t now() const { return now_; }
   std::size_t delta() const { return delta_; }
-    
+
+  //
+  template<typename MODULE, typename ...ARGS>
+  ModulePtr construct_module(ARGS && ... args) {
+    ModulePtr ptr = std::make_unique<MODULE>(args...);
+    ptr->set_scheduler(this);
+    return ptr;
+  }
+
   //
   void run(RunOptions const & run_options = RunOptions());
+
+  //
+  void set_top (ModulePtr && ptr) { top_ = std::move(ptr); }
+
+ private:
 
   //
   EventHandle create_event();
@@ -117,35 +105,21 @@ class Scheduler {
   void add_process (Process * p);
   void add_process (Process & p) { add_process(std::addressof(p)); }
 
-
-  //
-  void set_top (Module * top) { top_ = top; }
-
- private:
-  void set_state(SimState sim_state) { sim_state_ = sim_state; };
-  void do_next_delta();
-
   //
   void add_task_wake_after(Process * p, std::size_t time = 0);
   void add_task_notify_after(EventHandle h, std::size_t time = 0);
+   
+  //
+  void set_state(SimState sim_state) { sim_state_ = sim_state; };
+  void do_next_delta();
   
   //
   std::vector<EventDescriptorPtr> events_;
-
-  //
   std::vector<Process *> current_delta_, next_delta_;
-
-  //
   std::vector<Process *> reaped_processes_;
-
-  //
   Frontier frontier_;
-
-  //
   SimState sim_state_{SimState::Initialization};
-
-  //
-  Module * top_{nullptr};
+  ModulePtr top_;
 
   //
   std::size_t delta_{0};

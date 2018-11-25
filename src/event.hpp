@@ -28,33 +28,12 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
+#include "common.hpp"
+
 #include <memory>
 #include <vector>
 
 namespace ccm {
-
-class Process;
-class Scheduler;
-class EventDescriptor;
-
-class EventHandle {
-  friend class Scheduler;
-  
-  friend bool operator==(EventHandle const & a, EventHandle const & b);
-  friend bool operator!=(EventHandle const & a, EventHandle const & b);
-
-  EventHandle(EventDescriptor * ed) : ed_(ed) {}
- public:
-  EventHandle() : ed_{nullptr} {}
-  bool is_valid() const;
-  void notify(std::size_t t = 0);
-  void add_to_wait_set(Process * p);
-  void remove_from_wait_set(Process *p);
- private:
-  EventDescriptor *ed_{nullptr};
-};
-
-using EventOrList = std::vector<EventHandle>;
 
 class EventDescriptor {
   friend class Scheduler;

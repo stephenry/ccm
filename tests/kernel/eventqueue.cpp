@@ -45,7 +45,7 @@ class EventQueueTestTop: public ccm::Module {
   } state_;
 
   struct P0 : public ccm::Process {
-    P0(ccm::Scheduler & sch, State & state) : sch_(sch), state_(state) {}
+    P0(State & state) : state_(state) {}
     ccm::InvokeRsp invoke_initialization(ccm::InvokeReq const & req) override {
       n_ = state_.frontier.size();
       last_time_ = state_.frontier.back().t;
@@ -55,18 +55,17 @@ class EventQueueTestTop: public ccm::Module {
       return rsp;
     }
     ccm::InvokeRsp invoke_running(ccm::InvokeReq const & req) override {
-      count_++;
-      
       const FrontierEntry & e = state_.frontier.front();
       
-      EXPECT_EQ(sch_.now(), e.t);
-      EXPECT(state_.eq.has_msg());
+      EXPECT_EQ(now(), e.t);
+      EXPECT_TRUE(state_.eq.has_msg(now()));
 
       MSG msg;
-      EXPECT(state_.eq.get(msg, sch_.now()));
+      EXPECT_TRUE(state_.eq.get(msg, now()));
       EXPECT_EQ(msg, e.msg);
 
       state_.frontier.pop_front();
+      count_++;
       
       ccm::InvokeRsp rsp;
       rsp.wake_on(state_.eq.event());
@@ -75,15 +74,14 @@ class EventQueueTestTop: public ccm::Module {
     ccm::InvokeRsp invoke_termination(ccm::InvokeReq const & req) override {
       EXPECT_EQ(state_.frontier.size(), 0);
       EXPECT_EQ(n_, count_);
-      EXPECT_EQ(sch_.now(), last_time_);
+      EXPECT_EQ(now(), last_time_);
     }
    private:
     State & state_;
-    ccm::Scheduler & sch_;
     std::size_t n_{0}, count_{0}, last_time_{0};
   };
  public:
-  EventQueueTestTop(ccm::Scheduler & sch) : sch_(sch) {
+  EventQueueTestTop(std::string name) : ccm::Module(name) {
     for (std::size_t i = 0; i < 100; i++) {
       const std::size_t msg = i;
       const std::size_t t = i * 10;
@@ -92,15 +90,19 @@ class EventQueueTestTop: public ccm::Module {
       state_.frontier.push_back(fe);
       state_.eq.set(msg, t);
     }
+    p0 = create_process<P0>(state_);
   }
- private:
-  ccm::Scheduler & sch_;
+private:
+  ccm::Process * p0;
 };
-}
+  
+} // namespace
 
 TEST(EventQueueTest, t0) {
   ccm::Scheduler sch;
-  EventQueueTestTop<std::size_t> top(sch);
+  ccm::ModulePtr top = sch.construct_module<
+    EventQueueTestTop<std::size_t>>("EventQueueTestTop");
+  sch.set_top(std::move(top));
   sch.run();
 }
 

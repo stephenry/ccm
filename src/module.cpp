@@ -25,17 +25,42 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "src/process.hpp"
-#include "src/scheduler.hpp"
+#include "module.hpp"
+#include "scheduler.hpp"
 
 namespace ccm {
 
-SimState InvokeReq::state() const { return sch_->state(); }
-std::size_t InvokeReq::now() const { return sch_->now(); }
+  Module::Module (std::string name) : name_(name) {
+  }
 
+  Module::~Module () {
+  }
 
-//
-std::size_t Process::now() const { return parent_->now(); }
-std::size_t Process::delta() const { return parent_->delta(); }
+  SimState Module::state() const { return sch_->state(); }
+  std::size_t Module::now() const { return sch_->now(); }
+  std::size_t Module::delta() const { return sch_->delta(); }
+  
+  //
+  EventHandle Module::create_event() {
+    return sch_->create_event();
+  }
+
+  //
+  EventHandle Module::create_event(EventOrList const & e) {
+    return sch_->create_event(e);
+  }
+
+  //
+  void Module::add_child (ModulePtr && ptr) {
+    children_.push_back(std::move(ptr));
+  }
+  
+  //
+  void Module::cb__on_elaboration() {
+  }
+
+  //
+  void Module::cb__on_termination() {
+  }
 
 } // namespace ccm

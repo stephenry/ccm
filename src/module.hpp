@@ -1,6 +1,3 @@
-#ifndef __MODULE_HPP__
-#define __MODULE_HPP__
-
 //========================================================================== //
 // Copyright (c) 2018, Stephen Henry
 // All rights reserved.
@@ -28,20 +25,65 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
+#ifndef __MODULE_HPP__
+#define __MODULE_HPP__
+
+#include "process.hpp"
+
+#include <vector>
+#include <memory>
+#include <string>
+
 namespace ccm {
 
-// TODO: TBD
-struct Module {
+class Module {
+  friend class Scheduler;
+
+public:
+
+  Module () : Module("<ANONYMOUS>") {}
+  Module (std::string name);
+  //
+  virtual ~Module();
+  
+  //
+  SimState state() const;
+  std::size_t now() const;
+  std::size_t delta() const;
+
+protected:
 
   //
-  virtual void on_elaboration() {}
+  EventHandle create_event();
+  EventHandle create_event(EventOrList const & e);
+
+  template<typename PROCESS, typename ...ARGS>
+  Process * create_process (ARGS && ... args) {
+    ProcessPtr ptr = std::make_unique<PROCESS>(args...);
+    ptr->set_scheduler(sch_);
+    ptr->set_parent(this);
+    processes_.push_back(std::move(ptr));
+    return processes_.back().get();
+  }
+  
+  //
+  void add_child (ModulePtr && ptr);
+  
+  //
+  virtual void cb__on_elaboration();
+  virtual void cb__on_termination();
+
+private:
+  //
+  void set_scheduler(Scheduler * sch) { sch_ = sch; }
+  
+  //
+  Scheduler * sch_{nullptr};
 
   //
-  virtual void on_termination() {}
-
-  //
-  virtual ~Module() {}
-
+  std::vector<ModulePtr> children_;
+  std::vector<ProcessPtr> processes_;
+  std::string name_;
 };
 
 } // namespace ccm

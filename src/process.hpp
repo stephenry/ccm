@@ -27,11 +27,9 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "src/scheduler.hpp"
+#include "common.hpp"
 
 namespace ccm {
-
-class Scheduler;
 
 enum class InvokeReason {
   TimerExpiry,
@@ -86,7 +84,19 @@ class InvokeRsp {
 };
 
 class Process {
+  friend class Module;
+  
  public:
+
+  Process () : Process("<ANONYMOUS>") {}
+  Process (std::string name) : name_(name) {}
+  
+  //
+  virtual ~Process() {}
+
+  //
+  std::size_t now() const;
+  std::size_t delta() const;
 
   //
   virtual InvokeRsp invoke_elaboration(InvokeReq const & req) {
@@ -108,8 +118,14 @@ class Process {
     return InvokeRsp();
   }
 
+private:
   //
-  virtual ~Process() {}
+  void set_scheduler(Scheduler * sch) { sch_ = sch; }
+  void set_parent(Module * parent) { parent_ = parent; }
+  
+  Scheduler * sch_{nullptr};
+  Module * parent_{nullptr};
+  std::string name_;
 };
 
 } // namespace ccm

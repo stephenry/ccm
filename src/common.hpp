@@ -25,17 +25,68 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "src/process.hpp"
-#include "src/scheduler.hpp"
+#ifndef __COMMON_HPP__
+#define __COMMON_HPP__
+
+#include <memory>
+#include <vector>
 
 namespace ccm {
 
-SimState InvokeReq::state() const { return sch_->state(); }
-std::size_t InvokeReq::now() const { return sch_->now(); }
+  class Scheduler;
 
+  class Module;
+  using ModulePtr = std::unique_ptr<Module>;
 
-//
-std::size_t Process::now() const { return parent_->now(); }
-std::size_t Process::delta() const { return parent_->delta(); }
+  class Process;
+  using ProcessPtr = std::unique_ptr<Process>;
+  
+  enum class SimState {
+    Elaboration,
+    Initialization,
+    Running,
+    Termination
+  };
 
-} // namespace ccm
+  enum RunMode : int { UntilTime, UntilExhaustion };
+
+  struct RunOptions {
+    RunOptions(std::size_t max_time)
+      : run_mode(RunMode::UntilTime), max_time(max_time)
+    {}
+    RunOptions() {}
+    bool can_run_at_time(std::size_t now) const {
+      if (run_mode == RunMode::UntilExhaustion)
+        return true;
+
+      return (now <= max_time);
+    }
+  
+    RunMode run_mode{RunMode::UntilExhaustion};
+    std::size_t max_time;
+  };
+
+  class EventDescriptor;
+
+  class EventHandle {
+    friend class Scheduler;
+  
+    friend bool operator==(EventHandle const & a, EventHandle const & b);
+    friend bool operator!=(EventHandle const & a, EventHandle const & b);
+
+    EventHandle(EventDescriptor * ed) : ed_(ed) {}
+  public:
+    EventHandle() : ed_{nullptr} {}
+    bool is_valid() const;
+    void notify(std::size_t t = 0);
+    void add_to_wait_set(Process * p);
+    void remove_from_wait_set(Process *p);
+  private:
+    EventDescriptor *ed_{nullptr};
+  };
+
+  using EventOrList = std::vector<EventHandle>;
+
+} // namespace ccm;
+
+#endif
