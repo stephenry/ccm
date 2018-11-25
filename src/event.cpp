@@ -44,8 +44,8 @@ bool EventHandle::is_valid() const {
   return ed_ != nullptr;
 }
 
-void EventHandle::notify() {
-  ed_->notify(*this);
+void EventHandle::notify(std::size_t t) {
+  ed_->notify(*this, t);
 };
 
 void EventHandle::add_to_wait_set(Process * p) {
@@ -56,10 +56,10 @@ void EventHandle::remove_from_wait_set(Process * p) {
   ed_->remove_from_wait_set(p);
 }
 
-void EventDescriptor::notify(EventHandle h) {
+void EventDescriptor::notify(EventHandle h, std::size_t t) {
   for (Process * p : suspended_on_)
     if (p != nullptr)
-      sch_->add_to_runnable_set(p);
+      sch_->add_task_wake_after(p, t);
   suspended_on_.clear();
 }
 
@@ -74,10 +74,10 @@ void EventDescriptor::remove_from_wait_set(Process * p) {
   std::replace(suspended_on_.begin(), suspended_on_.end(), p, replace);
 }
 
-void EventOrDescriptor::notify(EventHandle h) {
+void EventOrDescriptor::notify(EventHandle h, std::size_t t) {
   for (Process * p : suspended_on_) {
     if (p != nullptr)
-      sch_->add_to_runnable_set(p);
+      sch_->add_task_wake_after(p, t);
 
     for (EventHandle e : el_) {
       if (e != h)

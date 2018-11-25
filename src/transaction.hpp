@@ -1,6 +1,3 @@
-#ifndef __EVENT_HPP__
-#define __EVENT_HPP__
-
 //========================================================================== //
 // Copyright (c) 2018, Stephen Henry
 // All rights reserved.
@@ -28,60 +25,15 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include <memory>
-#include <vector>
+#ifndef __TRANSACTION_HPP__
+#define __TRANSACTION_HPP__
 
 namespace ccm {
 
-class Process;
-class Scheduler;
-class EventDescriptor;
-
-class EventHandle {
-  friend class Scheduler;
-  
-  friend bool operator==(EventHandle const & a, EventHandle const & b);
-  friend bool operator!=(EventHandle const & a, EventHandle const & b);
-
-  EventHandle(EventDescriptor * ed) : ed_(ed) {}
- public:
-  EventHandle() : ed_{nullptr} {}
-  bool is_valid() const;
-  void notify(std::size_t t = 0);
-  void add_to_wait_set(Process * p);
-  void remove_from_wait_set(Process *p);
- private:
-  EventDescriptor *ed_{nullptr};
+class Transaction {
 };
 
-using EventOrList = std::vector<EventHandle>;
-
-class EventDescriptor {
-  friend class Scheduler;
- protected:
-  EventDescriptor(Scheduler * sch) : sch_(sch) {}
- public:
-  virtual void notify(EventHandle h, std::size_t t = 0);
-  virtual void add_to_wait_set(Process * p);
-  virtual void remove_from_wait_set(Process * p);
-  virtual ~EventDescriptor() {}
- protected:
-  std::vector<Process *> suspended_on_;
-  Scheduler * sch_;
-};
-
-class EventOrDescriptor : public EventDescriptor {
-  friend class Scheduler;
-
-  EventOrDescriptor(Scheduler * sch, EventOrList const & el)
-      : EventDescriptor(sch), el_(el) {}
- public:
-  void notify(EventHandle h, std::size_t t = 0) override;
- private:
-  EventOrList const & el_;
-};
-
-using EventDescriptorPtr = std::unique_ptr<EventDescriptor>;
+using TransactionPtr = std::unique_ptr<Transaction>;
 
 } // namespace ccm
 

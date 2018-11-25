@@ -33,6 +33,11 @@ namespace ccm {
 
 class Scheduler;
 
+enum class InvokeReason {
+  TimerExpiry,
+  Event,
+};
+
 class InvokeReq {
   friend class Scheduler;
 
@@ -44,9 +49,11 @@ class InvokeReq {
   bool is_reaped() const { return reaped_; }
   SimState state() const;
   std::size_t now() const;
+  InvokeReason invoke_reason() const { return invoke_reason_; }
  private:
   Scheduler const * sch_;
   bool reaped_;
+  InvokeReason invoke_reason_;
 };
 
 enum ResponseType { WakeOn, WakeAfter, NotifyAfter, Terminate };

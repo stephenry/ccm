@@ -1,6 +1,3 @@
-#ifndef __EVENT_HPP__
-#define __EVENT_HPP__
-
 //========================================================================== //
 // Copyright (c) 2018, Stephen Henry
 // All rights reserved.
@@ -28,60 +25,66 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include <memory>
+#ifndef __PRIMITIVES_HPP__
+#define __PRIMITIVES_HPP__
+
+#include "src/module.hpp"
+#include "src/event.hpp"
+
 #include <vector>
+#include <deque>
 
 namespace ccm {
 
-class Process;
-class Scheduler;
-class EventDescriptor;
-
-class EventHandle {
-  friend class Scheduler;
-  
-  friend bool operator==(EventHandle const & a, EventHandle const & b);
-  friend bool operator!=(EventHandle const & a, EventHandle const & b);
-
-  EventHandle(EventDescriptor * ed) : ed_(ed) {}
+template<typename T>
+class MailBox : public Module {
  public:
-  EventHandle() : ed_{nullptr} {}
-  bool is_valid() const;
-  void notify(std::size_t t = 0);
-  void add_to_wait_set(Process * p);
-  void remove_from_wait_set(Process *p);
+  MailBox() {}
+  void set(T const & t) {
+    ts_.push_back(t);
+    e_.notify();
+  }
+  void get(T & t) {
+    t = ts_.back();
+    ts_.pop_back();
+  }
+  bool has_mail() const { return !ts_.empty(); }
+  EventHandle event() { return e_; }
  private:
-  EventDescriptor *ed_{nullptr};
+  std::vector<T> ts_;
+  EventHandle e_;
 };
 
-using EventOrList = std::vector<EventHandle>;
-
-class EventDescriptor {
-  friend class Scheduler;
- protected:
-  EventDescriptor(Scheduler * sch) : sch_(sch) {}
+template<typename MSG>
+class EventQueue : public Module {
+  struct QueueEntry {
+    std::size_t t;
+    MSG msg;
+  };
  public:
-  virtual void notify(EventHandle h, std::size_t t = 0);
-  virtual void add_to_wait_set(Process * p);
-  virtual void remove_from_wait_set(Process * p);
-  virtual ~EventDescriptor() {}
- protected:
-  std::vector<Process *> suspended_on_;
-  Scheduler * sch_;
-};
-
-class EventOrDescriptor : public EventDescriptor {
-  friend class Scheduler;
-
-  EventOrDescriptor(Scheduler * sch, EventOrList const & el)
-      : EventDescriptor(sch), el_(el) {}
- public:
-  void notify(EventHandle h, std::size_t t = 0) override;
+  EventQueue() {}
+  EventHandle event() { return e_; }
+  void set (MSG const & msg, std::size_t t = 0) {
+    e_.notify(t);
+    v_.push_back(QueueEntry{t, msg});
+  }
+  bool has_msg(std::size_t t) const {
+    const QueueEntry & eq = v_.front();
+    return (eq.t <= t);
+  }
+  bool get(MSG & msg, std::size_t t) {
+    const bool valid = has_msg(t);
+    if (valid) {
+      const QueueEntry & eq = v_.front();
+      msg = eq.msg;
+      v_.pop_front();
+    }
+    return valid;
+  }
  private:
-  EventOrList const & el_;
+  std::deque<QueueEntry> v_;
+  EventHandle e_;
 };
-
-using EventDescriptorPtr = std::unique_ptr<EventDescriptor>;
 
 } // namespace ccm
 

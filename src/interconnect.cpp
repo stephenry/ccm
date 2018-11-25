@@ -1,6 +1,3 @@
-#ifndef __EVENT_HPP__
-#define __EVENT_HPP__
-
 //========================================================================== //
 // Copyright (c) 2018, Stephen Henry
 // All rights reserved.
@@ -28,61 +25,54 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include <memory>
-#include <vector>
+#include "src/interconnect.hpp"
 
 namespace ccm {
 
-class Process;
-class Scheduler;
-class EventDescriptor;
+namespace {
 
-class EventHandle {
-  friend class Scheduler;
+class FixedLatencyInterconnect : public Interconnect {
+
+ public:
+
+  FixedLatencyInterconnect(InterconnectOptions const & opts)
+      : opts_(opts)
+  {}
   
-  friend bool operator==(EventHandle const & a, EventHandle const & b);
-  friend bool operator!=(EventHandle const & a, EventHandle const & b);
+  //
+  virtual void push(std::size_t id, TransactionPtr * t) override {
+  }
 
-  EventHandle(EventDescriptor * ed) : ed_(ed) {}
- public:
-  EventHandle() : ed_{nullptr} {}
-  bool is_valid() const;
-  void notify(std::size_t t = 0);
-  void add_to_wait_set(Process * p);
-  void remove_from_wait_set(Process *p);
+  //
+  virtual void register_port(std::size_t id, EventHandle e) override {
+  }
+
+  //
+  virtual bool port_valid(std::size_t id) const override {
+    return false;
+  }
+
+  //
+  virtual TransactionPtr get_port(std::size_t id) override {
+    return {};
+  }
  private:
-  EventDescriptor *ed_{nullptr};
+  
+  InterconnectOptions const opts_;
 };
 
-using EventOrList = std::vector<EventHandle>;
+} // namespace 
 
-class EventDescriptor {
-  friend class Scheduler;
- protected:
-  EventDescriptor(Scheduler * sch) : sch_(sch) {}
- public:
-  virtual void notify(EventHandle h, std::size_t t = 0);
-  virtual void add_to_wait_set(Process * p);
-  virtual void remove_from_wait_set(Process * p);
-  virtual ~EventDescriptor() {}
- protected:
-  std::vector<Process *> suspended_on_;
-  Scheduler * sch_;
-};
+InterconnectPtr InterconnectFactory::construct(
+    InterconnectOptions const & opts) {
 
-class EventOrDescriptor : public EventDescriptor {
-  friend class Scheduler;
+  switch (opts.type) {
+    case InterconnectType::FixedLatency: {
+      InterconnectPtr p{new FixedLatencyInterconnect{opts}};
+      return p;
+    } break;
+  }
+}
 
-  EventOrDescriptor(Scheduler * sch, EventOrList const & el)
-      : EventDescriptor(sch), el_(el) {}
- public:
-  void notify(EventHandle h, std::size_t t = 0) override;
- private:
-  EventOrList const & el_;
-};
-
-using EventDescriptorPtr = std::unique_ptr<EventDescriptor>;
 
 } // namespace ccm
-
-#endif

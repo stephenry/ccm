@@ -32,5 +32,6 @@
 #include "src/process.hpp"
 #include "src/scheduler.hpp"
 #include "src/module.hpp"
+#include "src/primitives.hpp"
 
 #endif

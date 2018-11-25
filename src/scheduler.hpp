@@ -113,18 +113,21 @@ class Scheduler {
   EventHandle create_event();
   EventHandle create_event(EventOrList const & e);
 
+  //
   void add_process (Process * p);
   void add_process (Process & p) { add_process(std::addressof(p)); }
+
 
   //
   void set_top (Module * top) { top_ = top; }
 
  private:
   void set_state(SimState sim_state) { sim_state_ = sim_state; };
-  
-  void add_to_runnable_set(Process * p);
-
   void do_next_delta();
+
+  //
+  void add_task_wake_after(Process * p, std::size_t time = 0);
+  void add_task_notify_after(EventHandle h, std::size_t time = 0);
   
   //
   std::vector<EventDescriptorPtr> events_;

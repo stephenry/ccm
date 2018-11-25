@@ -43,7 +43,7 @@ struct NotifyEventTask : FrontierTask {
 struct WakeProcessTask : FrontierTask {
   WakeProcessTask(Process * p) : p_(p) {}
   bool is_nop() const override { return false; }
-  void apply(Scheduler * sch) override { sch->add_to_runnable_set(p_); }
+  void apply(Scheduler * sch) override { sch->add_task_wake_after(p_); }
  private:
   Process * p_;
 };
@@ -119,18 +119,34 @@ void Scheduler::do_next_delta() {
         e.add_to_wait_set(p);
       } break;
       case ResponseType::WakeAfter: {
-        FrontierTaskPtr task{new WakeProcessTask(p)};
-        frontier_.add_work(now() + rsp.time(), std::move(task));
+        add_task_wake_after(p, now() + rsp.time());
       } break;
       case ResponseType::NotifyAfter: {
-        FrontierTaskPtr task{new NotifyEventTask(rsp.event())};
-        frontier_.add_work(now() + rsp.time(), std::move(task));
+        add_task_notify_after(rsp.event(), now() + rsp.time());
       } break;
       case ResponseType::Terminate: {
         reaped_processes_.push_back(p);
       } break;
     }
   }
+}
+
+void Scheduler::add_process (Process * p) {
+  add_task_wake_after(p, 0);
+}
+
+void Scheduler::add_task_wake_after(Process * p, std::size_t time) {
+  if (time == 0) {
+    next_delta_.push_back(p);
+  } else {
+    FrontierTaskPtr task{new WakeProcessTask(p)};
+    frontier_.add_work(time, std::move(task));
+  }
+}
+
+void Scheduler::add_task_notify_after(EventHandle e, std::size_t time) {
+  FrontierTaskPtr task{new NotifyEventTask(e)};
+  frontier_.add_work(time, std::move(task));
 }
 
 EventHandle Scheduler::create_event() {
@@ -145,14 +161,6 @@ EventHandle Scheduler::create_event(EventOrList const & el) {
   EventHandle e{ed.get()};
   events_.push_back(std::move(ed));
   return e;
-}
-
-void Scheduler::add_process (Process * p) {
-  next_delta_.push_back(p);
-}
-
-void Scheduler::add_to_runnable_set(Process * p) {
-  next_delta_.push_back(p);
 }
 
 } // namespace ccm

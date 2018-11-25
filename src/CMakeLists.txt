@@ -25,4 +25,4 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-add_library(ccm SHARED event.cpp scheduler.cpp process.cpp )
+add_library(ccm SHARED event.cpp scheduler.cpp process.cpp interconnect.cpp)
