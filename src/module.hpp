@@ -91,23 +91,9 @@ protected:
 private:
 
   //
-  void call_on_elaboration(Scheduler * sch);
+  void call_on_elaboration(ElaborationState const & state);
   void call_on_initialization();
   void call_on_termination();
-
-  // Helpers
-  //
-  template<typename CB>
-  void for_all_children(CB && cb) {
-    for (ModulePtr & ptr : children_)
-      cb(ptr);
-  }
-  //
-  template<typename CB>
-  void for_all_processes(CB && cb) {
-    for (ProcessPtr & ptr : processes_)
-      cb(ptr);
-  }
   
   //
   void set_scheduler(Scheduler * sch) { sch_ = sch; }

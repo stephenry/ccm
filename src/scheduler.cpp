@@ -60,8 +60,10 @@ Scheduler::~Scheduler() {
 void Scheduler::run(RunOptions const & run_options) {
   //
   set_state(SimState::Elaboration);
-  if (top_)
-    top_->call_on_elaboration(this);
+  if (top_) {
+    ElaborationState const state{this};
+    top_->call_on_elaboration(state);
+  }
 
   //
   set_state(SimState::Initialization);

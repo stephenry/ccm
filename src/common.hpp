@@ -78,6 +78,10 @@ namespace ccm {
     std::size_t max_time;
   };
 
+  struct ElaborationState {
+    Scheduler * sch;
+  };
+
 } // namespace ccm;
 
 #endif

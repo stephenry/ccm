@@ -27,6 +27,7 @@
 
 #include "module.hpp"
 #include "scheduler.hpp"
+#include <algorithm>
 
 namespace ccm {
 
@@ -52,34 +53,40 @@ namespace ccm {
     children_.push_back(std::move(ptr));
   }
 
-  void Module::call_on_elaboration(Scheduler * sch) {
-    for_all_children([=](ModulePtr & ptr) {
-        ptr->call_on_elaboration(sch);
-      });
-    for_all_processes([=](ProcessPtr & ptr) {
-        ptr->call_on_elaboration(sch);
-      });
-    set_scheduler(sch);
+  void Module::call_on_elaboration(ElaborationState const & state) {
+    std::for_each(children_.begin(), children_.end(),
+                  [=](ModulePtr & ptr) {
+                    ptr->call_on_elaboration(state);
+                  });
+    std::for_each(processes_.begin(), processes_.end(),
+                  [=](ProcessPtr & ptr) {
+                    ptr->call_on_elaboration(state);
+                  });
+    set_scheduler(state.sch);
     cb__on_elaboration();
   }
   
   void Module::call_on_initialization() {
-    for_all_children([=](ModulePtr & ptr) {
-        ptr->call_on_initialization();
-      });
-    for_all_processes([=](ProcessPtr & ptr) {
-        ptr->call_on_initialization();
-      });
+    std::for_each(children_.begin(), children_.end(),
+                  [=](ModulePtr & ptr) {
+                    ptr->call_on_initialization();
+                  });
+    std::for_each(processes_.begin(), processes_.end(),
+                  [=](ProcessPtr & ptr) {
+                    ptr->call_on_initialization();
+                  });
     cb__on_initialization();
   }
   
   void Module::call_on_termination() {
-    for_all_children([=](ModulePtr & ptr) {
-        ptr->call_on_termination();
-      });
-    for_all_processes([=](ProcessPtr & ptr) {
-        ptr->call_on_termination();
-      });
+    std::for_each(children_.begin(), children_.end(),
+                  [=](ModulePtr & ptr) {
+                    ptr->call_on_termination();
+                  });
+    std::for_each(processes_.begin(), processes_.end(),
+                  [=](ProcessPtr & ptr) {
+                    ptr->call_on_termination();
+                  });
     cb__on_termination();
   }
 

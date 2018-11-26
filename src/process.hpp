@@ -89,7 +89,7 @@ protected:
 
 private:
   //
-  void call_on_elaboration(Scheduler * sch);
+  void call_on_elaboration(ElaborationState const & state);
   void call_on_initialization();
   void call_on_invoke();
   void call_on_termination();

@@ -50,8 +50,8 @@ void Process::wait_until(std::size_t t) {
 }
 
 //
-void Process::call_on_elaboration(Scheduler * sch) {
-  set_scheduler(sch);
+void Process::call_on_elaboration(ElaborationState const & state) {
+  set_scheduler(state.sch);
   cb__on_elaboration();
 }
 
