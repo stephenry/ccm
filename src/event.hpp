@@ -1,6 +1,3 @@
-#ifndef __EVENT_HPP__
-#define __EVENT_HPP__
-
 //========================================================================== //
 // Copyright (c) 2018, Stephen Henry
 // All rights reserved.
@@ -27,6 +24,9 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
+
+#ifndef __EVENT_HPP__
+#define __EVENT_HPP__
 
 #include "common.hpp"
 

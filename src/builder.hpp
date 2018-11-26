@@ -25,8 +25,8 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __INTERCONNECT_HPP__
-#define __INTERCONNECT_HPP__
+#ifndef __BUILDER_HPP__
+#define __BUILDER_HPP__
 
 #include "src/kernel.hpp"
 
