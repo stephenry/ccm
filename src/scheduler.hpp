@@ -106,11 +106,11 @@ class Scheduler {
   void add_process (Process * p);
 
   //
+  void add_task_next_delta(Process * p);
   void add_task_wake_on(Process * p, EventHandle e);
   void add_task_wake_after(Process * p, std::size_t time = 0);
   void add_task_notify_on(EventHandle h, std::size_t time = 0);
   void add_task_notify_after(EventHandle h, std::size_t time = 0);
-  void add_task_next_delta(Process * p);
    
   //
   void set_state(SimState sim_state) { sim_state_ = sim_state; };
