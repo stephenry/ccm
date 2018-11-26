@@ -28,10 +28,11 @@
 #ifndef __KERNEL_HPP__
 #define __KERNEL_HPP__
 
-#include "src/event.hpp"
-#include "src/process.hpp"
-#include "src/scheduler.hpp"
-#include "src/module.hpp"
-#include "src/primitives.hpp"
+#include "common.hpp"
+#include "event.hpp"
+#include "process.hpp"
+#include "scheduler.hpp"
+#include "module.hpp"
+#include "primitives.hpp"
 
 #endif

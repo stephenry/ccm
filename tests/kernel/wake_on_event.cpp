@@ -29,130 +29,74 @@
 
 #include "src/kernel.hpp"
 
+std::size_t rand_int() { return 0; }
+
 namespace {
 
+struct TestOptions {
+  std::size_t sim_time{1000};
+  std::size_t notify_n{1000};
+  std::size_t process_n{10};
+  std::size_t delay{10};
+};
+  
 class WakeOnEventTop : public ccm::Module {
-  enum ProcessID : uint8_t {
-    P0, P1, P2
+  struct SharedState {
+    TestOptions opts;
+    std::size_t next_process{0};
+    std::size_t n{0};
+    std::vector<ccm::EventHandle> es;
+    std::vector<ccm::Process *> processes_;
   };
+  struct WakeOnEventProcess : ccm::Process {
+    WakeOnEventProcess(std::size_t id, SharedState & state)
+      : id_(id), state_(state)
+    {}
+    void cb__on_invoke() override {
+      EXPECT_EQ(state_.next_process, id_);
 
-  struct State;
-    
-  class P0 : public ccm::Process {
-   public:
-    P0 (State & st, std::size_t n = 10)
-        : st_(st), n_(n) {
+      state_.next_process = rand_int();
+      if (--state_.n != 0) {
+        state_.es[state_.next_process].notify_after(state_.opts.delay);
+      }
     }
-    ccm::InvokeRsp invoke_initialization(ccm::InvokeReq const & req) override {
-      ccm::InvokeRsp rsp;
-      rsp.wake_after(100);
-      return rsp;
-    }
-    ccm::InvokeRsp invoke_running(ccm::InvokeReq const & req) override {
-      ccm::InvokeRsp rsp;
-      rsp.wake_on(st_.e0_);
-      if (n_-- != 0)
-        rsp.notify_after(st_.e1_, 100);
-      else
-        rsp.terminate();
-      return rsp;
-    }
-    ccm::InvokeRsp invoke_termination(ccm::InvokeReq const & req) override {
-      EXPECT_EQ(n_, 0);
-      return {};
-    }
-   private:
-    State & st_;
-    std::size_t n_;
-  } p0_;
-    
-  class P1 : public ccm::Process {
-   public:
-    P1 (State & st, std::size_t n = 10)
-        : st_(st), n_(n) {
-    }
-    ccm::InvokeRsp invoke_running(ccm::InvokeReq const & req) override {
-      ccm::InvokeRsp rsp;
-      rsp.wake_on(st_.e1_);
-      
-      if (n_-- != 0)
-        rsp.notify_after(st_.e2_, 100);
-      else
-        rsp.terminate();
-
-      EXPECT_EQ(st_.prior_id_, ProcessID::P0);
-      st_.prior_id_ = ProcessID::P1;
-        
-      return rsp;
-    }
-    ccm::InvokeRsp invoke_termination(ccm::InvokeReq const & req) override {
-      EXPECT_EQ(n_, 0);
-      return {};
-    }
-   private:
-    State & st_;
-    std::size_t n_;
-  } p1_;
-    
-  class P2 : public ccm::Process {
-   public:
-    P2 (State & st, std::size_t n = 10)
-        : st_(st), n_(n) {
-    }
-    ccm::InvokeRsp invoke_running(ccm::InvokeReq const & req) override {
-      ccm::InvokeRsp rsp;
-      rsp.wake_on(st_.e2_);
-        
-      if (n_-- != 0)
-        rsp.notify_after(st_.e0_, 100);
-      else
-        rsp.terminate();
-
-      EXPECT_EQ(st_.prior_id_, ProcessID::P1);
-      st_.prior_id_ = ProcessID::P2;
-        
-      return rsp;
-    }
-    ccm::InvokeRsp invoke_termination(ccm::InvokeReq const & req) override {
-      EXPECT_EQ(n_, 0);
-      return {};
-    }
-   private:
-    State & st_;
-    std::size_t n_;
-  } p2_;
+  private:
+    std::size_t id_;
+    SharedState & state_;
+  };
  public:
-  WakeOnEventTop(ccm::Scheduler & sch) :
-      sch_(sch), state_(sch_), p0_(state_), p1_(state_), p2_(state_) {
-    sch_.add_process(std::addressof(p0_));
-    sch_.add_process(std::addressof(p1_));
-    sch_.add_process(std::addressof(p2_));
-    
-    sch_.set_top(this);
-  }
-  ~WakeOnEventTop() {
+  WakeOnEventTop(std::string name, TestOptions const & opts = TestOptions())
+    : ccm::Module(name) {
+    state_.opts = opts;
+    for (std::size_t i = 0; i < state_.opts.process_n; i++)
+      state_.processes_.push_back(create_process<WakeOnEventProcess>(i, state_));
   }
  private:
-  ProcessID prior_id_{ProcessID::P2};
-  ccm::Scheduler & sch_;
-  struct State {
-    State(ccm::Scheduler & sch) {
-      e0_ = sch.create_event();
-      e1_ = sch.create_event();
-      e2_ = sch.create_event();
+  void cb__on_elaboration() override {
+    for (std::size_t i = 0; i < state_.opts.process_n; i++) {
+      state_.es.push_back(create_event());
+      state_.processes_[i]->set_sensitive_on(state_.es.back());
     }
-
-    ccm::EventHandle e0_;
-    ccm::EventHandle e1_;
-    ccm::EventHandle e2_;
-
-    ProcessID prior_id_{ProcessID::P2};
-  } state_;
+  }
+  void cb__on_initialization() override {
+    state_.n = state_.opts.notify_n;
+    state_.es[0].notify_on(10);
+  }
+  void cb__on_termination() override {
+    EXPECT_EQ(state_.n, 0);
+    EXPECT_EQ(now(), state_.opts.delay * state_.opts.notify_n);
+  }
+  SharedState state_;
 };
 
 TEST(WakeOnEvent, t0) {
+  TestOptions opts;
   ccm::Scheduler sch;
-  WakeOnEventTop top(sch);
+  {
+    ccm::ModulePtr top =
+      sch.construct_top<WakeOnEventTop>("WakeOnEventTop");
+    sch.set_top(std::move(top));
+  }
   sch.run();
 }
 

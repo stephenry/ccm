@@ -92,12 +92,6 @@ void Scheduler::run(RunOptions const & run_options) {
       do_next_delta();
     }
     frontier_.advance();
-
-    // Cleanup reaped process
-    for (Process * p : reaped_processes_) {
-      p->cb__on_termination();
-    }
-    reaped_processes_.clear();
   }
 
   //
@@ -137,9 +131,14 @@ void Scheduler::add_task_wake_after(Process * p, std::size_t time) {
   }
 }
 
-void Scheduler::add_task_notify_after(EventHandle e, std::size_t time) {
+void Scheduler::add_task_notify_on(EventHandle e, std::size_t time) {
   FrontierTaskPtr task{new NotifyEventTask(e)};
   frontier_.add_work(time, std::move(task));
+}
+
+void Scheduler::add_task_notify_after(EventHandle e, std::size_t time) {
+  FrontierTaskPtr task{new NotifyEventTask(e)};
+  frontier_.add_work(now() + time, std::move(task));
 }
 
 EventHandle Scheduler::create_event() {

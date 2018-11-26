@@ -31,7 +31,7 @@ macro (create_test fn)
   add_test(NAME ${fn} COMMAND ${fn})
 endmacro ()
 
-#create_test(wake_on_event)
+create_test(wake_on_event)
 #create_test(wake_after)
 #create_test(run_for_time)
 #create_test(run_until_exhaust)

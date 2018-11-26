@@ -48,7 +48,8 @@ class EventHandle {
 public:
   EventHandle() : ed_{nullptr} {}
   bool is_valid() const;
-  void notify(std::size_t t = 0);
+  void notify_after(std::size_t t = 0);
+  void notify_on(std::size_t t = 0);
 private:
   void add_to_wait_set(Process * p);
   void remove_from_wait_set(Process *p);
@@ -63,7 +64,8 @@ class EventDescriptor {
  protected:
   EventDescriptor(Scheduler * sch) : sch_(sch) {}
  public:
-  virtual void notify(EventHandle h, std::size_t t = 0);
+  virtual void notify_after(EventHandle h, std::size_t t = 0);
+  virtual void notify_on(EventHandle h, std::size_t t = 0);
   virtual void add_to_wait_set(Process * p);
   virtual void remove_from_wait_set(Process * p);
   virtual void wake_waiting_processes();
@@ -79,7 +81,7 @@ class EventOrDescriptor : public EventDescriptor {
   EventOrDescriptor(Scheduler * sch, EventOrList const & el)
       : EventDescriptor(sch), el_(el) {}
  public:
-  void notify(EventHandle h, std::size_t t = 0) override;
+  //  void notify(EventHandle h, std::size_t t = 0) override;
  private:
   EventOrList const & el_;
 };

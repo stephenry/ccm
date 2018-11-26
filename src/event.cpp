@@ -44,9 +44,14 @@ bool EventHandle::is_valid() const {
   return ed_ != nullptr;
 }
 
-void EventHandle::notify(std::size_t t) {
+void EventHandle::notify_after(std::size_t t) {
   CCM_ASSERT(is_valid());
-  ed_->notify(*this, t);
+  ed_->notify_after(*this, t);
+};
+
+void EventHandle::notify_on(std::size_t t) {
+  CCM_ASSERT(is_valid());
+  ed_->notify_on(*this, t);
 };
 
 void EventHandle::add_to_wait_set(Process * p) {
@@ -63,8 +68,12 @@ void EventHandle::wake_waiting_processes() {
   ed_->wake_waiting_processes();
 }
 
-void EventDescriptor::notify(EventHandle e, std::size_t t) {
+void EventDescriptor::notify_after(EventHandle e, std::size_t t) {
   sch_->add_task_notify_after(e, t);
+}
+
+void EventDescriptor::notify_on(EventHandle e, std::size_t t) {
+  sch_->add_task_notify_on(e, t);
 }
 
 void EventDescriptor::wake_waiting_processes() {
@@ -85,7 +94,7 @@ void EventDescriptor::remove_from_wait_set(Process * p) {
   std::replace(suspended_on_.begin(), suspended_on_.end(), p, replace);
 }
 
-void EventOrDescriptor::notify(EventHandle h, std::size_t t) {
+  //void EventOrDescriptor::notify(EventHandle h, std::size_t t) {
   // for (Process * p : suspended_on_) {
   //   if (p != nullptr)
   //     sch_->add_task_wake_after(p, t);
@@ -95,6 +104,6 @@ void EventOrDescriptor::notify(EventHandle h, std::size_t t) {
   //       e.remove_from_wait_set(p);
   //   }
   // }
-}
+  //}
 
 } // namespace ccm

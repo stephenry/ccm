@@ -42,7 +42,7 @@ class MailBox : public Module {
   MailBox() {}
   void set(T const & t) {
     ts_.push_back(t);
-    e_.notify();
+    e_.notify_on();
   }
   void get(T & t) {
     t = ts_.back();
@@ -67,7 +67,7 @@ class EventQueue : public Module {
   EventHandle event() { return e_; }
   void set (MSG const & msg, std::size_t t = 0) {
     if (v_.size() == 0)
-      e_.notify(t);
+      e_.notify_on(t);
     v_.push_back(QueueEntry{t, msg});
   }
   bool has_msg(std::size_t t) const {
@@ -86,7 +86,7 @@ class EventQueue : public Module {
 
       if (has_events()) {
         const QueueEntry & qe = v_.front();
-        e_.notify(qe.t);
+        e_.notify_on(qe.t);
       }
     }
     return valid;
