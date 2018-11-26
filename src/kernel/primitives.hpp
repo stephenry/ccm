@@ -44,9 +44,13 @@ class MailBox : public Module {
     ts_.push_back(t);
     e_.notify_on();
   }
-  void get(T & t) {
+  bool get(T & t) {
+    if (!has_mail())
+      return false;
+    
     t = ts_.back();
     ts_.pop_back();
+    return true;
   }
   bool has_mail() const { return !ts_.empty(); }
   EventHandle event() { return e_; }

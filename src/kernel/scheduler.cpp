@@ -25,9 +25,9 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "scheduler.hpp"
-#include "process.hpp"
-#include "module.hpp"
+#include "kernel/scheduler.hpp"
+#include "kernel/process.hpp"
+#include "kernel/module.hpp"
 
 namespace ccm::kernel {
 
@@ -99,6 +99,8 @@ void Scheduler::run(RunOptions const & run_options) {
   if (top_)
     top_->call_on_termination();
 }
+
+void Scheduler::set_top (ModulePtr && ptr) { top_ = std::move(ptr); }
 
 void Scheduler::do_next_delta() {
   std::swap(current_delta_, next_delta_);

@@ -35,7 +35,9 @@
 
 namespace ccm::kernel {
 
+class Process;
 class EventDescriptor;
+class Scheduler;
 
 class EventHandle {
   friend class Scheduler;

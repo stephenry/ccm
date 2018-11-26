@@ -28,15 +28,43 @@
 #ifndef __SCHEDULER_HPP__
 #define __SCHEDULER_HPP__
 
-#include "event.hpp"
-#include "module.hpp"
-#include "common.hpp"
+#include "kernel/fwd.hpp"
+#include "kernel/event.hpp"
 
 #include <vector>
 #include <map>
 #include <memory>
 
 namespace ccm::kernel {
+
+enum RunMode : int { UntilTime, UntilExhaustion };
+
+struct RunOptions {
+  RunOptions(std::size_t max_time)
+    : run_mode(RunMode::UntilTime), max_time(max_time)
+  {}
+  RunOptions() {}
+  bool can_run_at_time(std::size_t now) const {
+    if (run_mode == RunMode::UntilExhaustion)
+      return true;
+
+    return (now <= max_time);
+  }
+
+  RunMode run_mode{RunMode::UntilExhaustion};
+  std::size_t max_time;
+};
+
+struct ElaborationState {
+  Scheduler * sch;
+};
+  
+enum class SimState {
+  Elaboration,
+  Initialization,
+  Running,
+  Termination
+};
 
 struct FrontierTask {
   virtual bool is_nop() const { return true; }
@@ -86,7 +114,6 @@ class Scheduler {
   template<typename MODULE, typename ...ARGS>
   ModulePtr construct_top(ARGS && ... args) {
     ModulePtr ptr = std::make_unique<MODULE>(args...);
-    ptr->set_scheduler(this);
     return ptr;
   }
 
@@ -94,7 +121,7 @@ class Scheduler {
   void run(RunOptions const & run_options = RunOptions());
 
   //
-  void set_top (ModulePtr && ptr) { top_ = std::move(ptr); }
+  void set_top (ModulePtr && ptr);
 
  private:
 

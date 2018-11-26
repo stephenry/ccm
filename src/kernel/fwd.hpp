@@ -25,51 +25,21 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __COMMON_HPP__
-#define __COMMON_HPP__
+#ifndef __FWD_HPP__
+#define __FWD_HPP__
 
 #include <memory>
-#include <vector>
-#include <iostream>
 
 namespace ccm::kernel {
-
-  class Scheduler;
 
   class Module;
   using ModulePtr = std::unique_ptr<Module>;
 
   class Process;
   using ProcessPtr = std::unique_ptr<Process>;
-  
-  enum class SimState {
-    Elaboration,
-    Initialization,
-    Running,
-    Termination
-  };
 
-  enum RunMode : int { UntilTime, UntilExhaustion };
-
-  struct RunOptions {
-    RunOptions(std::size_t max_time)
-      : run_mode(RunMode::UntilTime), max_time(max_time)
-    {}
-    RunOptions() {}
-    bool can_run_at_time(std::size_t now) const {
-      if (run_mode == RunMode::UntilExhaustion)
-        return true;
-
-      return (now <= max_time);
-    }
-  
-    RunMode run_mode{RunMode::UntilExhaustion};
-    std::size_t max_time;
-  };
-
-  struct ElaborationState {
-    Scheduler * sch;
-  };
+  class Scheduler;
+  class ElaborationState;
 
 } // namespace ccm::kernel;
 

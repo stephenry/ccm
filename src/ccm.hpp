@@ -28,7 +28,7 @@
 #ifndef __CCM_HPP__
 #define __CCM_HPP__
 
-#include "common.hpp"
+//#include "common.hpp"
 #include "kernel/kernel.hpp"
 
 #endif
