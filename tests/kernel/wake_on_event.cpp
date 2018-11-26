@@ -29,8 +29,6 @@
 
 #include "src/kernel.hpp"
 
-std::size_t rand_int() { return 0; }
-
 namespace {
 
 struct TestOptions {
@@ -55,7 +53,7 @@ class WakeOnEventTop : public ccm::Module {
     void cb__on_invoke() override {
       EXPECT_EQ(state_.next_process, id_);
 
-      state_.next_process = rand_int();
+      state_.next_process = ccm::rand_int();
       if (--state_.n != 0) {
         state_.es[state_.next_process].notify_after(state_.opts.delay);
       }

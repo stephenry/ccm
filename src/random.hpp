@@ -25,15 +25,13 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __KERNEL_HPP__
-#define __KERNEL_HPP__
+#ifndef __RANDOM_HPP__
+#define __RANDOM_HPP__
 
-#include "common.hpp"
-#include "event.hpp"
-#include "process.hpp"
-#include "scheduler.hpp"
-#include "module.hpp"
-#include "primitives.hpp"
-#include "random.hpp"
+namespace ccm {
+
+std::size_t rand_int() { return 0; }
+
+} // namespace ccm
 
 #endif
