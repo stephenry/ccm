@@ -25,90 +25,90 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __MODULE_HPP__
-#define __MODULE_HPP__
+#ifndef __PROCESS_HPP__
+#define __PROCESS_HPP__
 
-#include "process.hpp"
+#include "common.hpp"
+#include "event.hpp"
 
-#include <vector>
-#include <memory>
-#include <string>
+namespace ccm::kernel {
 
-namespace ccm {
+enum class SensitiveTo { Static, Dynamic };
+enum class SensitiveOn { Event, Time };
 
-class Module {
+struct Sensitive {
+  Sensitive()
+    : is_valid(false)
+  {}
+  Sensitive(SensitiveTo to, EventHandle e)
+    : is_valid(true), to(to), on(SensitiveOn::Event), e(e)
+  {}
+  Sensitive(SensitiveTo to, std::size_t t)
+    : is_valid(true), to(to), on(SensitiveOn::Time), t(t)
+  {}
+  bool is_valid;
+  SensitiveTo to;
+  SensitiveOn on;
+  union {
+    EventHandle e;
+    std::size_t t;
+  };
+};
+
+class Process {
   friend class Scheduler;
+  friend class Module;
+  
+ public:
 
-public:
-
-  //
-  Module () : Module("<ANONYMOUS>") {}
-  Module (std::string name) : name_(name) {}
+  Process () : Process("<ANONYMOUS>") {}
+  Process (std::string name) : name_(name) {}
   
   //
-  virtual ~Module();
+  virtual ~Process() {}
+
+  //
+  void set_sensitive_on(EventHandle e);
+
+protected:
   
   //
-  SimState state() const;
   std::size_t now() const;
   std::size_t delta() const;
 
-protected:
+  //
+  virtual void cb__on_elaboration() {}
+  virtual void cb__on_initialization() {}
+  virtual void cb__on_invoke() {}
+  virtual void cb__on_termination() {}
 
   //
-  EventHandle create_event();
-  EventHandle create_event(EventOrList const & e);
-
-  //
-  template<typename MODULE, typename ...ARGS>
-  MODULE * create_child(ARGS && ... args) {
-    ModulePtr ptr = std::make_unique<MODULE>(args...);
-    ptr->set_parent(this);
-
-    MODULE * ret = static_cast<MODULE *>(ptr.get());
-    children_.push_back(std::move(ptr));
-    return ret;
-  }
-
-  template<typename PROCESS, typename ...ARGS>
-  PROCESS * create_process (ARGS && ... args) {
-    ProcessPtr ptr = std::make_unique<PROCESS>(args...);
-    ptr->set_parent(this);
-
-    PROCESS * ret = static_cast<PROCESS *>(ptr.get());
-    processes_.push_back(std::move(ptr));
-    return ret;
-  }
-  
-  //
-  void add_child (ModulePtr && ptr);
-  
-  //
-  virtual void cb__on_elaboration() {};
-  virtual void cb__on_initialization() {};
-  virtual void cb__on_termination() {};
+  void wait_on_event(EventHandle e);
+  void wait_for(std::size_t t = 0);
+  void wait_until(std::size_t t);
 
 private:
-
   //
   void call_on_elaboration(ElaborationState const & state);
   void call_on_initialization();
+  void call_on_invoke();
   void call_on_termination();
-  
   //
   void set_scheduler(Scheduler * sch) { sch_ = sch; }
   void set_parent(Module * parent) { parent_ = parent; }
 
   //
-  Scheduler * sch_{nullptr};
-  Module * parent_{nullptr};
+  void apply_sensitivity(Sensitive s);
 
   //
-  std::vector<ModulePtr> children_;
-  std::vector<ProcessPtr> processes_;
+  Scheduler * sch_{nullptr};
+  Module * parent_{nullptr};
   std::string name_;
+
+  Sensitive s_static_;
+  Sensitive s_dynamic_;
 };
 
-} // namespace ccm
+} // namespace ccm::kernel
 
 #endif

@@ -25,83 +25,10 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __PRIMITIVES_HPP__
-#define __PRIMITIVES_HPP__
+#ifndef __CCM_HPP__
+#define __CCM_HPP__
 
-#include "src/module.hpp"
-#include "src/event.hpp"
-
-#include <vector>
-#include <deque>
-
-namespace ccm {
-
-template<typename T>
-class MailBox : public Module {
- public:
-  MailBox() {}
-  void set(T const & t) {
-    ts_.push_back(t);
-    e_.notify_on();
-  }
-  void get(T & t) {
-    t = ts_.back();
-    ts_.pop_back();
-  }
-  bool has_mail() const { return !ts_.empty(); }
-  EventHandle event() { return e_; }
- private:
-  std::vector<T> ts_;
-  EventHandle e_;
-};
-
-template<typename MSG>
-class EventQueue : public Module {
-  struct QueueEntry {
-    std::size_t t;
-    MSG msg;
-  };
- public:
-  EventQueue() : Module()
-  {}
-  EventHandle event() { return e_; }
-  void set (MSG const & msg, std::size_t t = 0) {
-    if (v_.size() == 0)
-      e_.notify_on(t);
-    v_.push_back(QueueEntry{t, msg});
-  }
-  bool has_msg(std::size_t t) const {
-    if (!has_events())
-      return false;
-    
-    const QueueEntry & qe = v_.front();
-    return (qe.t <= t);
-  }
-  bool get(MSG & msg, std::size_t t) {
-    const bool valid = has_msg(t);
-    if (valid) {
-      const QueueEntry & qe = v_.front();
-      msg = qe.msg;
-      v_.pop_front();
-
-      if (has_events()) {
-        const QueueEntry & qe = v_.front();
-        e_.notify_on(qe.t);
-      }
-    }
-    return valid;
-  }
- private:
-  void cb__on_elaboration() override {
-    e_ = create_event();
-  }
-  bool has_events() const {
-    return (v_.size() != 0);
-  }
-  std::deque<QueueEntry> v_;
-  EventHandle e_;
-};
-
-} // namespace ccm
+#include "common.hpp"
+#include "kernel/kernel.hpp"
 
 #endif

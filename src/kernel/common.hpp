@@ -32,18 +32,7 @@
 #include <vector>
 #include <iostream>
 
-#define CCM_MACRO_BEGIN do {
-#define CCM_MACRO_END   } while (false)
-
-#define CCM_ASSERT(__cond)                                      \
-  CCM_MACRO_BEGIN                                               \
-  if (!(__cond)) {                                              \
-    std::cout << __FILE__ << ":" << __LINE__                    \
-              << " assertion failed: " << #__cond << "\n";      \
-  }                                                             \
-  CCM_MACRO_END
-
-namespace ccm {
+namespace ccm::kernel {
 
   class Scheduler;
 
@@ -82,6 +71,6 @@ namespace ccm {
     Scheduler * sch;
   };
 
-} // namespace ccm;
+} // namespace ccm::kernel;
 
 #endif

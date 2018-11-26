@@ -25,11 +25,11 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "src/scheduler.hpp"
-#include "src/process.hpp"
-#include "src/module.hpp"
+#include "scheduler.hpp"
+#include "process.hpp"
+#include "module.hpp"
 
-namespace ccm {
+namespace ccm::kernel {
 
 struct NotifyEventTask : FrontierTask {
   NotifyEventTask(EventHandle e) : e_(e) {}
@@ -155,4 +155,4 @@ EventHandle Scheduler::create_event(EventOrList const & el) {
   return e;
 }
 
-} // namespace ccm
+} // namespace ccm::kernel

@@ -25,4 +25,5 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-add_library(ccm STATIC event.cpp scheduler.cpp process.cpp module.cpp)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+add_subdirectory(kernel)

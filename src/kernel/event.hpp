@@ -25,90 +25,69 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __PROCESS_HPP__
-#define __PROCESS_HPP__
+#ifndef __EVENT_HPP__
+#define __EVENT_HPP__
 
 #include "common.hpp"
-#include "event.hpp"
 
-namespace ccm {
+#include <memory>
+#include <vector>
 
-enum class SensitiveTo { Static, Dynamic };
-enum class SensitiveOn { Event, Time };
+namespace ccm::kernel {
 
-struct Sensitive {
-  Sensitive()
-    : is_valid(false)
-  {}
-  Sensitive(SensitiveTo to, EventHandle e)
-    : is_valid(true), to(to), on(SensitiveOn::Event), e(e)
-  {}
-  Sensitive(SensitiveTo to, std::size_t t)
-    : is_valid(true), to(to), on(SensitiveOn::Time), t(t)
-  {}
-  bool is_valid;
-  SensitiveTo to;
-  SensitiveOn on;
-  union {
-    EventHandle e;
-    std::size_t t;
-  };
-};
+class EventDescriptor;
 
-class Process {
+class EventHandle {
   friend class Scheduler;
-  friend class Module;
-  
- public:
+  friend class NotifyEventTask;
 
-  Process () : Process("<ANONYMOUS>") {}
-  Process (std::string name) : name_(name) {}
-  
-  //
-  virtual ~Process() {}
+  friend bool operator==(EventHandle const & a, EventHandle const & b);
+  friend bool operator!=(EventHandle const & a, EventHandle const & b);
 
-  //
-  void set_sensitive_on(EventHandle e);
-
-protected:
-  
-  //
-  std::size_t now() const;
-  std::size_t delta() const;
-
-  //
-  virtual void cb__on_elaboration() {}
-  virtual void cb__on_initialization() {}
-  virtual void cb__on_invoke() {}
-  virtual void cb__on_termination() {}
-
-  //
-  void wait_on_event(EventHandle e);
-  void wait_for(std::size_t t = 0);
-  void wait_until(std::size_t t);
-
+  EventHandle(EventDescriptor * ed) : ed_(ed) {}
+public:
+  EventHandle() : ed_{nullptr} {}
+  bool is_valid() const;
+  void notify_after(std::size_t t = 0);
+  void notify_on(std::size_t t = 0);
 private:
-  //
-  void call_on_elaboration(ElaborationState const & state);
-  void call_on_initialization();
-  void call_on_invoke();
-  void call_on_termination();
-  //
-  void set_scheduler(Scheduler * sch) { sch_ = sch; }
-  void set_parent(Module * parent) { parent_ = parent; }
-
-  //
-  void apply_sensitivity(Sensitive s);
-
-  //
-  Scheduler * sch_{nullptr};
-  Module * parent_{nullptr};
-  std::string name_;
-
-  Sensitive s_static_;
-  Sensitive s_dynamic_;
+  void add_to_wait_set(Process * p);
+  void remove_from_wait_set(Process *p);
+  void wake_waiting_processes();
+  EventDescriptor *ed_{nullptr};
 };
 
-} // namespace ccm
+using EventOrList = std::vector<EventHandle>;
+
+class EventDescriptor {
+  friend class Scheduler;
+ protected:
+  EventDescriptor(Scheduler * sch) : sch_(sch) {}
+ public:
+  virtual void notify_after(EventHandle h, std::size_t t = 0);
+  virtual void notify_on(EventHandle h, std::size_t t = 0);
+  virtual void add_to_wait_set(Process * p);
+  virtual void remove_from_wait_set(Process * p);
+  virtual void wake_waiting_processes();
+  virtual ~EventDescriptor() {}
+ protected:
+  std::vector<Process *> suspended_on_;
+  Scheduler * sch_;
+};
+
+class EventOrDescriptor : public EventDescriptor {
+  friend class Scheduler;
+
+  EventOrDescriptor(Scheduler * sch, EventOrList const & el)
+      : EventDescriptor(sch), el_(el) {}
+ public:
+  //  void notify(EventHandle h, std::size_t t = 0) override;
+ private:
+  EventOrList const & el_;
+};
+
+using EventDescriptorPtr = std::unique_ptr<EventDescriptor>;
+
+} // namespace ccm::kernel
 
 #endif

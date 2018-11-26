@@ -36,7 +36,7 @@
 #include <map>
 #include <memory>
 
-namespace ccm {
+namespace ccm::kernel {
 
 struct FrontierTask {
   virtual bool is_nop() const { return true; }
@@ -128,6 +128,6 @@ class Scheduler {
   std::size_t now_{0};
 };
 
-} // namespace ccm
+} // namespace ccm::kernel
 
 #endif

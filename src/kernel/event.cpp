@@ -30,7 +30,7 @@
 
 #include <algorithm>
 
-namespace ccm {
+namespace ccm::kernel {
 
 bool operator==(EventHandle const & a, EventHandle const & b) {
   return (a.ed_ == b.ed_);
@@ -45,22 +45,18 @@ bool EventHandle::is_valid() const {
 }
 
 void EventHandle::notify_after(std::size_t t) {
-  CCM_ASSERT(is_valid());
   ed_->notify_after(*this, t);
 };
 
 void EventHandle::notify_on(std::size_t t) {
-  CCM_ASSERT(is_valid());
   ed_->notify_on(*this, t);
 };
 
 void EventHandle::add_to_wait_set(Process * p) {
-  CCM_ASSERT(is_valid());
   ed_->add_to_wait_set(p);
 }
 
 void EventHandle::remove_from_wait_set(Process * p) {
-  CCM_ASSERT(is_valid());
   ed_->remove_from_wait_set(p);
 }
 
@@ -106,4 +102,4 @@ void EventDescriptor::remove_from_wait_set(Process * p) {
   // }
   //}
 
-} // namespace ccm
+} // namespace ccm::kernel

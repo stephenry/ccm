@@ -25,12 +25,21 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __RANDOM_HPP__
-#define __RANDOM_HPP__
+#ifndef __COMMON_HPP__
+#define __COMMON_HPP__
+
+#define CCM_MACRO_BEGIN do {
+#define CCM_MACRO_END   } while (false)
+
+#define CCM_ASSERT(__cond)                                      \
+  CCM_MACRO_BEGIN                                               \
+  if (!(__cond)) {                                              \
+    std::cout << __FILE__ << ":" << __LINE__                    \
+              << " assertion failed: " << #__cond << "\n";      \
+  }                                                             \
+  CCM_MACRO_END
 
 namespace ccm {
-
-std::size_t rand_int() { return 0; }
 
 } // namespace ccm
 

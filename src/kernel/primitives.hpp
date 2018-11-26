@@ -25,69 +25,83 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __EVENT_HPP__
-#define __EVENT_HPP__
+#ifndef __PRIMITIVES_HPP__
+#define __PRIMITIVES_HPP__
 
-#include "common.hpp"
+#include "module.hpp"
+#include "event.hpp"
 
-#include <memory>
 #include <vector>
+#include <deque>
 
-namespace ccm {
+namespace ccm::kernel {
 
-class EventDescriptor;
-
-class EventHandle {
-  friend class Scheduler;
-  friend class NotifyEventTask;
-
-  friend bool operator==(EventHandle const & a, EventHandle const & b);
-  friend bool operator!=(EventHandle const & a, EventHandle const & b);
-
-  EventHandle(EventDescriptor * ed) : ed_(ed) {}
-public:
-  EventHandle() : ed_{nullptr} {}
-  bool is_valid() const;
-  void notify_after(std::size_t t = 0);
-  void notify_on(std::size_t t = 0);
-private:
-  void add_to_wait_set(Process * p);
-  void remove_from_wait_set(Process *p);
-  void wake_waiting_processes();
-  EventDescriptor *ed_{nullptr};
-};
-
-using EventOrList = std::vector<EventHandle>;
-
-class EventDescriptor {
-  friend class Scheduler;
- protected:
-  EventDescriptor(Scheduler * sch) : sch_(sch) {}
+template<typename T>
+class MailBox : public Module {
  public:
-  virtual void notify_after(EventHandle h, std::size_t t = 0);
-  virtual void notify_on(EventHandle h, std::size_t t = 0);
-  virtual void add_to_wait_set(Process * p);
-  virtual void remove_from_wait_set(Process * p);
-  virtual void wake_waiting_processes();
-  virtual ~EventDescriptor() {}
- protected:
-  std::vector<Process *> suspended_on_;
-  Scheduler * sch_;
-};
-
-class EventOrDescriptor : public EventDescriptor {
-  friend class Scheduler;
-
-  EventOrDescriptor(Scheduler * sch, EventOrList const & el)
-      : EventDescriptor(sch), el_(el) {}
- public:
-  //  void notify(EventHandle h, std::size_t t = 0) override;
+  MailBox() {}
+  void set(T const & t) {
+    ts_.push_back(t);
+    e_.notify_on();
+  }
+  void get(T & t) {
+    t = ts_.back();
+    ts_.pop_back();
+  }
+  bool has_mail() const { return !ts_.empty(); }
+  EventHandle event() { return e_; }
  private:
-  EventOrList const & el_;
+  std::vector<T> ts_;
+  EventHandle e_;
 };
 
-using EventDescriptorPtr = std::unique_ptr<EventDescriptor>;
+template<typename MSG>
+class EventQueue : public Module {
+  struct QueueEntry {
+    std::size_t t;
+    MSG msg;
+  };
+ public:
+  EventQueue() : Module()
+  {}
+  EventHandle event() { return e_; }
+  void set (MSG const & msg, std::size_t t = 0) {
+    if (v_.size() == 0)
+      e_.notify_on(t);
+    v_.push_back(QueueEntry{t, msg});
+  }
+  bool has_msg(std::size_t t) const {
+    if (!has_events())
+      return false;
+    
+    const QueueEntry & qe = v_.front();
+    return (qe.t <= t);
+  }
+  bool get(MSG & msg, std::size_t t) {
+    const bool valid = has_msg(t);
+    if (valid) {
+      const QueueEntry & qe = v_.front();
+      msg = qe.msg;
+      v_.pop_front();
 
-} // namespace ccm
+      if (has_events()) {
+        const QueueEntry & qe = v_.front();
+        e_.notify_on(qe.t);
+      }
+    }
+    return valid;
+  }
+ private:
+  void cb__on_elaboration() override {
+    e_ = create_event();
+  }
+  bool has_events() const {
+    return (v_.size() != 0);
+  }
+  std::deque<QueueEntry> v_;
+  EventHandle e_;
+};
+
+} // namespace ccm::kernel
 
 #endif

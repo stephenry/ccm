@@ -29,7 +29,7 @@
 #include "scheduler.hpp"
 #include <algorithm>
 
-namespace ccm {
+namespace ccm::kernel {
 
   Module::~Module () {
   }
@@ -90,4 +90,4 @@ namespace ccm {
     cb__on_termination();
   }
 
-} // namespace ccm
+} // namespace ccm::kernel

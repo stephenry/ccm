@@ -25,7 +25,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "src/kernel.hpp"
+#include "kernel/kernel.hpp"
 
 #include <vector>
 #include <gtest/gtest.h>
@@ -33,18 +33,18 @@
 namespace {
 
 template<typename MSG>
-class EventQueueTestTop: public ccm::Module {
+class EventQueueTestTop: public ccm::kernel::Module {
   struct FrontierEntry {
     std::size_t t;
     MSG msg;
   };
 
   struct State {
-    ccm::EventQueue<MSG> * eq{nullptr};
+    ccm::kernel::EventQueue<MSG> * eq{nullptr};
     std::deque<FrontierEntry> frontier;
   } state_;
 
-  struct P0 : public ccm::Process {
+  struct P0 : public ccm::kernel::Process {
     P0(State & state) : state_(state) {}
     void cb__on_initialization() override {
       size_ = state_.frontier.size();
@@ -73,9 +73,9 @@ class EventQueueTestTop: public ccm::Module {
     std::size_t size_{0}, n_{0}, last_time_{0};
   };
  public:
-  EventQueueTestTop(std::string name) : ccm::Module(name) {
+  EventQueueTestTop(std::string name) : ccm::kernel::Module(name) {
     p0_ = create_process<P0>(state_);
-    state_.eq = create_child<ccm::EventQueue<MSG>>();
+    state_.eq = create_child<ccm::kernel::EventQueue<MSG>>();
     for (std::size_t i = 1; i < 1000; i++) {
       const std::size_t msg = i;
       const std::size_t t = i * 10;
@@ -91,15 +91,15 @@ private:
       state_.eq->set(e.msg, e.t);
     }
   }
-  ccm::Process * p0_;
+  ccm::kernel::Process * p0_;
 };
   
 } // namespace
 
 TEST(EventQueueTest, t0) {
-  ccm::Scheduler sch;
+  ccm::kernel::Scheduler sch;
   {
-    ccm::ModulePtr top = sch.construct_top<
+    ccm::kernel::ModulePtr top = sch.construct_top<
       EventQueueTestTop<std::size_t>>("EventQueueTestTop");
     sch.set_top(std::move(top));
   }

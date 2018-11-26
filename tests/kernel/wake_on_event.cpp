@@ -26,7 +26,7 @@
 //========================================================================== //
 
 #include <gtest/gtest.h>
-#include "src/kernel.hpp"
+#include "kernel/kernel.hpp"
 
 namespace {
 
@@ -37,22 +37,22 @@ struct TestOptions {
   std::size_t delay{10};
 };
   
-class WakeOnEventTop : public ccm::Module {
+class WakeOnEventTop : public ccm::kernel::Module {
   struct SharedState {
     TestOptions opts;
     std::size_t next_process{0};
     std::size_t n{0};
-    std::vector<ccm::EventHandle> es;
-    std::vector<ccm::Process *> processes_;
+    std::vector<ccm::kernel::EventHandle> es;
+    std::vector<ccm::kernel::Process *> processes_;
   };
-  struct WakeOnEventProcess : ccm::Process {
+  struct WakeOnEventProcess : ccm::kernel::Process {
     WakeOnEventProcess(std::size_t id, SharedState & state)
       : id_(id), state_(state)
     {}
     void cb__on_invoke() override {
       EXPECT_EQ(state_.next_process, id_);
 
-      state_.next_process = ccm::rand_int();
+      state_.next_process = ccm::kernel::rand_int();
       if (--state_.n != 0) {
         state_.es[state_.next_process].notify_after(state_.opts.delay);
       }
@@ -63,7 +63,7 @@ class WakeOnEventTop : public ccm::Module {
   };
  public:
   WakeOnEventTop(std::string name, TestOptions const & opts = TestOptions())
-    : ccm::Module(name) {
+    : ccm::kernel::Module(name) {
     state_.opts = opts;
     for (std::size_t i = 0; i < state_.opts.process_n; i++)
       state_.processes_.push_back(create_process<WakeOnEventProcess>(i, state_));
@@ -88,9 +88,9 @@ class WakeOnEventTop : public ccm::Module {
 
 TEST(WakeOnEvent, t0) {
   TestOptions opts;
-  ccm::Scheduler sch;
+  ccm::kernel::Scheduler sch;
   {
-    ccm::ModulePtr top =
+    ccm::kernel::ModulePtr top =
       sch.construct_top<WakeOnEventTop>("WakeOnEventTop");
     sch.set_top(std::move(top));
   }
