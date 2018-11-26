@@ -67,6 +67,7 @@ class Frontier {
 
 class Scheduler {
   friend class Module;
+  friend class Process;
   friend class EventDescriptor;
   friend class EventOrDescriptor;
   friend class WakeProcessTask;
@@ -83,7 +84,7 @@ class Scheduler {
 
   //
   template<typename MODULE, typename ...ARGS>
-  ModulePtr construct_module(ARGS && ... args) {
+  ModulePtr construct_top(ARGS && ... args) {
     ModulePtr ptr = std::make_unique<MODULE>(args...);
     ptr->set_scheduler(this);
     return ptr;
@@ -103,11 +104,12 @@ class Scheduler {
 
   //
   void add_process (Process * p);
-  void add_process (Process & p) { add_process(std::addressof(p)); }
 
   //
+  void add_task_wake_on(Process * p, EventHandle e);
   void add_task_wake_after(Process * p, std::size_t time = 0);
   void add_task_notify_after(EventHandle h, std::size_t time = 0);
+  void add_task_next_delta(Process * p);
    
   //
   void set_state(SimState sim_state) { sim_state_ = sim_state; };

@@ -41,8 +41,10 @@ class Module {
 
 public:
 
+  //
   Module () : Module("<ANONYMOUS>") {}
-  Module (std::string name);
+  Module (std::string name) : name_(name) {}
+  
   //
   virtual ~Module();
   
@@ -57,28 +59,63 @@ protected:
   EventHandle create_event();
   EventHandle create_event(EventOrList const & e);
 
-  template<typename PROCESS, typename ...ARGS>
-  Process * create_process (ARGS && ... args) {
-    ProcessPtr ptr = std::make_unique<PROCESS>(args...);
-    ptr->set_scheduler(sch_);
+  //
+  template<typename MODULE, typename ...ARGS>
+  MODULE * create_child(ARGS && ... args) {
+    ModulePtr ptr = std::make_unique<MODULE>(args...);
     ptr->set_parent(this);
+
+    MODULE * ret = static_cast<MODULE *>(ptr.get());
+    children_.push_back(std::move(ptr));
+    return ret;
+  }
+
+  template<typename PROCESS, typename ...ARGS>
+  PROCESS * create_process (ARGS && ... args) {
+    ProcessPtr ptr = std::make_unique<PROCESS>(args...);
+    ptr->set_parent(this);
+
+    PROCESS * ret = static_cast<PROCESS *>(ptr.get());
     processes_.push_back(std::move(ptr));
-    return processes_.back().get();
+    return ret;
   }
   
   //
   void add_child (ModulePtr && ptr);
   
   //
-  virtual void cb__on_elaboration();
-  virtual void cb__on_termination();
+  virtual void cb__on_elaboration() {};
+  virtual void cb__on_initialization() {};
+  virtual void cb__on_termination() {};
 
 private:
+
   //
-  void set_scheduler(Scheduler * sch) { sch_ = sch; }
+  void call_on_elaboration(Scheduler * sch);
+  void call_on_initialization();
+  void call_on_termination();
+
+  // Helpers
+  //
+  template<typename CB>
+  void for_all_children(CB && cb) {
+    for (ModulePtr & ptr : children_)
+      cb(ptr);
+  }
+  //
+  template<typename CB>
+  void for_all_processes(CB && cb) {
+    for (ProcessPtr & ptr : processes_)
+      cb(ptr);
+  }
   
   //
+  void set_scheduler(Scheduler * sch) { sch_ = sch; }
+  void set_parent(Module * parent) { parent_ = parent; }
+
+  //
   Scheduler * sch_{nullptr};
+  Module * parent_{nullptr};
 
   //
   std::vector<ModulePtr> children_;

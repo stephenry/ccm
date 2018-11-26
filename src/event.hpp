@@ -35,6 +35,29 @@
 
 namespace ccm {
 
+class EventDescriptor;
+
+class EventHandle {
+  friend class Scheduler;
+  friend class NotifyEventTask;
+
+  friend bool operator==(EventHandle const & a, EventHandle const & b);
+  friend bool operator!=(EventHandle const & a, EventHandle const & b);
+
+  EventHandle(EventDescriptor * ed) : ed_(ed) {}
+public:
+  EventHandle() : ed_{nullptr} {}
+  bool is_valid() const;
+  void notify(std::size_t t = 0);
+private:
+  void add_to_wait_set(Process * p);
+  void remove_from_wait_set(Process *p);
+  void wake_waiting_processes();
+  EventDescriptor *ed_{nullptr};
+};
+
+using EventOrList = std::vector<EventHandle>;
+
 class EventDescriptor {
   friend class Scheduler;
  protected:
@@ -43,6 +66,7 @@ class EventDescriptor {
   virtual void notify(EventHandle h, std::size_t t = 0);
   virtual void add_to_wait_set(Process * p);
   virtual void remove_from_wait_set(Process * p);
+  virtual void wake_waiting_processes();
   virtual ~EventDescriptor() {}
  protected:
   std::vector<Process *> suspended_on_;

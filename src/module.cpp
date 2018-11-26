@@ -30,9 +30,6 @@
 
 namespace ccm {
 
-  Module::Module (std::string name) : name_(name) {
-  }
-
   Module::~Module () {
   }
 
@@ -54,13 +51,36 @@ namespace ccm {
   void Module::add_child (ModulePtr && ptr) {
     children_.push_back(std::move(ptr));
   }
-  
-  //
-  void Module::cb__on_elaboration() {
-  }
 
-  //
-  void Module::cb__on_termination() {
+  void Module::call_on_elaboration(Scheduler * sch) {
+    for_all_children([=](ModulePtr & ptr) {
+        ptr->call_on_elaboration(sch);
+      });
+    for_all_processes([=](ProcessPtr & ptr) {
+        ptr->call_on_elaboration(sch);
+      });
+    set_scheduler(sch);
+    cb__on_elaboration();
+  }
+  
+  void Module::call_on_initialization() {
+    for_all_children([=](ModulePtr & ptr) {
+        ptr->call_on_initialization();
+      });
+    for_all_processes([=](ProcessPtr & ptr) {
+        ptr->call_on_initialization();
+      });
+    cb__on_initialization();
+  }
+  
+  void Module::call_on_termination() {
+    for_all_children([=](ModulePtr & ptr) {
+        ptr->call_on_termination();
+      });
+    for_all_processes([=](ProcessPtr & ptr) {
+        ptr->call_on_termination();
+      });
+    cb__on_termination();
   }
 
 } // namespace ccm

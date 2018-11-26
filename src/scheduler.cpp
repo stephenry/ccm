@@ -35,7 +35,7 @@ struct NotifyEventTask : FrontierTask {
   NotifyEventTask(EventHandle e) : e_(e) {}
   ~NotifyEventTask() {}
   bool is_nop() const override { return false; }
-  void apply(Scheduler * sch) override { e_.notify(); }
+  void apply(Scheduler * sch) override { e_.wake_waiting_processes(); }
  private:
   EventHandle e_;
 };
@@ -61,15 +61,15 @@ void Scheduler::run(RunOptions const & run_options) {
   //
   set_state(SimState::Elaboration);
   if (top_)
-    top_->cb__on_elaboration();
+    top_->call_on_elaboration(this);
 
   //
   set_state(SimState::Initialization);
-  do_next_delta();
+  if (top_)
+    top_->call_on_initialization();
 
   //
   set_state(SimState::Running);
-
   while (frontier_.work_remains()) {
     const std::size_t next_time = frontier_.next_time();
     if (!run_options.can_run_at_time(next_time))
@@ -93,9 +93,7 @@ void Scheduler::run(RunOptions const & run_options) {
 
     // Cleanup reaped process
     for (Process * p : reaped_processes_) {
-      InvokeReq req{this};
-      req.set_reaped();
-      p->invoke_termination(req);
+      p->cb__on_termination();
     }
     reaped_processes_.clear();
   }
@@ -103,36 +101,29 @@ void Scheduler::run(RunOptions const & run_options) {
   //
   set_state(SimState::Termination);
   if (top_)
-    top_->cb__on_termination();
+    top_->call_on_termination();
 }
 
 void Scheduler::do_next_delta() {
   std::swap(current_delta_, next_delta_);
   for (Process * p : current_delta_) {
-    const InvokeReq req{this};
-    const InvokeRsp rsp{
-      (state() == SimState::Running) ? p->invoke_running(req) :
-          p->invoke_initialization(req)};
-    switch (rsp.type()) {
-      case ResponseType::WakeOn: {
-        EventHandle e = rsp.event();
-        e.add_to_wait_set(p);
-      } break;
-      case ResponseType::WakeAfter: {
-        add_task_wake_after(p, now() + rsp.time());
-      } break;
-      case ResponseType::NotifyAfter: {
-        add_task_notify_after(rsp.event(), now() + rsp.time());
-      } break;
-      case ResponseType::Terminate: {
-        reaped_processes_.push_back(p);
-      } break;
+    switch (state()) {
+    case SimState::Initialization: p->call_on_initialization(); break;
+    case SimState::Running: p->call_on_invoke(); break;
     }
   }
 }
 
 void Scheduler::add_process (Process * p) {
   add_task_wake_after(p, 0);
+}
+
+void Scheduler::add_task_next_delta(Process * p) {
+  next_delta_.push_back(p);
+}
+
+void Scheduler::add_task_wake_on(Process * p, EventHandle e) {
+  e.add_to_wait_set(p);
 }
 
 void Scheduler::add_task_wake_after(Process * p, std::size_t time) {

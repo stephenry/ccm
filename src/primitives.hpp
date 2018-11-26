@@ -62,26 +62,42 @@ class EventQueue : public Module {
     MSG msg;
   };
  public:
-  EventQueue() {}
+  EventQueue() : Module()
+  {}
   EventHandle event() { return e_; }
   void set (MSG const & msg, std::size_t t = 0) {
-    e_.notify(t);
+    if (v_.size() == 0)
+      e_.notify(t);
     v_.push_back(QueueEntry{t, msg});
   }
   bool has_msg(std::size_t t) const {
-    const QueueEntry & eq = v_.front();
-    return (eq.t <= t);
+    if (!has_events())
+      return false;
+    
+    const QueueEntry & qe = v_.front();
+    return (qe.t <= t);
   }
   bool get(MSG & msg, std::size_t t) {
     const bool valid = has_msg(t);
     if (valid) {
-      const QueueEntry & eq = v_.front();
-      msg = eq.msg;
+      const QueueEntry & qe = v_.front();
+      msg = qe.msg;
       v_.pop_front();
+
+      if (has_events()) {
+        const QueueEntry & qe = v_.front();
+        e_.notify(qe.t);
+      }
     }
     return valid;
   }
  private:
+  void cb__on_elaboration() override {
+    e_ = create_event();
+  }
+  bool has_events() const {
+    return (v_.size() != 0);
+  }
   std::deque<QueueEntry> v_;
   EventHandle e_;
 };

@@ -30,12 +30,72 @@
 
 namespace ccm {
 
-SimState InvokeReq::state() const { return sch_->state(); }
-std::size_t InvokeReq::now() const { return sch_->now(); }
-
+//
+std::size_t Process::now() const { return sch_->now(); }
+std::size_t Process::delta() const { return sch_->delta(); }
 
 //
-std::size_t Process::now() const { return parent_->now(); }
-std::size_t Process::delta() const { return parent_->delta(); }
+void Process::wait_on_event(EventHandle e) {
+  s_dynamic_ = Sensitive{SensitiveTo::Dynamic, e};
+}
+
+//
+void Process::wait_for(std::size_t t) {
+  wait_until(now() + t);
+}
+
+//
+void Process::wait_until(std::size_t t) {
+  s_dynamic_ = Sensitive{SensitiveTo::Dynamic, t};
+}
+
+//
+void Process::call_on_elaboration(Scheduler * sch) {
+  set_scheduler(sch);
+  cb__on_elaboration();
+}
+
+//
+void Process::call_on_initialization() {
+  cb__on_initialization();
+}
+
+//
+void Process::call_on_invoke() {
+  s_dynamic_ = Sensitive{};
+  cb__on_invoke();
+  if (s_dynamic_.is_valid) {
+    apply_sensitivity(s_dynamic_);
+  } else {
+    apply_sensitivity(s_static_);
+  }
+}
+
+//
+void Process::apply_sensitivity(Sensitive s) {
+  switch (s.on) {
+  case SensitiveOn::Event: {
+    sch_->add_task_wake_on(this, s.e);
+  } break;
+  case SensitiveOn::Time: {
+    if (now() == s.t) {
+      sch_->add_task_next_delta(this);
+    } else {
+      sch_->add_task_wake_after(this, s.t);
+    }
+  }
+  }
+}
+
+//
+void Process::call_on_termination() {
+  cb__on_termination();
+}
+
+//
+void Process::set_sensitive_on(EventHandle e) {
+  s_static_ = Sensitive{SensitiveTo::Static, e};
+  sch_->add_task_wake_on(this, e);
+}
 
 } // namespace ccm

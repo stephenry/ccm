@@ -40,69 +40,69 @@ class EventQueueTestTop: public ccm::Module {
   };
 
   struct State {
-    ccm::EventQueue<MSG> eq;
+    ccm::EventQueue<MSG> * eq{nullptr};
     std::deque<FrontierEntry> frontier;
   } state_;
 
   struct P0 : public ccm::Process {
     P0(State & state) : state_(state) {}
-    ccm::InvokeRsp invoke_initialization(ccm::InvokeReq const & req) override {
-      n_ = state_.frontier.size();
-      last_time_ = state_.frontier.back().t;
-      
-      ccm::InvokeRsp rsp;
-      rsp.wake_on(state_.eq.event());
-      return rsp;
+    void cb__on_initialization() override {
+      size_ = state_.frontier.size();
     }
-    ccm::InvokeRsp invoke_running(ccm::InvokeReq const & req) override {
+    void cb__on_invoke() override {
       const FrontierEntry & e = state_.frontier.front();
       
       EXPECT_EQ(now(), e.t);
-      EXPECT_TRUE(state_.eq.has_msg(now()));
+      EXPECT_TRUE(state_.eq->has_msg(now()));
 
       MSG msg;
-      EXPECT_TRUE(state_.eq.get(msg, now()));
+      EXPECT_TRUE(state_.eq->get(msg, now()));
       EXPECT_EQ(msg, e.msg);
 
       state_.frontier.pop_front();
-      count_++;
-      
-      ccm::InvokeRsp rsp;
-      rsp.wake_on(state_.eq.event());
-      return rsp;
+      n_++;
+      last_time_ = now();
     }
-    ccm::InvokeRsp invoke_termination(ccm::InvokeReq const & req) override {
+    void cb__on_termination() override {
       EXPECT_EQ(state_.frontier.size(), 0);
-      EXPECT_EQ(n_, count_);
+      EXPECT_EQ(n_, size_);
       EXPECT_EQ(now(), last_time_);
     }
    private:
     State & state_;
-    std::size_t n_{0}, count_{0}, last_time_{0};
+    std::size_t size_{0}, n_{0}, last_time_{0};
   };
  public:
   EventQueueTestTop(std::string name) : ccm::Module(name) {
-    for (std::size_t i = 0; i < 100; i++) {
+    p0_ = create_process<P0>(state_);
+    state_.eq = create_child<ccm::EventQueue<MSG>>();
+    for (std::size_t i = 1; i < 1000; i++) {
       const std::size_t msg = i;
       const std::size_t t = i * 10;
       const FrontierEntry fe{t, msg};
       
       state_.frontier.push_back(fe);
-      state_.eq.set(msg, t);
     }
-    p0 = create_process<P0>(state_);
   }
 private:
-  ccm::Process * p0;
+  void cb__on_initialization() override {
+    p0_->set_sensitive_on(state_.eq->event());
+    for (const FrontierEntry & e : state_.frontier) {
+      state_.eq->set(e.msg, e.t);
+    }
+  }
+  ccm::Process * p0_;
 };
   
 } // namespace
 
 TEST(EventQueueTest, t0) {
   ccm::Scheduler sch;
-  ccm::ModulePtr top = sch.construct_module<
-    EventQueueTestTop<std::size_t>>("EventQueueTestTop");
-  sch.set_top(std::move(top));
+  {
+    ccm::ModulePtr top = sch.construct_top<
+      EventQueueTestTop<std::size_t>>("EventQueueTestTop");
+    sch.set_top(std::move(top));
+  }
   sch.run();
 }
 

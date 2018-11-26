@@ -28,62 +28,34 @@
 //========================================================================== //
 
 #include "common.hpp"
+#include "event.hpp"
 
 namespace ccm {
 
-enum class InvokeReason {
-  TimerExpiry,
-  Event,
-};
+enum class SensitiveTo { Static, Dynamic };
+enum class SensitiveOn { Event, Time };
 
-class InvokeReq {
-  friend class Scheduler;
-
-  InvokeReq(Scheduler * sch) : sch_(sch) {}
-  void set_reaped(bool reaped = true) { reaped_ = reaped; }
- public:
-
-  //
-  bool is_reaped() const { return reaped_; }
-  SimState state() const;
-  std::size_t now() const;
-  InvokeReason invoke_reason() const { return invoke_reason_; }
- private:
-  Scheduler const * sch_;
-  bool reaped_;
-  InvokeReason invoke_reason_;
-};
-
-enum ResponseType { WakeOn, WakeAfter, NotifyAfter, Terminate };
-
-class InvokeRsp {
- public:
-  InvokeRsp() : type_(ResponseType::Terminate) {}
-  void wake_on(EventHandle e) {
-    type_ = ResponseType::WakeOn;
-    e_ = e;
-  }
-  void wake_after(std::size_t t) {
-    type_ = ResponseType::WakeAfter;
-    t_ = t;
-  }
-  void terminate() {
-    type_ = ResponseType::Terminate;
-  }
-  void notify_after(EventHandle e, std::size_t t = 0) {
-    type_ = ResponseType::NotifyAfter;
-    t_ = t;
-  }
-  ResponseType type() const { return type_; }
-  std::size_t time() const { return t_; }
-  EventHandle event() const { return e_; }
- private:
-  ResponseType type_;
-  EventHandle e_;
-  std::size_t t_;
+struct Sensitive {
+  Sensitive()
+    : is_valid(false)
+  {}
+  Sensitive(SensitiveTo to, EventHandle e)
+    : is_valid(true), to(to), on(SensitiveOn::Event), e(e)
+  {}
+  Sensitive(SensitiveTo to, std::size_t t)
+    : is_valid(true), to(to), on(SensitiveOn::Time), t(t)
+  {}
+  bool is_valid;
+  SensitiveTo to;
+  SensitiveOn on;
+  union {
+    EventHandle e;
+    std::size_t t;
+  };
 };
 
 class Process {
+  friend class Scheduler;
   friend class Module;
   
  public:
@@ -95,37 +67,45 @@ class Process {
   virtual ~Process() {}
 
   //
+  void set_sensitive_on(EventHandle e);
+
+protected:
+  
+  //
   std::size_t now() const;
   std::size_t delta() const;
 
   //
-  virtual InvokeRsp invoke_elaboration(InvokeReq const & req) {
-    return InvokeRsp();
-  }
+  virtual void cb__on_elaboration() {}
+  virtual void cb__on_initialization() {}
+  virtual void cb__on_invoke() {}
+  virtual void cb__on_termination() {}
 
   //
-  virtual InvokeRsp invoke_initialization(InvokeReq const & req) {
-    return InvokeRsp();
-  }
-
-  //
-  virtual InvokeRsp invoke_running(InvokeReq const & req) {
-    return InvokeRsp();
-  }
-
-  //
-  virtual InvokeRsp invoke_termination(InvokeReq const & req) {
-    return InvokeRsp();
-  }
+  void wait_on_event(EventHandle e);
+  void wait_for(std::size_t t = 0);
+  void wait_until(std::size_t t);
 
 private:
   //
+  void call_on_elaboration(Scheduler * sch);
+  void call_on_initialization();
+  void call_on_invoke();
+  void call_on_termination();
+  //
   void set_scheduler(Scheduler * sch) { sch_ = sch; }
   void set_parent(Module * parent) { parent_ = parent; }
-  
+
+  //
+  void apply_sensitivity(Sensitive s);
+
+  //
   Scheduler * sch_{nullptr};
   Module * parent_{nullptr};
   std::string name_;
+
+  Sensitive s_static_;
+  Sensitive s_dynamic_;
 };
 
 } // namespace ccm
