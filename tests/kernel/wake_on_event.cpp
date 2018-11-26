@@ -26,7 +26,6 @@
 //========================================================================== //
 
 #include <gtest/gtest.h>
-
 #include "src/kernel.hpp"
 
 namespace {
