@@ -25,17 +25,16 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __TRANSACTION_HPP__
-#define __TRANSACTION_HPP__
+#ifndef __FIXED_LATENCY_HPP__
+#define __FIXED_LATENCY_HPP__
 
-#include <memory>
+#include "interconnect.hpp"
 
 namespace ccm {
 
-  class Transaction {
+  struct FixedLatencyInterconnectOptions : public InterconnectOptions {
+    std::size_t latency;
   };
-
-  using TransactionPtr = std::unique_ptr<Transaction>;
 
 } // namespace ccm
 

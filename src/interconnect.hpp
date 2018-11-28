@@ -28,6 +28,10 @@
 #ifndef __INTERCONNECT_HPP__
 #define __INTERCONNECT_HPP__
 
+#include "transaction.hpp"
+#include "agents.hpp"
+#include "kernel/kernel.hpp"
+
 #include <unordered_map>
 #include <memory>
 
@@ -36,28 +40,47 @@
 
 namespace ccm {
 
-
-  class Interconnect {
-  };
+  //
+  class Interconnect;
   using InterconnectPtr = std::unique_ptr<Interconnect>;
-  
-  class InterconnectFactory {
-  };
+
+  //
+  class InterconnectFactory;
   using InterconnectFactoryPtr = std::unique_ptr<InterconnectFactory>;
+
+  //
+  class InterconnectOptions {
+  };
+
+  //
+  class Interconnect : public ccm::kernel::Module {
+  public:
+    virtual void push (Transaction * t) = 0;
+    virtual Transaction * pop () = 0;
+
+    // TODO: notify event on agent and pass back opaque token.
+    virtual void register_agent (Agent * a) = 0;
+  };
+
+  //
+  class InterconnectFactory {
+  public:
+    virtual InterconnectPtr construct (InterconnectOptions const & opts) = 0;
+  };
 
   class InterconnectRegistry {
   public:
-
-    //
-    static void register_interconnect(char const * name, InterconnectFactoryPtr && f);
+    static bool has_factory (char const * name);
+    static InterconnectFactory * factory (char const * name);
+    static void register_interconnect (char const * name, InterconnectFactoryPtr && f);
 
   private:
-    //
     static std::unordered_map<char const *, InterconnectFactoryPtr> interconnect_;
   };
 
+  //
   struct InterconnectRegisterer {
-    InterconnectRegisterer(const char * name, InterconnectFactoryPtr && f);
+    InterconnectRegisterer (const char * name, InterconnectFactoryPtr && f);
   };
 
 } // namespace ccm

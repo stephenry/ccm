@@ -28,8 +28,8 @@
 #ifndef __PROCESS_HPP__
 #define __PROCESS_HPP__
 
-#include "kernel/fwd.hpp"
-#include "kernel/event.hpp"
+#include "fwd.hpp"
+#include "event.hpp"
 
 namespace ccm::kernel {
 

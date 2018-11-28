@@ -25,16 +25,33 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "interconnect.hpp"
+#include "fixed_latency.hpp"
 
-namespace  {
+namespace ccm {
 
-  class FixedLatencyInterconnect : public ccm::Interconnect {
+  class FixedLatencyInterconnect: public ccm::Interconnect {
+  public:
+    FixedLatencyInterconnect(FixedLatencyInterconnectOptions const & opts)
+      : opts_(opts)
+    {}
+    void push (Transaction * t) override {
+    }
+    Transaction * pop () override {
+    }
+    void register_agent(Agent * a) override {
+    }
+  private:
+    FixedLatencyInterconnectOptions const opts_;
   };
 
   class FixedLatencyInterconnectFactory : public ccm::InterconnectFactory {
+  public:
+    InterconnectPtr construct (InterconnectOptions const & opts) override {
+      return std::make_unique<FixedLatencyInterconnect>(
+        static_cast<const FixedLatencyInterconnectOptions & >(opts));
+    }
   };
 
   CCM_REGISTER_INTERCONNECT("fixed_latency", FixedLatencyInterconnectFactory);
+} // namespace ccm
 
-} // namespace

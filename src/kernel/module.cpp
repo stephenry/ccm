@@ -27,6 +27,7 @@
 
 #include "module.hpp"
 #include "scheduler.hpp"
+
 #include <algorithm>
 
 namespace ccm::kernel {

@@ -28,8 +28,8 @@
 #ifndef __SCHEDULER_HPP__
 #define __SCHEDULER_HPP__
 
-#include "kernel/fwd.hpp"
-#include "kernel/event.hpp"
+#include "fwd.hpp"
+#include "event.hpp"
 
 #include <vector>
 #include <map>

@@ -26,5 +26,7 @@
 ##========================================================================== //
 
 add_library(agents STATIC
+  basic_source.cpp
+  basic_sink.cpp
   loopback.cpp
   )

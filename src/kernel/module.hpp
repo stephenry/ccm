@@ -28,8 +28,8 @@
 #ifndef __MODULE_HPP__
 #define __MODULE_HPP__
 
-#include "kernel/process.hpp"
-#include "kernel/scheduler.hpp"
+#include "process.hpp"
+#include "scheduler.hpp"
 
 #include <vector>
 #include <memory>

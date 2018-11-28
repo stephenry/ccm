@@ -25,9 +25,9 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "kernel/scheduler.hpp"
-#include "kernel/process.hpp"
-#include "kernel/module.hpp"
+#include "scheduler.hpp"
+#include "process.hpp"
+#include "module.hpp"
 
 namespace ccm::kernel {
 

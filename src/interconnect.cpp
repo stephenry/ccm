@@ -30,6 +30,17 @@
 
 namespace ccm {
 
+  bool InterconnectRegistry::has_factory(char const * name) {
+    return (interconnect_.count(name) != 0);
+  }
+  
+  InterconnectFactory * InterconnectRegistry::factory(char const * name) {
+    if (!has_factory(name))
+      return {};
+
+    return interconnect_[name].get();
+  }
+  
   void InterconnectRegistry::register_interconnect (const char * name, InterconnectFactoryPtr && f) {
     interconnect_[name] = std::move(f);
   }

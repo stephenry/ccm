@@ -25,18 +25,16 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __TRANSACTION_HPP__
-#define __TRANSACTION_HPP__
-
-#include <memory>
+#include "agents.hpp"
 
 namespace ccm {
 
-  class Transaction {
+  class BasicSinkAgent : public ccm::Agent {
   };
 
-  using TransactionPtr = std::unique_ptr<Transaction>;
+  class BasicSinkAgentFactory : public ccm::AgentFactory {
+  };
+
+  CCM_REGISTER_AGENT("basic_sink", BasicSinkAgentFactory);
 
 } // namespace ccm
-
-#endif
