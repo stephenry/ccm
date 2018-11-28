@@ -25,4 +25,9 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-add_library(ccm STATIC event.cpp scheduler.cpp process.cpp module.cpp)
+add_library(kernel STATIC
+  event.cpp
+  scheduler.cpp
+  process.cpp
+  module.cpp
+  )

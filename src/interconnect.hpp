@@ -28,45 +28,37 @@
 #ifndef __INTERCONNECT_HPP__
 #define __INTERCONNECT_HPP__
 
-#include "src/kernel.hpp"
-#include "src/transaction.hpp"
+#include <unordered_map>
+#include <memory>
+
+#define CCM_REGISTER_INTERCONNECT(__name, __if)                         \
+  ::ccm::InterconnectRegisterer __reg_ ## __af(__name, std::make_unique<__if>());
 
 namespace ccm {
 
-class Interconnect : public ccm::Module {
 
- public:
-
-  //
-  virtual void push(std::size_t id, TransactionPtr * t) = 0;
-
-  //
-  virtual void register_port(std::size_t id, EventHandle e) = 0;
-
-  //
-  virtual bool port_valid(std::size_t id) const = 0;
-
-  //
-  virtual TransactionPtr get_port(std::size_t id) = 0;
+  class Interconnect {
+  };
+  using InterconnectPtr = std::unique_ptr<Interconnect>;
   
-};
+  class InterconnectFactory {
+  };
+  using InterconnectFactoryPtr = std::unique_ptr<InterconnectFactory>;
 
-using InterconnectPtr = std::unique_ptr<Interconnect>;
+  class InterconnectRegistry {
+  public:
 
-enum InterconnectType : int {
-  FixedLatency
-};
+    //
+    static void register_interconnect(char const * name, InterconnectFactoryPtr && f);
 
-struct InterconnectOptions {
-  InterconnectType type;
-};
+  private:
+    //
+    static std::unordered_map<char const *, InterconnectFactoryPtr> interconnect_;
+  };
 
-class InterconnectFactory {
-
-  //
-  static InterconnectPtr construct(InterconnectOptions const & opts);
-
-};
+  struct InterconnectRegisterer {
+    InterconnectRegisterer(const char * name, InterconnectFactoryPtr && f);
+  };
 
 } // namespace ccm
 

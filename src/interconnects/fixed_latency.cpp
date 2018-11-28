@@ -25,54 +25,16 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "src/interconnect.hpp"
+#include "interconnect.hpp"
 
-namespace ccm {
+namespace  {
 
-namespace {
+  class FixedLatencyInterconnect : public ccm::Interconnect {
+  };
 
-class FixedLatencyInterconnect : public Interconnect {
+  class FixedLatencyInterconnectFactory : public ccm::InterconnectFactory {
+  };
 
- public:
+  CCM_REGISTER_INTERCONNECT("fixed_latency", FixedLatencyInterconnectFactory);
 
-  FixedLatencyInterconnect(InterconnectOptions const & opts)
-      : opts_(opts)
-  {}
-  
-  //
-  virtual void push(std::size_t id, TransactionPtr * t) override {
-  }
-
-  //
-  virtual void register_port(std::size_t id, EventHandle e) override {
-  }
-
-  //
-  virtual bool port_valid(std::size_t id) const override {
-    return false;
-  }
-
-  //
-  virtual TransactionPtr get_port(std::size_t id) override {
-    return {};
-  }
- private:
-  
-  InterconnectOptions const opts_;
-};
-
-} // namespace 
-
-InterconnectPtr InterconnectFactory::construct(
-    InterconnectOptions const & opts) {
-
-  switch (opts.type) {
-    case InterconnectType::FixedLatency: {
-      InterconnectPtr p{new FixedLatencyInterconnect{opts}};
-      return p;
-    } break;
-  }
-}
-
-
-} // namespace ccm
+} // namespace
