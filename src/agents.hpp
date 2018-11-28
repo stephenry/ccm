@@ -35,7 +35,7 @@
 #include <memory>
 
 #define CCM_REGISTER_AGENT(__name, __af)                                \
-  ::ccm::AgentRegisterer __reg_ ## __af(__name, std::make_unique<__af>());
+  static ::ccm::AgentRegisterer __reg_ ## __af(__name, std::make_unique<__af>())
 
 namespace ccm {
 
