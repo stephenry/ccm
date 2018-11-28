@@ -28,6 +28,9 @@
 #ifndef __AGENTS_HPP__
 #define __AGENTS_HPP__
 
+#include "agents.hpp"
+#include "kernel/kernel.hpp"
+
 #include <unordered_map>
 #include <memory>
 
@@ -36,7 +39,7 @@
 
 namespace ccm {
 
-  class Agent {
+  class Agent : public kernel::Module {
   };
   using AgentPtr = std::unique_ptr<Agent>;
   

@@ -53,7 +53,7 @@ namespace ccm {
   };
 
   //
-  class Interconnect : public ccm::kernel::Module {
+  class Interconnect : public kernel::Module {
   public:
     virtual void push (Transaction * t) = 0;
     virtual Transaction * pop () = 0;
