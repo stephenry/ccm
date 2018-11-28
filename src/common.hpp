@@ -48,10 +48,13 @@ namespace ccm {
   class Poolable;
   
   class Poolable {
+    friend class PoolBase;
   public:
     virtual void reset() = 0;
     virtual void release();
+    virtual ~Poolable() {};
   private:
+    void set_parent (PoolBase * parent) { parent_ = parent; }
     PoolBase * parent_;
   };
 
@@ -78,6 +81,7 @@ namespace ccm {
     void construct_n(std::size_t n) {
       while (n--) {
         std::unique_ptr<T> t = std::make_unique<T>();
+        t->set_parent(this);
         fl_.push_back(t.get());
         ts_.push_back(std::move(t));
       }

@@ -29,6 +29,14 @@
 
 namespace ccm {
 
+  class BasicSinkAgent : public ccm::Agent {
+  };
+
+  class BasicSinkAgentFactory : public ccm::AgentFactory {
+  };
+
+  CCM_REGISTER_AGENT("basic_sink", BasicSinkAgentFactory);
+
   class BasicSourceAgent : public ccm::Agent {
   };
 
