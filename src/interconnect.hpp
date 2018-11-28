@@ -36,7 +36,7 @@
 #include <memory>
 
 #define CCM_REGISTER_INTERCONNECT(__name, __if)                         \
-  static ::ccm::InterconnectRegisterer __reg_ ## __af(__name, std::make_unique<__if>())
+  static ::ccm::InterconnectRegisterer __reg_ ## __if(__name, std::make_unique<__if>())
 
 namespace ccm {
 
