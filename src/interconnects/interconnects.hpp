@@ -29,7 +29,7 @@
 #define __INTERCONNECT_HPP__
 
 #include "transaction.hpp"
-#include "agents.hpp"
+#include "agents/agents.hpp"
 #include "kernel/kernel.hpp"
 
 #include <unordered_map>

@@ -26,5 +26,6 @@
 ##========================================================================== //
 
 add_library(interconnects STATIC
+  interconnects.cpp
   fixed_latency.cpp
   )

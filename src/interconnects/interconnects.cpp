@@ -25,8 +25,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "interconnect.hpp"
-
+#include "interconnects.hpp"
 
 namespace ccm {
 

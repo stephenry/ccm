@@ -35,7 +35,7 @@ std::size_t Process::now() const { return sch_->now(); }
 std::size_t Process::delta() const { return sch_->delta(); }
 
 //
-void Process::wait_on_event(EventHandle e) {
+void Process::wait(EventHandle e) {
   s_dynamic_ = Sensitive{SensitiveTo::Dynamic, e};
 }
 

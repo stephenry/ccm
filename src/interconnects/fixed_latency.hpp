@@ -28,7 +28,7 @@
 #ifndef __FIXED_LATENCY_HPP__
 #define __FIXED_LATENCY_HPP__
 
-#include "interconnect.hpp"
+#include "interconnects.hpp"
 
 namespace ccm {
 

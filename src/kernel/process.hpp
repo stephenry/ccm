@@ -83,7 +83,7 @@ protected:
   virtual void cb__on_termination() {}
 
   //
-  void wait_on_event(EventHandle e);
+  void wait(EventHandle e);
   void wait_for(std::size_t t = 0);
   void wait_until(std::size_t t);
 
