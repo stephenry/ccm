@@ -63,7 +63,9 @@ namespace ccm {
   class AgentRegistry {
   public:
     static void register_agent(char const * name, AgentFactory * f);
-    static Agent * construct_agent(kernel::Module * m, char const * name, AgentOptions & opts);
+    static Agent * construct_agent(kernel::Module * m,
+                                   char const * name,
+                                   AgentOptions & opts);
 
   private:
     static std::unordered_map<char const *, AgentFactory *> agents_;
