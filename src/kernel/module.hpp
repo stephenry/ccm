@@ -37,6 +37,7 @@
 
 namespace ccm {
   class AgentRegistry;
+  class InterconnectRegistry;
 }
 
 namespace ccm::kernel {
@@ -44,6 +45,7 @@ namespace ccm::kernel {
 class Module {
   friend class Scheduler;
   friend class ::ccm::AgentRegistry;
+  friend class ::ccm::InterconnectRegistry;
 
 public:
 

@@ -28,59 +28,52 @@
 #ifndef __INTERCONNECT_HPP__
 #define __INTERCONNECT_HPP__
 
-#include "transaction.hpp"
 #include "agents/agents.hpp"
 #include "kernel/kernel.hpp"
 
 #include <unordered_map>
+#include <vector>
 #include <memory>
 
-#define CCM_REGISTER_INTERCONNECT(__name, __if)                         \
-  static ::ccm::InterconnectRegisterer __reg_ ## __if(__name, std::make_unique<__if>())
+#define CCM_REGISTER_INTERCONNECT(__cls)                                \
+  static struct __cls ## Factory : ::ccm::InterconnectFactory {         \
+    __cls ## Factory () {                                               \
+      ::ccm::InterconnectRegistry::register_interconnect(#__cls, this); \
+    }                                                                   \
+    ::ccm::InterconnectPtr construct(::ccm::InterconnectArguments & args) override { \
+      using arg_type = typename __cls::arg_type;                        \
+      return std::make_unique<__cls>(static_cast<arg_type &>(args));    \
+    }                                                                   \
+  } __cls ## Factory
 
 namespace ccm {
 
-  //
   class Interconnect;
   using InterconnectPtr = std::unique_ptr<Interconnect>;
 
-  //
-  class InterconnectFactory;
-  using InterconnectFactoryPtr = std::unique_ptr<InterconnectFactory>;
-
-  //
-  class InterconnectOptions {
+  class InterconnectArguments {
+  };
+  
+  struct InterconnectFactory {
+    virtual ccm::InterconnectPtr construct(InterconnectArguments & opts) = 0;
   };
 
   //
   class Interconnect : public kernel::Module {
   public:
     virtual void push (Transaction * t) = 0;
-    virtual Transaction * pop () = 0;
-
-    // TODO: notify event on agent and pass back opaque token.
-    virtual void register_agent (Agent * a) = 0;
-  };
-
-  //
-  class InterconnectFactory {
-  public:
-    virtual InterconnectPtr construct (InterconnectOptions const & opts) = 0;
+    virtual void register_agent (std::size_t id, Agent * a) = 0;
   };
 
   class InterconnectRegistry {
   public:
-    static bool has_factory (char const * name);
-    static InterconnectFactory * factory (char const * name);
-    static void register_interconnect (char const * name, InterconnectFactoryPtr && f);
+    static void register_interconnect (char const * name, InterconnectFactory * f);
+    static Interconnect * construct(kernel::Module * m,
+                             char const * name,
+                             InterconnectArguments & args);
 
   private:
-    static std::unordered_map<char const *, InterconnectFactoryPtr> interconnect_;
-  };
-
-  //
-  struct InterconnectRegisterer {
-    InterconnectRegisterer (const char * name, InterconnectFactoryPtr && f);
+    static std::unordered_map<char const *, InterconnectFactory *> interconnects_;
   };
 
 } // namespace ccm

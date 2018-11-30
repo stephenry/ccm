@@ -29,14 +29,35 @@
 
 namespace ccm {
 
-  class FixedLatencyInterconnectFactory : public ccm::InterconnectFactory {
+  class FixedLatency : public Interconnect {
+    CCM_REGISTER_INTERCONNECT(FixedLatency);
   public:
-    InterconnectPtr construct (InterconnectOptions const & opts) override {
-      return std::make_unique<FixedLatencyInterconnect>(
-        static_cast<const FixedLatencyInterconnectOptions & >(opts));
-    }
+    using arg_type = FixedLatencyArguments;
+    
+    FixedLatency(const arg_type & arg);
+    
+    void push (Transaction * t) override;
+    void register_agent (std::size_t id, Agent * a) override;
+  private:
+
+    std::vector<kernel::EventQueue<Transaction *> *> eqs_;
+    arg_type arg_;
   };
 
-  CCM_REGISTER_INTERCONNECT("fixed_latency", FixedLatencyInterconnectFactory);
+  FixedLatency::FixedLatency(const FixedLatencyArguments & arg)
+    : arg_(arg) {
+  }
+    
+  void FixedLatency::push (Transaction * t) {
+    eqs_[t->portid_dst]->set(t, now() + arg_.latency);
+  }
+  
+  void FixedLatency::register_agent (std::size_t id, Agent * a) {
+    if (eqs_.size() < id)
+      eqs_.resize(id);
+
+    eqs_[id] = create_child<kernel::EventQueue<Transaction *>>();
+  }
+
 } // namespace ccm
 

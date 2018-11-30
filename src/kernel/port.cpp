@@ -25,44 +25,34 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "agents.hpp"
+#include "port.hpp"
 
-namespace ccm {
-
-  std::size_t Agent::id_{0};
-  std::size_t Agent::get_unique_id() { return Agent::id_++; }
+namespace ccm::kernel {
   
-  std::unordered_map<char const *, AgentFactory *> AgentRegistry::agents_;
-
-  void AgentRegistry::register_agent (const char * name, AgentFactory * f) {
-    agents_[name] = f;
+  Port::Port(std::string name, PortType type)
+    : Module(name), type_(type) {
   }
 
-  Agent * AgentRegistry::construct(kernel::Module * m, char const * name, AgentArguments & args) {
-    AgentPtr ptr = agents_[name]->construct(args);
-    Agent *ret{ptr.get()};
-    m->add_child(std::move(ptr));
-    return ret;
-  }
+  Port::~Port() {}
 
-  void BasicSourceAgent::WakeProcess::cb__on_initialization() {
-    wait_until(now() + period_);
+  bool Port::can_push() const {
+    return true;
   }
   
-  void BasicSourceAgent::WakeProcess::cb__on_invoke() {
-    Transaction * t = agnt_->source_transaction();
-
-    if (t != nullptr)
-      wait_until(now() + period_);
+  bool Port::can_pop() const {
+    return true;
   }
   
-  BasicSourceAgent::BasicSourceAgent(std::size_t period)
-    : Agent(kernel::PortType::Out), period_(period) {
-    p = create_process<WakeProcess>(this, period);
+  void Port::push(Transaction * t) {
+  }
+  
+  Transaction * Port::pop() {
+  }
+  
+  EventHandle Port::event() {
+  }
+    
+  void Port::bind(Interconnect * i) {
   }
 
-  BasicSinkAgent::BasicSinkAgent()
-    : Agent(kernel::PortType::In) {
-  }
-
-} // namespace ccm
+} // namespace ccm::kernel

@@ -26,13 +26,18 @@
 //========================================================================== //
 
 #include "ccm.hpp"
+#include "interconnects/fixed_latency.hpp"
 
 #include <deque>
 #include <gtest/gtest.h>
 
 namespace {
 
-  struct State : ccm::AgentOptions {
+  struct SharedState : ccm::AgentArguments {
+    std::size_t period{16};
+    std::size_t n{10000};
+    std::size_t sender_id;
+    std::size_t consumer_id;
     std::deque<std::size_t> sent;
   };
 
@@ -52,49 +57,79 @@ namespace {
   };
 
   struct Producer : ccm::BasicSourceAgent {
-    using options_type = State;
-    Producer(options_type & options)
-      : options_(options)
+    CCM_REGISTER_AGENT(Producer);
+    
+    using arg_type = ccm::AgentStateBase<SharedState>;
+    Producer(arg_type & arg)
+      : arg_(arg), ccm::BasicSourceAgent(arg.state.period)
     {}
     ccm::Transaction * source_transaction() override {
-      BasicTransaction * t = p_.alloc();
-      t->set(ccm::rand_int());
-      return t;
+      if (arg_.state.n-- == 0)
+        return nullptr;
+      
+      BasicTransaction * bt = p_.alloc();
+      EXPECT_EQ(arg_.id, arg_.state.sender_id);
+      bt->portid_src = arg_.id;
+      bt->portid_dst = arg_.state.consumer_id;
+      EXPECT_TRUE(!bt->is_valid());
+      bt->set(ccm::rand_int());
+      return bt;
     }
   private:
-    options_type & options_;
+    arg_type & arg_;
     ccm::Pool<BasicTransaction> p_;
   };
-  CCM_REGISTER_AGENT(Producer);
 
   struct Consumer : ccm::BasicSinkAgent {
-    using options_type = State;
-    Consumer(options_type & options)
-      : options_(options)
+    CCM_REGISTER_AGENT(Consumer);
+    
+    using arg_type = ccm::AgentStateBase<SharedState>;
+    Consumer(arg_type & arg)
+      : arg_(arg)
     {}
     void sink_transaction (ccm::Transaction * t) override {
+      SharedState & state = arg_.state;
+      
       BasicTransaction * bt = static_cast<BasicTransaction *>(t);
       EXPECT_TRUE(bt->is_valid());
-      const std::size_t expected = options_.sent.front();
+      EXPECT_EQ(bt->portid_dst, arg_.id);
+      EXPECT_EQ(bt->portid_src, arg_.state.sender_id);
+      EXPECT_EQ(bt->portid_dst, arg_.state.consumer_id);
+      const std::size_t expected = state.sent.front();
       const std::size_t actual = bt->value();
       EXPECT_EQ(expected, actual);
-      options_.sent.pop_front();
+      state.sent.pop_front();
       bt->release();
     }
   private:
-    options_type & options_;
+    arg_type & arg_;
   };
-  CCM_REGISTER_AGENT(Consumer);
 
   class Top : public ccm::kernel::Module {
   public:
     Top(std::string name) : ccm::kernel::Module(name) {
-      producer_ = ccm::AgentRegistry::construct_agent(this, "Producer", state_);
-      consumer_ = ccm::AgentRegistry::construct_agent(this, "Consumer", state_);
+      pid_ = ccm::Agent::get_unique_id();
+      cid_ = ccm::Agent::get_unique_id();
+      
+      ccm::AgentStateBase<SharedState> pstate{shared_state_};
+      pstate.id = pid_;
+      producer_ = ccm::AgentRegistry::construct(this, "Producer", pstate);
+
+      ccm::AgentStateBase<SharedState> cstate{shared_state_};
+      cstate.id = cid_;
+      consumer_ = ccm::AgentRegistry::construct(this, "Consumer", cstate);
+
+      ccm::FixedLatencyArguments args;
+      args.latency = 16;
+      interconnect_ = ccm::InterconnectRegistry::construct(this, "FixedLatency", args);
+      interconnect_->register_agent(pid_, producer_);
+      interconnect_->register_agent(cid_, consumer_);
     }
   private:
-    State state_;
+    std::size_t pid_, cid_;
+    SharedState shared_state_;
     ccm::Agent *producer_, *consumer_;
+    ccm::Interconnect  *interconnect_;
   };
   
 } // namespace

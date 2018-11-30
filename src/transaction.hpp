@@ -33,7 +33,17 @@
 
 namespace ccm {
 
+  template<typename T>
+  struct TransactionTraits;
+
   struct Transaction : public Poolable {
+    std::size_t portid_src;
+    std::size_t portid_dst;
+  };
+
+  template<>
+  struct TransactionTraits<Transaction> {
+    using portid_type = std::size_t;
   };
 
 } // namespace ccm

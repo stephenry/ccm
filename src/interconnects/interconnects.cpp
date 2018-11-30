@@ -29,24 +29,20 @@
 
 namespace ccm {
 
-  bool InterconnectRegistry::has_factory(char const * name) {
-    return (interconnect_.count(name) != 0);
-  }
+  std::unordered_map<char const *, InterconnectFactory *> InterconnectRegistry::interconnects_;
   
-  InterconnectFactory * InterconnectRegistry::factory(char const * name) {
-    if (!has_factory(name))
-      return {};
-
-    return interconnect_[name].get();
-  }
-  
-  void InterconnectRegistry::register_interconnect (const char * name, InterconnectFactoryPtr && f) {
-    interconnect_[name] = std::move(f);
+  void InterconnectRegistry::register_interconnect (const char * name, InterconnectFactory *f) {
+    interconnects_[name] = f;
   }
 
-  InterconnectRegisterer::InterconnectRegisterer (const char * name, InterconnectFactoryPtr && f) {
-    InterconnectRegistry::register_interconnect(name, std::move(f));
+  Interconnect * InterconnectRegistry::construct(kernel::Module * m,
+                                                 char const * name,
+                                                 InterconnectArguments & args) {
+    InterconnectPtr ptr = interconnects_[name]->construct(args);
+    Interconnect *ret{ptr.get()};
+    m->add_child(std::move(ptr));
+    return ret;
   }
-  
+
 } // namespace ccm
 

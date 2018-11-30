@@ -25,44 +25,45 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "agents.hpp"
+#ifndef __PORT_HPP__
+#define __PORT_HPP__
+
+#include "module.hpp"
+#include "primitives.hpp"
 
 namespace ccm {
+  class Interconnect;
+  class Transaction;
+}
 
-  std::size_t Agent::id_{0};
-  std::size_t Agent::get_unique_id() { return Agent::id_++; }
-  
-  std::unordered_map<char const *, AgentFactory *> AgentRegistry::agents_;
+namespace ccm::kernel {
 
-  void AgentRegistry::register_agent (const char * name, AgentFactory * f) {
-    agents_[name] = f;
-  }
+  enum class PortType {
+    In,
+    Out,
+    BiDir
+  };
 
-  Agent * AgentRegistry::construct(kernel::Module * m, char const * name, AgentArguments & args) {
-    AgentPtr ptr = agents_[name]->construct(args);
-    Agent *ret{ptr.get()};
-    m->add_child(std::move(ptr));
-    return ret;
-  }
+  class Port : public Module {
+    friend class Interconnect;
+    
+  public:
+    Port(std::string name, PortType type = PortType::BiDir);
+    virtual ~Port();
 
-  void BasicSourceAgent::WakeProcess::cb__on_initialization() {
-    wait_until(now() + period_);
-  }
-  
-  void BasicSourceAgent::WakeProcess::cb__on_invoke() {
-    Transaction * t = agnt_->source_transaction();
+    bool can_push() const;
+    bool can_pop() const;
+    virtual void push(Transaction * t);
+    virtual Transaction * pop();
+    EventHandle event();
+    
+  private:
+    void bind(Interconnect * i);
+    MailBox<Transaction *> mb_in_;
+    Interconnect * i_out_{nullptr};
+    PortType type_;
+  };
 
-    if (t != nullptr)
-      wait_until(now() + period_);
-  }
-  
-  BasicSourceAgent::BasicSourceAgent(std::size_t period)
-    : Agent(kernel::PortType::Out), period_(period) {
-    p = create_process<WakeProcess>(this, period);
-  }
+} // namespace ccm::kernel
 
-  BasicSinkAgent::BasicSinkAgent()
-    : Agent(kernel::PortType::In) {
-  }
-
-} // namespace ccm
+#endif

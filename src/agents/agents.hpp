@@ -36,11 +36,11 @@
 #define CCM_REGISTER_AGENT(__cls)                                       \
   static struct __cls ## Factory : ::ccm::AgentFactory {                \
     __cls ## Factory () {                                               \
-      ccm::AgentRegistry::register_agent(#__cls, this);                 \
+      ::ccm::AgentRegistry::register_agent(#__cls, this);               \
     }                                                                   \
-    ccm::AgentPtr construct(ccm::AgentOptions & opts) override {        \
-      using options_type = typename __cls::options_type;                \
-      return std::make_unique<__cls>(static_cast<options_type &>(opts)); \
+    ::ccm::AgentPtr construct(::ccm::AgentArguments & args) override {  \
+      using arg_type = typename __cls::arg_type;                        \
+      return std::make_unique<__cls>(static_cast<arg_type &>(args));    \
     }                                                                   \
   } __cls ## Factory
 
@@ -48,35 +48,75 @@ namespace ccm {
 
   class Transaction;
 
-  class AgentOptions {
+  struct AgentArguments {
+    std::size_t id;
+  };
+
+  template<typename STATE>
+  struct AgentStateBase : AgentArguments {
+    AgentStateBase(STATE & state)
+      : state(state)
+    {}
+    STATE & state;
   };
 
   class Agent : public kernel::Module {
+  public:
+    static std::size_t get_unique_id();
+
+    Agent(kernel::PortType type)
+      : port_("port", type)
+    {}
+    kernel::Port & port() { return port_; }
+
+  private:
+    static std::size_t id_;
+    
+    kernel::Port port_;
   };
   using AgentPtr = std::unique_ptr<Agent>;
   
   struct AgentFactory {
-    virtual ccm::AgentPtr construct(AgentOptions & opts) { return {}; };
+    virtual ccm::AgentPtr construct(AgentArguments & opts) = 0;
   };
-  using AgentFactoryPtr = std::unique_ptr<AgentFactory>;
 
   class AgentRegistry {
   public:
     static void register_agent(char const * name, AgentFactory * f);
-    static Agent * construct_agent(kernel::Module * m,
-                                   char const * name,
-                                   AgentOptions & opts);
+    static Agent * construct(kernel::Module * m,
+                             char const * name,
+                             AgentArguments & args);
 
   private:
     static std::unordered_map<char const *, AgentFactory *> agents_;
   };
 
-  struct BasicSinkAgent : public ccm::Agent {
-    virtual void sink_transaction (Transaction * t) = 0;
+  class BasicSourceAgent : public ccm::Agent {
+    
+    struct WakeProcess : kernel::Process {
+      WakeProcess(BasicSourceAgent * agnt, std::size_t period)
+        : agnt_(agnt), period_(period)
+      {}
+      
+      void cb__on_initialization() override;
+      void cb__on_invoke() override;
+    private:
+      std::size_t period_;
+      BasicSourceAgent * agnt_;
+    };
+  public:
+    BasicSourceAgent(std::size_t period);
+  protected:
+    virtual Transaction * source_transaction() = 0;
+  private:
+    WakeProcess * p;
+    std::size_t period_;
   };
 
-  struct BasicSourceAgent : public ccm::Agent {
-    virtual Transaction * source_transaction() = 0;
+  struct BasicSinkAgent : public ccm::Agent {
+    BasicSinkAgent();
+  protected:
+    virtual void sink_transaction (Transaction * t) = 0;
   };
 
 } // namespace ccm

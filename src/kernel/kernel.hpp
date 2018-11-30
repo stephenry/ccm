@@ -34,6 +34,7 @@
 #include "scheduler.hpp"
 #include "module.hpp"
 #include "primitives.hpp"
+#include "port.hpp"
 #include "random.hpp"
 
 #endif
