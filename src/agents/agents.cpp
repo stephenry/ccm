@@ -29,14 +29,10 @@
 
 namespace ccm {
 
-  std::unordered_map<char const *, AgentFactoryPtr> AgentRegistry::agents_;
+  std::unordered_map<char const *, AgentFactory *> AgentRegistry::agents_;
 
-  void AgentRegistry::register_agent (const char * name, AgentFactoryPtr && f) {
-    agents_[name] = std::move(f);
-  }
-
-  AgentRegisterer::AgentRegisterer (const char * name, AgentFactoryPtr && f) {
-    AgentRegistry::register_agent(name, std::move(f));
+  void AgentRegistry::register_agent (const char * name, AgentFactory * f) {
+    agents_[name] = f;
   }
 
   Agent * AgentRegistry::construct_agent(kernel::Module * m, char const * name, AgentOptions & opts) {

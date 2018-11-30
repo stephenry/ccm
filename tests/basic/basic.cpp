@@ -65,7 +65,7 @@ namespace {
     options_type & options_;
     ccm::Pool<BasicTransaction> p_;
   };
-  CCM_REGISTER_AGENT("Producer", Producer);
+  CCM_REGISTER_AGENT(Producer);
 
   struct Consumer : ccm::BasicSinkAgent {
     using options_type = State;
@@ -84,9 +84,9 @@ namespace {
   private:
     options_type & options_;
   };
-  CCM_REGISTER_AGENT("Consumer", Consumer);
+  CCM_REGISTER_AGENT(Consumer);
 
-  class Top : ccm::kernel::Module {
+  class Top : public ccm::kernel::Module {
   public:
     Top(std::string name) : ccm::kernel::Module(name) {
       producer_ = ccm::AgentRegistry::construct_agent(this, "Producer", state_);
@@ -100,6 +100,12 @@ namespace {
 } // namespace
 
 TEST(Basic, t0) {
+  ccm::kernel::Scheduler sch;
+  {
+    ccm::kernel::ModulePtr top = sch.construct_top<Top>("top");
+    sch.set_top(std::move(top));
+  }
+  sch.run();
 }
 
 int main(int argc, char ** argv) {

@@ -33,15 +33,16 @@
 #include <unordered_map>
 #include <memory>
 
-#define CCM_REGISTER_AGENT(__name, __cls)                               \
-  struct __cls ## Factory : ::ccm::AgentFactory {                       \
+#define CCM_REGISTER_AGENT(__cls)                                       \
+  static struct __cls ## Factory : ::ccm::AgentFactory {                \
+    __cls ## Factory () {                                               \
+      ccm::AgentRegistry::register_agent(#__cls, this);                 \
+    }                                                                   \
     ccm::AgentPtr construct(ccm::AgentOptions & opts) override {        \
       using options_type = typename __cls::options_type;                \
       return std::make_unique<__cls>(static_cast<options_type &>(opts)); \
     }                                                                   \
-  };                                                                    \
-  static ::ccm::AgentRegisterer                                         \
-  __reg_ ## __cls(__name, std::make_unique<__cls ## Factory>())
+  } __cls ## Factory
 
 namespace ccm {
 
@@ -61,15 +62,11 @@ namespace ccm {
 
   class AgentRegistry {
   public:
-    static void register_agent(char const * name, AgentFactoryPtr && f);
+    static void register_agent(char const * name, AgentFactory * f);
     static Agent * construct_agent(kernel::Module * m, char const * name, AgentOptions & opts);
 
   private:
-    static std::unordered_map<char const *, AgentFactoryPtr> agents_;
-  };
-
-  struct AgentRegisterer {
-    AgentRegisterer(const char * name, AgentFactoryPtr && f);
+    static std::unordered_map<char const *, AgentFactory *> agents_;
   };
 
   struct BasicSinkAgent : public ccm::Agent {
