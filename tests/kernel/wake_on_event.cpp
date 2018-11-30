@@ -52,7 +52,7 @@ class WakeOnEventTop : public ccm::kernel::Module {
     void cb__on_invoke() override {
       EXPECT_EQ(state_.next_process, id_);
 
-      state_.next_process = ccm::kernel::rand_int();
+      state_.next_process = ccm::rand_int();
       if (--state_.n != 0) {
         state_.es[state_.next_process].notify_after(state_.opts.delay);
       }

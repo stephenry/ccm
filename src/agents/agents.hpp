@@ -28,38 +28,56 @@
 #ifndef __AGENTS_HPP__
 #define __AGENTS_HPP__
 
-#include "agents.hpp"
 #include "kernel/kernel.hpp"
 
 #include <unordered_map>
 #include <memory>
 
-#define CCM_REGISTER_AGENT(__name, __af)                                \
-  static ::ccm::AgentRegisterer __reg_ ## __af(__name, std::make_unique<__af>())
+#define CCM_REGISTER_AGENT(__name, __cls)                               \
+  struct __cls ## Factory : ::ccm::AgentFactory {                       \
+    ccm::AgentPtr construct(ccm::AgentOptions & opts) override {        \
+      using options_type = typename __cls::options_type;                \
+      return std::make_unique<__cls>(static_cast<options_type &>(opts)); \
+    }                                                                   \
+  };                                                                    \
+  static ::ccm::AgentRegisterer                                         \
+  __reg_ ## __cls(__name, std::make_unique<__cls ## Factory>())
 
 namespace ccm {
+
+  class Transaction;
+
+  class AgentOptions {
+  };
 
   class Agent : public kernel::Module {
   };
   using AgentPtr = std::unique_ptr<Agent>;
   
-  class AgentFactory {
+  struct AgentFactory {
+    virtual ccm::AgentPtr construct(AgentOptions & opts) { return {}; };
   };
   using AgentFactoryPtr = std::unique_ptr<AgentFactory>;
 
   class AgentRegistry {
   public:
-
-    //
     static void register_agent(char const * name, AgentFactoryPtr && f);
+    static Agent * construct_agent(kernel::Module * m, char const * name, AgentOptions & opts);
 
   private:
-    //
     static std::unordered_map<char const *, AgentFactoryPtr> agents_;
   };
 
   struct AgentRegisterer {
     AgentRegisterer(const char * name, AgentFactoryPtr && f);
+  };
+
+  struct BasicSinkAgent : public ccm::Agent {
+    virtual void sink_transaction (Transaction * t) = 0;
+  };
+
+  struct BasicSourceAgent : public ccm::Agent {
+    virtual Transaction * source_transaction() = 0;
   };
 
 } // namespace ccm

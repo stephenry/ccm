@@ -28,14 +28,13 @@
 #ifndef __TRANSACTION_HPP__
 #define __TRANSACTION_HPP__
 
+#include "common.hpp"
 #include <memory>
 
 namespace ccm {
 
-  class Transaction {
+  struct Transaction : public Poolable {
   };
-
-  using TransactionPtr = std::unique_ptr<Transaction>;
 
 } // namespace ccm
 

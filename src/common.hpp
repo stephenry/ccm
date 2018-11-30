@@ -53,7 +53,7 @@ namespace ccm {
     virtual void reset() = 0;
     virtual void release();
     virtual ~Poolable() {};
-  private:
+    //  private:
     void set_parent (PoolBase * parent) { parent_ = parent; }
     PoolBase * parent_;
   };
@@ -88,7 +88,7 @@ namespace ccm {
     }
     void release(Poolable * p) override {
       p->reset();
-      fl_.push_back(p);
+      fl_.push_back(static_cast<T *>(p));
     };
     std::size_t m_;
     std::vector<std::unique_ptr<T>> ts_;

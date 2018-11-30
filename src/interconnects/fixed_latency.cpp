@@ -29,21 +29,6 @@
 
 namespace ccm {
 
-  class FixedLatencyInterconnect: public ccm::Interconnect {
-  public:
-    FixedLatencyInterconnect(FixedLatencyInterconnectOptions const & opts)
-      : opts_(opts)
-    {}
-    void push (Transaction * t) override {
-    }
-    Transaction * pop () override {
-    }
-    void register_agent(Agent * a) override {
-    }
-  private:
-    FixedLatencyInterconnectOptions const opts_;
-  };
-
   class FixedLatencyInterconnectFactory : public ccm::InterconnectFactory {
   public:
     InterconnectPtr construct (InterconnectOptions const & opts) override {

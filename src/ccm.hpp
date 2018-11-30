@@ -30,5 +30,9 @@
 
 //#include "common.hpp"
 #include "kernel/kernel.hpp"
+#include "interconnects/interconnects.hpp"
+#include "agents/agents.hpp"
+
+#include "transaction.hpp"
 
 #endif

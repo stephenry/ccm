@@ -33,5 +33,6 @@ add_subdirectory(interconnects)
 
 add_library(ccm STATIC
   common.cpp
+  random.cpp
   )
 target_link_libraries(ccm PRIVATE kernel agents interconnects)

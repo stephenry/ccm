@@ -35,10 +35,15 @@
 #include <memory>
 #include <string>
 
+namespace ccm {
+  class AgentRegistry;
+}
+
 namespace ccm::kernel {
 
 class Module {
   friend class Scheduler;
+  friend class ::ccm::AgentRegistry;
 
 public:
 
@@ -80,7 +85,7 @@ protected:
     processes_.push_back(std::move(ptr));
     return ret;
   }
-  
+
   //
   void add_child (ModulePtr && ptr);
   

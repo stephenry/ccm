@@ -23,14 +23,12 @@
 // CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
-//========================================================================== //
+//========================================================================== //s
 
-#include "agents.hpp"
+#include "random.hpp"
 
-namespace  {
+namespace ccm {
 
-  class LoopBackAgent : public ccm::Agent {
-  };
-  //  CCM_REGISTER_AGENT("loopback", LoopBackAgentFactory);
+  std::size_t rand_int() { return 0; }
 
-} // namespace
+} // namespace ccm

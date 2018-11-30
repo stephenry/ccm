@@ -28,10 +28,12 @@
 #ifndef __RANDOM_HPP__
 #define __RANDOM_HPP__
 
-namespace ccm::kernel {
+#include <numeric>
 
-std::size_t rand_int() { return 0; }
+namespace ccm {
 
-} // namespace ccm::kernel
+  std::size_t rand_int();
+
+} // namespace ccm
 
 #endif
