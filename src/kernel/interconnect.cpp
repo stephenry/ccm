@@ -25,8 +25,24 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "agents.hpp"
+#include "interconnect.hpp"
 
-namespace ccm {
+namespace ccm::kernel {
 
-} // namespace ccm
+  std::unordered_map<char const *, InterconnectFactory *> InterconnectRegistry::interconnects_;
+  
+  void InterconnectRegistry::register_interconnect (const char * name, InterconnectFactory *f) {
+    interconnects_[name] = f;
+  }
+
+  Interconnect * InterconnectRegistry::construct(Module * m,
+                                                 char const * name,
+                                                 InterconnectArguments & args) {
+    InterconnectPtr ptr = interconnects_[name]->construct(args);
+    Interconnect *ret{ptr.get()};
+    m->add_child(std::move(ptr));
+    return ret;
+  }
+
+} // namespace ccm::kernel
+

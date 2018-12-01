@@ -29,12 +29,16 @@
 #define __KERNEL_HPP__
 
 #include "common.hpp"
+#include "random.hpp"
+#include "log.hpp"
 #include "event.hpp"
 #include "process.hpp"
 #include "scheduler.hpp"
 #include "module.hpp"
 #include "primitives.hpp"
 #include "port.hpp"
-#include "random.hpp"
+#include "interconnect.hpp"
+#include "agents.hpp"
+#include "transaction.hpp"
 
 #endif

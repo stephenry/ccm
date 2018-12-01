@@ -26,6 +26,8 @@
 //========================================================================== //
 
 #include "port.hpp"
+#include "transaction.hpp"
+#include "interconnect.hpp"
 
 namespace ccm::kernel {
   

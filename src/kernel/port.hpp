@@ -31,12 +31,10 @@
 #include "module.hpp"
 #include "primitives.hpp"
 
-namespace ccm {
-  class Interconnect;
-  class Transaction;
-}
-
 namespace ccm::kernel {
+
+  class Transaction;
+  class Interconnect;
 
   enum class PortType {
     In,
@@ -51,8 +49,8 @@ namespace ccm::kernel {
     Port(std::string name, PortType type = PortType::BiDir);
     virtual ~Port();
 
-    bool can_push() const;
-    bool can_pop() const;
+    virtual bool can_push() const;
+    virtual bool can_pop() const;
     virtual void push(Transaction * t);
     virtual Transaction * pop();
     EventHandle event();

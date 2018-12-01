@@ -35,17 +35,12 @@
 #include <memory>
 #include <string>
 
-namespace ccm {
-  class AgentRegistry;
-  class InterconnectRegistry;
-}
-
 namespace ccm::kernel {
 
 class Module {
   friend class Scheduler;
-  friend class ::ccm::AgentRegistry;
-  friend class ::ccm::InterconnectRegistry;
+  friend class AgentRegistry;
+  friend class InterconnectRegistry;
 
 public:
 

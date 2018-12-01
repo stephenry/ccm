@@ -27,10 +27,42 @@
 
 #include "agents.hpp"
 
-namespace  {
+namespace ccm::kernel {
 
-  class LoopBackAgent : public ccm::Agent {
-  };
-  //  CCM_REGISTER_AGENT("loopback", LoopBackAgentFactory);
+  std::size_t Agent::id_{0};
+  std::size_t Agent::get_unique_id() { return Agent::id_++; }
+  
+  std::unordered_map<char const *, AgentFactory *> AgentRegistry::agents_;
 
-} // namespace
+  void AgentRegistry::register_agent (const char * name, AgentFactory * f) {
+    agents_[name] = f;
+  }
+
+  Agent * AgentRegistry::construct(Module * m, char const * name, AgentArguments & args) {
+    AgentPtr ptr = agents_[name]->construct(args);
+    Agent *ret{ptr.get()};
+    m->add_child(std::move(ptr));
+    return ret;
+  }
+
+  void BasicSourceAgent::WakeProcess::cb__on_initialization() {
+    wait_until(now() + period_);
+  }
+  
+  void BasicSourceAgent::WakeProcess::cb__on_invoke() {
+    Transaction * t = agnt_->source_transaction();
+
+    if (t != nullptr)
+      wait_until(now() + period_);
+  }
+  
+  BasicSourceAgent::BasicSourceAgent(std::size_t period)
+    : Agent(PortType::Out), period_(period) {
+    p = create_process<WakeProcess>(this, period);
+  }
+
+  BasicSinkAgent::BasicSinkAgent()
+    : Agent(PortType::In) {
+  }
+
+} // namespace ccm::kernel

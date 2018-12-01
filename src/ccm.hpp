@@ -28,11 +28,6 @@
 #ifndef __CCM_HPP__
 #define __CCM_HPP__
 
-//#include "common.hpp"
 #include "kernel/kernel.hpp"
-#include "interconnects/interconnects.hpp"
-#include "agents/agents.hpp"
-
-#include "transaction.hpp"
 
 #endif

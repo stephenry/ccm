@@ -26,21 +26,22 @@
 //========================================================================== //
 
 #include "fixed_latency.hpp"
+#include "kernel/kernel.hpp"
 
 namespace ccm {
 
-  class FixedLatency : public Interconnect {
+  class FixedLatency : public kernel::Interconnect {
     CCM_REGISTER_INTERCONNECT(FixedLatency);
   public:
     using arg_type = FixedLatencyArguments;
     
     FixedLatency(const arg_type & arg);
     
-    void push (Transaction * t) override;
-    void register_agent (std::size_t id, Agent * a) override;
+    void push (kernel::Transaction * t) override;
+    void register_agent (std::size_t id, kernel::Agent * a) override;
   private:
 
-    std::vector<kernel::EventQueue<Transaction *> *> eqs_;
+    std::vector<kernel::EventQueue<kernel::Transaction *> *> eqs_;
     arg_type arg_;
   };
 
@@ -48,15 +49,15 @@ namespace ccm {
     : arg_(arg) {
   }
     
-  void FixedLatency::push (Transaction * t) {
+  void FixedLatency::push (kernel::Transaction * t) {
     eqs_[t->portid_dst]->set(t, now() + arg_.latency);
   }
   
-  void FixedLatency::register_agent (std::size_t id, Agent * a) {
+  void FixedLatency::register_agent (std::size_t id, kernel::Agent * a) {
     if (eqs_.size() < id)
       eqs_.resize(id);
 
-    eqs_[id] = create_child<kernel::EventQueue<Transaction *>>();
+    eqs_[id] = create_child<kernel::EventQueue<kernel::Transaction *>>();
   }
 
 } // namespace ccm

@@ -26,9 +26,13 @@
 ##========================================================================== //
 
 add_library(kernel STATIC
+  common.cpp
+  random.cpp
   event.cpp
   scheduler.cpp
   process.cpp
   module.cpp
   port.cpp
+  agents.cpp
+  interconnect.cpp
   )

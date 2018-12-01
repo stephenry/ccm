@@ -33,7 +33,9 @@
 
 namespace {
 
-  struct SharedState : ccm::AgentArguments {
+  namespace krn = ccm::kernel;
+
+  struct SharedState : krn::AgentArguments {
     std::size_t period{16};
     std::size_t n{10000};
     std::size_t sender_id;
@@ -41,7 +43,7 @@ namespace {
     std::deque<std::size_t> sent;
   };
 
-  struct BasicTransaction : ccm::Transaction {
+  struct BasicTransaction : krn::Transaction {
     void reset() override {
       is_valid_ = false;
     }
@@ -56,14 +58,14 @@ namespace {
     std::size_t value_;
   };
 
-  struct Producer : ccm::BasicSourceAgent {
+  struct Producer : krn::BasicSourceAgent {
     CCM_REGISTER_AGENT(Producer);
     
-    using arg_type = ccm::AgentStateBase<SharedState>;
+    using arg_type = krn::AgentStateBase<SharedState>;
     Producer(arg_type & arg)
-      : arg_(arg), ccm::BasicSourceAgent(arg.state.period)
+      : arg_(arg), krn::BasicSourceAgent(arg.state.period)
     {}
-    ccm::Transaction * source_transaction() override {
+    krn::Transaction * source_transaction() override {
       if (arg_.state.n-- == 0)
         return nullptr;
       
@@ -80,14 +82,14 @@ namespace {
     ccm::Pool<BasicTransaction> p_;
   };
 
-  struct Consumer : ccm::BasicSinkAgent {
+  struct Consumer : krn::BasicSinkAgent {
     CCM_REGISTER_AGENT(Consumer);
     
-    using arg_type = ccm::AgentStateBase<SharedState>;
+    using arg_type = krn::AgentStateBase<SharedState>;
     Consumer(arg_type & arg)
       : arg_(arg)
     {}
-    void sink_transaction (ccm::Transaction * t) override {
+    void sink_transaction (krn::Transaction * t) override {
       SharedState & state = arg_.state;
       
       BasicTransaction * bt = static_cast<BasicTransaction *>(t);
@@ -105,39 +107,39 @@ namespace {
     arg_type & arg_;
   };
 
-  class Top : public ccm::kernel::Module {
+  class Top : public krn::Module {
   public:
-    Top(std::string name) : ccm::kernel::Module(name) {
-      pid_ = ccm::Agent::get_unique_id();
-      cid_ = ccm::Agent::get_unique_id();
+    Top(std::string name) : krn::Module(name) {
+      pid_ = krn::Agent::get_unique_id();
+      cid_ = krn::Agent::get_unique_id();
       
-      ccm::AgentStateBase<SharedState> pstate{shared_state_};
+      krn::AgentStateBase<SharedState> pstate{shared_state_};
       pstate.id = pid_;
-      producer_ = ccm::AgentRegistry::construct(this, "Producer", pstate);
+      producer_ = krn::AgentRegistry::construct(this, "Producer", pstate);
 
-      ccm::AgentStateBase<SharedState> cstate{shared_state_};
+      krn::AgentStateBase<SharedState> cstate{shared_state_};
       cstate.id = cid_;
-      consumer_ = ccm::AgentRegistry::construct(this, "Consumer", cstate);
+      consumer_ = krn::AgentRegistry::construct(this, "Consumer", cstate);
 
       ccm::FixedLatencyArguments args;
       args.latency = 16;
-      interconnect_ = ccm::InterconnectRegistry::construct(this, "FixedLatency", args);
+      interconnect_ = krn::InterconnectRegistry::construct(this, "FixedLatency", args);
       interconnect_->register_agent(pid_, producer_);
       interconnect_->register_agent(cid_, consumer_);
     }
   private:
     std::size_t pid_, cid_;
     SharedState shared_state_;
-    ccm::Agent *producer_, *consumer_;
-    ccm::Interconnect  *interconnect_;
+    krn::Agent *producer_, *consumer_;
+    krn::Interconnect  *interconnect_;
   };
   
 } // namespace
 
 TEST(Basic, t0) {
-  ccm::kernel::Scheduler sch;
+  krn::Scheduler sch;
   {
-    ccm::kernel::ModulePtr top = sch.construct_top<Top>("top");
+    krn::ModulePtr top = sch.construct_top<Top>("top");
     sch.set_top(std::move(top));
   }
   sch.run();

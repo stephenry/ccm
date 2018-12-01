@@ -25,44 +25,27 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "agents.hpp"
+#ifndef __TRANSACTION_HPP__
+#define __TRANSACTION_HPP__
 
-namespace ccm {
+#include "common.hpp"
+#include <memory>
 
-  std::size_t Agent::id_{0};
-  std::size_t Agent::get_unique_id() { return Agent::id_++; }
-  
-  std::unordered_map<char const *, AgentFactory *> AgentRegistry::agents_;
+namespace ccm::kernel {
 
-  void AgentRegistry::register_agent (const char * name, AgentFactory * f) {
-    agents_[name] = f;
-  }
+  template<typename T>
+  struct TransactionTraits;
 
-  Agent * AgentRegistry::construct(kernel::Module * m, char const * name, AgentArguments & args) {
-    AgentPtr ptr = agents_[name]->construct(args);
-    Agent *ret{ptr.get()};
-    m->add_child(std::move(ptr));
-    return ret;
-  }
+  struct Transaction : public Poolable {
+    std::size_t portid_src;
+    std::size_t portid_dst;
+  };
 
-  void BasicSourceAgent::WakeProcess::cb__on_initialization() {
-    wait_until(now() + period_);
-  }
-  
-  void BasicSourceAgent::WakeProcess::cb__on_invoke() {
-    Transaction * t = agnt_->source_transaction();
+  template<>
+  struct TransactionTraits<Transaction> {
+    using portid_type = std::size_t;
+  };
 
-    if (t != nullptr)
-      wait_until(now() + period_);
-  }
-  
-  BasicSourceAgent::BasicSourceAgent(std::size_t period)
-    : Agent(kernel::PortType::Out), period_(period) {
-    p = create_process<WakeProcess>(this, period);
-  }
+} // namespace ccm::kernel
 
-  BasicSinkAgent::BasicSinkAgent()
-    : Agent(kernel::PortType::In) {
-  }
-
-} // namespace ccm
+#endif

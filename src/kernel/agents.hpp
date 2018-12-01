@@ -25,57 +25,98 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __INTERCONNECT_HPP__
-#define __INTERCONNECT_HPP__
+#ifndef __AGENTS_HPP__
+#define __AGENTS_HPP__
 
-#include "agents/agents.hpp"
-#include "kernel/kernel.hpp"
-
+#include "module.hpp"
+#include "port.hpp"
 #include <unordered_map>
-#include <vector>
 #include <memory>
 
-#define CCM_REGISTER_INTERCONNECT(__cls)                                \
-  static struct __cls ## Factory : ::ccm::InterconnectFactory {         \
+#define CCM_REGISTER_AGENT(__cls)                                       \
+  static struct __cls ## Factory : ::ccm::kernel::AgentFactory {        \
     __cls ## Factory () {                                               \
-      ::ccm::InterconnectRegistry::register_interconnect(#__cls, this); \
+      ::ccm::kernel::AgentRegistry::register_agent(#__cls, this);       \
     }                                                                   \
-    ::ccm::InterconnectPtr construct(::ccm::InterconnectArguments & args) override { \
+    ::ccm::kernel::AgentPtr construct(::ccm::kernel::AgentArguments & args) override { \
       using arg_type = typename __cls::arg_type;                        \
       return std::make_unique<__cls>(static_cast<arg_type &>(args));    \
     }                                                                   \
   } __cls ## Factory
 
-namespace ccm {
+namespace ccm::kernel {
 
-  class Interconnect;
-  using InterconnectPtr = std::unique_ptr<Interconnect>;
-
-  class InterconnectArguments {
-  };
-  
-  struct InterconnectFactory {
-    virtual ccm::InterconnectPtr construct(InterconnectArguments & opts) = 0;
+  struct AgentArguments {
+    std::size_t id;
   };
 
-  //
-  class Interconnect : public kernel::Module {
+  template<typename STATE>
+  struct AgentStateBase : AgentArguments {
+    AgentStateBase(STATE & state)
+      : state(state)
+    {}
+    STATE & state;
+  };
+
+  class Agent : public Module {
   public:
-    virtual void push (Transaction * t) = 0;
-    virtual void register_agent (std::size_t id, Agent * a) = 0;
-  };
+    static std::size_t get_unique_id();
 
-  class InterconnectRegistry {
-  public:
-    static void register_interconnect (char const * name, InterconnectFactory * f);
-    static Interconnect * construct(kernel::Module * m,
-                             char const * name,
-                             InterconnectArguments & args);
+    Agent(PortType type)
+      : port_("port", type)
+    {}
+    Port & port() { return port_; }
 
   private:
-    static std::unordered_map<char const *, InterconnectFactory *> interconnects_;
+    static std::size_t id_;
+    
+    Port port_;
+  };
+  using AgentPtr = std::unique_ptr<Agent>;
+  
+  struct AgentFactory {
+    virtual AgentPtr construct(AgentArguments & opts) = 0;
   };
 
-} // namespace ccm
+  class AgentRegistry {
+  public:
+    static void register_agent(char const * name, AgentFactory * f);
+    static Agent * construct(Module * m,
+                             char const * name,
+                             AgentArguments & args);
+
+  private:
+    static std::unordered_map<char const *, AgentFactory *> agents_;
+  };
+
+  class BasicSourceAgent : public Agent {
+    
+    struct WakeProcess : kernel::Process {
+      WakeProcess(BasicSourceAgent * agnt, std::size_t period)
+        : agnt_(agnt), period_(period)
+      {}
+      
+      void cb__on_initialization() override;
+      void cb__on_invoke() override;
+    private:
+      std::size_t period_;
+      BasicSourceAgent * agnt_;
+    };
+  public:
+    BasicSourceAgent(std::size_t period);
+  protected:
+    virtual Transaction * source_transaction() = 0;
+  private:
+    WakeProcess * p;
+    std::size_t period_;
+  };
+
+  struct BasicSinkAgent : public Agent {
+    BasicSinkAgent();
+  protected:
+    virtual void sink_transaction (Transaction * t) = 0;
+  };
+
+} // namespace ccm::kernel
 
 #endif

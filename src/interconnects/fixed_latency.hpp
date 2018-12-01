@@ -28,12 +28,11 @@
 #ifndef __FIXED_LATENCY_HPP__
 #define __FIXED_LATENCY_HPP__
 
-#include "interconnects.hpp"
-#include "transaction.hpp"
+#include "kernel/kernel.hpp"
 
 namespace ccm {
 
-  struct FixedLatencyArguments : InterconnectArguments {
+  struct FixedLatencyArguments : kernel::InterconnectArguments {
     std::size_t latency;
   };
 
