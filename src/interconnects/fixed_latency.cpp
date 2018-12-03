@@ -67,11 +67,14 @@ namespace ccm::interconnects {
 
     for (std::size_t i = 0; i < arg_.in_ports; i++) {
       p_push_.push_back(create_process<PushProcess>(i, this));
-      ins_.push_back(create_child<kernel::TMailBox>(std::string("in") + std::to_string(i)));
+      ins_.push_back(create_child<kernel::TMailBox>(std::string("in") +
+                                                    std::to_string(i)));
     }
 
     for (std::size_t i = 0; i < arg_.out_ports; i++) {
-      event_queue_type * eq = create_child<kernel::EventQueue<kernel::Transaction *>>();
+      event_queue_type * eq = create_child<
+        kernel::EventQueue<kernel::Transaction *>>(std::string("eq") +
+                                                   std::to_string(i));
       PopProcess * p = create_process<PopProcess>(i, this);
       p->set_sensitive_on(eq->event());
       p_pop_.push_back(p);

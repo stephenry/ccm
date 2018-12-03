@@ -48,6 +48,7 @@ class TMailBox : public Module, public TMailBoxIf {
   bool can_push() const override {
     return (ts_.size() < n_);
   }
+  EventHandle event() override { return e_; }
   bool get(Transaction * & t) {
     if (!has_mail())
       return false;
@@ -57,8 +58,10 @@ class TMailBox : public Module, public TMailBoxIf {
     return true;
   }
   bool has_mail() const { return !ts_.empty(); }
-  EventHandle event() { return e_; }
  private:
+  void cb__on_elaboration() override {
+    e_ = create_event();
+  }
   std::size_t n_;
   std::vector<Transaction *> ts_;
   EventHandle e_;
@@ -72,7 +75,7 @@ class EventQueue : public Module {
     MSG msg;
   };
  public:
-  EventQueue() : Module()
+  EventQueue(const std::string & name) : Module(name)
   {}
   EventHandle event() { return e_; }
   void set (MSG const & msg, std::size_t t = 0) {

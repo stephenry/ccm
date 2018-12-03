@@ -33,6 +33,7 @@
 #include <memory>
 
 #define CCM_AGENT_COMMON(__cls)                                         \
+  friend class ::ccm::kernel::AgentRegistry;                            \
   struct Factory : ::ccm::kernel::AgentFactory {                        \
     const char * name() const { return #__cls; }                        \
     ::ccm::kernel::AgentPtr construct(                                  \

@@ -75,7 +75,7 @@ class EventQueueTestTop: public ccm::kernel::Module {
  public:
   EventQueueTestTop(std::string name) : ccm::kernel::Module(name) {
     p0_ = create_process<P0>(state_);
-    state_.eq = create_child<ccm::kernel::EventQueue<MSG>>();
+    state_.eq = create_child<ccm::kernel::EventQueue<MSG>>("eq");
     for (std::size_t i = 1; i < 1000; i++) {
       const std::size_t msg = i;
       const std::size_t t = i * 10;
