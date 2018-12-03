@@ -29,7 +29,6 @@
 #define __AGENTS_HPP__
 
 #include "module.hpp"
-#include "port.hpp"
 #include <unordered_map>
 #include <memory>
 

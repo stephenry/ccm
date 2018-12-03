@@ -32,6 +32,5 @@ add_library(kernel STATIC
   scheduler.cpp
   process.cpp
   module.cpp
-  port.cpp
   agents.cpp
   )

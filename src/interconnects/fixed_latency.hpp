@@ -31,7 +31,7 @@
 #include "kernel/kernel.hpp"
 #include <vector>
 
-namespace ccm {
+namespace ccm::interconnects {
 
   class FixedLatency : public kernel::Agent {
     using event_queue_type = kernel::EventQueue<kernel::Transaction *>;
@@ -63,6 +63,6 @@ namespace ccm {
     std::vector<PopProcess *> p_pop_;
   };
 
-} // namespace ccm
+} // namespace ccm::interconnects
 
 #endif

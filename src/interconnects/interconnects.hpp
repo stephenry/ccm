@@ -31,7 +31,7 @@
 #include "kernel/kernel.hpp"
 #include "fixed_latency.hpp"
 
-namespace ccm {
+namespace ccm::interconnects {
 
   void register_interconnects(kernel::AgentRegistry & r);
 

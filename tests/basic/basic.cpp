@@ -116,7 +116,7 @@ namespace {
   class Top : public krn::Module {
   public:
     Top(std::string name) : krn::Module(name) {
-      ccm::register_interconnects(areg_);
+      ccm::interconnects::register_interconnects(areg_);
       areg_.register_agent<Producer>();
       areg_.register_agent<Consumer>();
 
@@ -134,7 +134,8 @@ namespace {
       fargs_.instance_name = "F";
       fargs_.in_ports = 1;
       fargs_.out_ports = 1;
-      fixed_latency_ = static_cast<ccm::FixedLatency *>(areg_.construct(this, "FixedLatency", fargs_));
+      fixed_latency_ = static_cast<
+        ccm::interconnects::FixedLatency *>(areg_.construct(this, "FixedLatency", fargs_));
 
       producer_->out_ = fixed_latency_->ins_[0];
       fixed_latency_->outs_[0] = consumer_->in_;
@@ -143,12 +144,12 @@ namespace {
     
     Producer::Arguments pargs_;
     Consumer::Arguments cargs_;
-    ccm::FixedLatency::Arguments fargs_;
+    ccm::interconnects::FixedLatency::Arguments fargs_;
     krn::AgentRegistry areg_;
     State state_;
     Producer * producer_;
     Consumer * consumer_;
-    ccm::FixedLatency * fixed_latency_;
+    ccm::interconnects::FixedLatency * fixed_latency_;
   };
   
 } // namespace

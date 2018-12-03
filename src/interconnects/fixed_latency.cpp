@@ -29,7 +29,7 @@
 #include "kernel/kernel.hpp"
 #include <string>
 
-namespace ccm {
+namespace ccm::interconnects {
 
   struct FixedLatency::PushProcess : kernel::Process {
     PushProcess(std::size_t id, FixedLatency * fl)
@@ -85,5 +85,4 @@ namespace ccm {
     }
   }
 
-} // namespace ccm
-
+} // namespace ccm::interconnects
