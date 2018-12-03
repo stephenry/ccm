@@ -76,15 +76,18 @@ namespace ccm::interconnects {
         kernel::EventQueue<kernel::Transaction *>>(std::string("eq") +
                                                    std::to_string(i));
       PopProcess * p = create_process<PopProcess>(i, this);
-      p->set_sensitive_on(eq->event());
       p_pop_.push_back(p);
       eqs_.push_back(eq);
     }
+    outs_.resize(arg_.out_ports);
   }
 
   void FixedLatency::cb__on_initialization() {
     for (std::size_t i = 0; i < p_push_.size(); i++) {
       p_push_[i]->set_sensitive_on(ins_[i]->event());
+    }
+    for (std::size_t i = 0; i < p_pop_.size(); i++) {
+      p_pop_[i]->set_sensitive_on(eqs_[i]->event());
     }
   }
 

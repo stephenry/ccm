@@ -71,7 +71,8 @@ namespace {
     krn::Transaction * source_transaction() override {
       if (state_->n-- == 0)
         return nullptr;
-      
+
+      std::cout << "here\n";
       BasicTransaction * bt = p_.alloc();
       EXPECT_EQ(arg_.id, state_->sender_id);
       bt->portid_src = arg_.id;

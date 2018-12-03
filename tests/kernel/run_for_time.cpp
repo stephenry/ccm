@@ -26,44 +26,47 @@
 //========================================================================== //
 
 #include <gtest/gtest.h>
-
-#include "src/kernel.hpp"
+#include "kernel/kernel.hpp"
 
 namespace {
 
-struct RunForTime : public ccm::Module {
+struct RunForTime : public ccm::kernel::Module {
 
-  class P0 : public ccm::Process {
-    ccm::InvokeRsp invoke_initialization(ccm::InvokeReq const & req) override {
-      EXPECT_EQ(sch_.now(), 0);
-      return rsp_;
+  class P0 : public ccm::kernel::Process {
+  public:
+    P0(RunForTime * prnt)
+      : prnt_(prnt)
+    {}
+  private:
+    virtual void cb__on_initialization() override {
+      wait_for(10);
     }
-    ccm::InvokeRsp invoke_running(ccm::InvokeReq const & req) override {
-      EXPECT_EQ(sch_.now(), 10 * ++n_);
-      return rsp_;
+    virtual void cb__on_invoke() override {
+      loop_one();
     }
-    ccm::Scheduler & sch_;
-    std::size_t n_{0};
-    ccm::InvokeRsp rsp_;
-   public:
-    P0(ccm::Scheduler & sch) : sch_(sch) {
-      rsp_.wake_after(10);
+    void loop_one() {
+      if (prnt_->n_-- != 0)
+        wait_for(10);
     }
-  } p_;
+    RunForTime * prnt_;
+  };
 
-  RunForTime(ccm::Scheduler & sch) : p_(sch) {
-    sch.add_process(std::addressof(p_));
+  RunForTime(const std::string & name)
+    : Module(name) {
+    create_process<P0>(this);
   }
-  ~RunForTime() {}
+  std::size_t n_{100};
 };
 
 } // namespace
 
 TEST(RunForTime, t_100) {
-  ccm::Scheduler sch;
-  RunForTime top{sch};
+  ccm::kernel::Scheduler sch;
 
-  ccm::RunOptions opts{100};
+  ccm::kernel::ModulePtr top = sch.construct_top<RunForTime>("RunForTime");
+  sch.set_top(std::move(top));
+  
+  ccm::kernel::RunOptions opts{100};
   sch.run(opts);
   EXPECT_EQ(sch.now(), 100);
 }
