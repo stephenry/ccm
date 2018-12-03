@@ -29,11 +29,38 @@
 #define __FIXED_LATENCY_HPP__
 
 #include "kernel/kernel.hpp"
+#include <vector>
 
 namespace ccm {
 
-  struct FixedLatencyArguments : kernel::InterconnectArguments {
-    std::size_t latency;
+  class FixedLatency : public kernel::Agent {
+    using event_queue_type = kernel::EventQueue<kernel::Transaction *>;
+    
+    struct PushProcess;
+    struct PopProcess;
+  public:
+    CCM_AGENT_COMMON(FixedLatency);
+
+    struct Arguments : kernel::AgentArguments {
+      std::size_t in_ports;
+      std::size_t out_ports;
+      std::size_t latency;
+    };
+    using arg_type = Arguments;
+    
+    FixedLatency(const arg_type & arg);
+    void push (kernel::Transaction * t);
+    
+    std::vector<kernel::TMailBox *> ins_;
+    std::vector<kernel::TMailBoxIf *> outs_;
+  private:
+    virtual void cb__on_initialization() override;
+
+    std::vector<kernel::EventQueue<kernel::Transaction *> *> eqs_;
+    arg_type arg_;
+
+    std::vector<PushProcess *> p_push_;
+    std::vector<PopProcess *> p_pop_;
   };
 
 } // namespace ccm

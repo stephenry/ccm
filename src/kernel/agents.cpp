@@ -29,40 +29,17 @@
 
 namespace ccm::kernel {
 
-  std::size_t Agent::id_{0};
-  std::size_t Agent::get_unique_id() { return Agent::id_++; }
-  
-  std::unordered_map<char const *, AgentFactory *> AgentRegistry::agents_;
-
-  void AgentRegistry::register_agent (const char * name, AgentFactory * f) {
-    agents_[name] = f;
+  void AgentRegistry::register_agent (std::string name, AgentFactory * f) {
+    agents_.insert(std::make_pair(name, f));
   }
 
-  Agent * AgentRegistry::construct(Module * m, char const * name, AgentArguments & args) {
+  Agent * AgentRegistry::construct(Module * m, std::string name, AgentArguments & args) {
+    CCM_ASSERT(agents_.count(name) != 0);
+    
     AgentPtr ptr = agents_[name]->construct(args);
     Agent *ret{ptr.get()};
     m->add_child(std::move(ptr));
     return ret;
-  }
-
-  void BasicSourceAgent::WakeProcess::cb__on_initialization() {
-    wait_until(now() + period_);
-  }
-  
-  void BasicSourceAgent::WakeProcess::cb__on_invoke() {
-    Transaction * t = agnt_->source_transaction();
-
-    if (t != nullptr)
-      wait_until(now() + period_);
-  }
-  
-  BasicSourceAgent::BasicSourceAgent(std::size_t period)
-    : Agent(PortType::Out), period_(period) {
-    p = create_process<WakeProcess>(this, period);
-  }
-
-  BasicSinkAgent::BasicSinkAgent()
-    : Agent(PortType::In) {
   }
 
 } // namespace ccm::kernel

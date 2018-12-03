@@ -25,11 +25,55 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __CCM_HPP__
-#define __CCM_HPP__
+#include "basic.hpp"
 
-#include "kernel/kernel.hpp"
-#include "interconnects/interconnects.hpp"
-#include "agents/agents.hpp"
+namespace ccm::agents {
 
-#endif
+  struct BasicSourceAgent::EmitProcess : krn::Process {
+    EmitProcess(BasicSourceAgent * agnt, std::size_t period)
+      : agnt_(agnt), period_(period)
+    {}
+      
+    void cb__on_initialization() override {
+      wait_until(now() + period_);
+    }
+    void cb__on_invoke() override  {
+      krn::Transaction * t = agnt_->source_transaction();
+      if (t != nullptr) {
+        agnt_->out_->push(t);
+        wait_until(now() + period_);
+      }
+    }
+  private:
+    std::size_t period_;
+    BasicSourceAgent * agnt_;
+  };
+  
+  BasicSourceAgent::BasicSourceAgent(std::size_t period)
+    : period_(period) {
+    p_ = create_process<EmitProcess>(this, period);
+  }
+
+  struct BasicSinkAgent::ConsumeProcess : krn::Process {
+    ConsumeProcess(BasicSinkAgent * agnt)
+      : agnt_(agnt)
+    {}
+  private:
+    virtual void cb__on_invoke() {
+      krn::Transaction * t;
+      if (agnt_->in_->get(t))
+        agnt_->sink_transaction(t);
+    }
+    BasicSinkAgent * agnt_;
+  };
+
+  BasicSinkAgent::BasicSinkAgent() {
+    in_ = create_child<krn::TMailBox>("in");
+    p_ = create_process<ConsumeProcess>(this);
+  }
+
+  void BasicSinkAgent::cb__on_initialization() {
+    p_->set_sensitive_on(in_->event());
+  };
+
+} // namespace ccm::agents

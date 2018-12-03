@@ -37,7 +37,6 @@
 #include "module.hpp"
 #include "primitives.hpp"
 #include "port.hpp"
-#include "interconnect.hpp"
 #include "agents.hpp"
 #include "transaction.hpp"
 

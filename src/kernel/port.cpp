@@ -27,34 +27,42 @@
 
 #include "port.hpp"
 #include "transaction.hpp"
-#include "interconnect.hpp"
 
 namespace ccm::kernel {
-  
-  Port::Port(std::string name, PortType type)
-    : Module(name), type_(type) {
-  }
 
-  Port::~Port() {}
+  // class Interconnect;
+  
+  // Port::Port(std::string name, PortType type)
+  // {}
 
-  bool Port::can_push() const {
-    return true;
-  }
+  // Port::~Port() {}
+
+  // bool Port::can_push() const {
+  //   return (type_ != PortType::Out);
+  // }
   
-  bool Port::can_pop() const {
-    return true;
-  }
+  // bool Port::can_pop() const {
+  //   return (type_ != PortType::In);
+  // }
   
-  void Port::push(Transaction * t) {
-  }
+  // void Port::push(Transaction * t) {
+  //   // CCM_ASSERT(can_push)
+  //   //    i_out_->push(t);
+  // }
   
-  Transaction * Port::pop() {
-  }
+  // Transaction * Port::pop() {
+  //   // CCM_ASSERT(can_pop)
+  //   Transaction * t;
+  //   mb_in_.get(t);
+  //   return t;
+  // }
   
-  EventHandle Port::event() {
-  }
+  // EventHandle Port::event() { return mb_in_.event(); }
     
-  void Port::bind(Interconnect * i) {
-  }
+  // void Port::bind(Interconnect * i, Port * p) {
+  // }
+  
+  // void Port::bind(Port * p, Port * q) {
+  // }
 
 } // namespace ccm::kernel

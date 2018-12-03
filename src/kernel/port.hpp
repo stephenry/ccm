@@ -33,34 +33,29 @@
 
 namespace ccm::kernel {
 
-  class Transaction;
-  class Interconnect;
+  // enum class PortType {
+  //   In,
+  //   Out,
+  //   BiDir
+  // };
 
-  enum class PortType {
-    In,
-    Out,
-    BiDir
-  };
+  // struct PushIf : public Module {
+  //   //
+  //   virtual bool can_push() const;
+  //   virtual void push(Transaction * t);
 
-  class Port : public Module {
-    friend class Interconnect;
-    
-  public:
-    Port(std::string name, PortType type = PortType::BiDir);
-    virtual ~Port();
+  // private:
+  //   MailBox<Transaction *> *mb_;
+  // };
+  
+  // struct Port {
 
-    virtual bool can_push() const;
-    virtual bool can_pop() const;
-    virtual void push(Transaction * t);
-    virtual Transaction * pop();
-    EventHandle event();
-    
-  private:
-    void bind(Interconnect * i);
-    MailBox<Transaction *> mb_in_;
-    Interconnect * i_out_{nullptr};
-    PortType type_;
-  };
+  // private:
+  // };
+
+  // struct PortDescriptor {
+  // };
+  // using PortDescriptorPtr = std::unique_ptr<PortDescriptor>;
 
 } // namespace ccm::kernel
 

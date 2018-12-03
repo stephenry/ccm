@@ -25,13 +25,9 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-add_library(kernel STATIC
-  common.cpp
-  random.cpp
-  event.cpp
-  scheduler.cpp
-  process.cpp
-  module.cpp
-  port.cpp
+add_library(agents STATIC
   agents.cpp
+  basic.cpp
   )
+target_link_libraries(agents kernel)
+

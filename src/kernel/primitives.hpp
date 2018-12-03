@@ -35,16 +35,20 @@
 #include <deque>
 
 namespace ccm::kernel {
-
-template<typename T>
-class MailBox : public Module {
+  
+class TMailBox : public Module, public TMailBoxIf {
  public:
-  MailBox() {}
-  void set(T const & t) {
+  TMailBox(const std::string & name, std::size_t n = 1)
+    : Module(name), n_(n)
+  {}
+  void push(Transaction * t) override {
     ts_.push_back(t);
     e_.notify_on();
   }
-  bool get(T & t) {
+  bool can_push() const override {
+    return (ts_.size() < n_);
+  }
+  bool get(Transaction * & t) {
     if (!has_mail())
       return false;
     
@@ -55,9 +59,11 @@ class MailBox : public Module {
   bool has_mail() const { return !ts_.empty(); }
   EventHandle event() { return e_; }
  private:
-  std::vector<T> ts_;
+  std::size_t n_;
+  std::vector<Transaction *> ts_;
   EventHandle e_;
 };
+using TMailBoxPtr = std::unique_ptr<TMailBox>;
 
 template<typename MSG>
 class EventQueue : public Module {

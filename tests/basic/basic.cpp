@@ -26,17 +26,16 @@
 //========================================================================== //
 
 #include "ccm.hpp"
-#include "interconnects/fixed_latency.hpp"
 
 #include <deque>
 #include <gtest/gtest.h>
 
 namespace {
 
-  namespace krn = ccm::kernel;
+  //  namespace krn = ccm::kernel;
+  namespace agt = ccm::agents;
 
-  struct SharedState : krn::AgentArguments {
-    std::size_t period{16};
+  struct State {
     std::size_t n{10000};
     std::size_t sender_id;
     std::size_t consumer_id;
@@ -58,21 +57,25 @@ namespace {
     std::size_t value_;
   };
 
-  struct Producer : krn::BasicSourceAgent {
-    CCM_REGISTER_AGENT(Producer);
+  struct Producer : agt::BasicSourceAgent {
+    CCM_AGENT_COMMON(Producer);
+    struct Arguments : krn::AgentArguments {
+      std::size_t period{16};
+    };
     
-    using arg_type = krn::AgentStateBase<SharedState>;
+    using arg_type = Arguments;
     Producer(arg_type & arg)
-      : arg_(arg), krn::BasicSourceAgent(arg.state.period)
+      : arg_(arg), agt::BasicSourceAgent(arg.period)
     {}
+    void set_state(State * state) { state_ = state; }
     krn::Transaction * source_transaction() override {
-      if (arg_.state.n-- == 0)
+      if (state_->n-- == 0)
         return nullptr;
       
       BasicTransaction * bt = p_.alloc();
-      EXPECT_EQ(arg_.id, arg_.state.sender_id);
+      EXPECT_EQ(arg_.id, state_->sender_id);
       bt->portid_src = arg_.id;
-      bt->portid_dst = arg_.state.consumer_id;
+      bt->portid_dst = state_->consumer_id;
       EXPECT_TRUE(!bt->is_valid());
       bt->set(ccm::rand_int());
       return bt;
@@ -80,58 +83,72 @@ namespace {
   private:
     arg_type & arg_;
     ccm::Pool<BasicTransaction> p_;
+    State * state_;
   };
 
-  struct Consumer : krn::BasicSinkAgent {
-    CCM_REGISTER_AGENT(Consumer);
-    
-    using arg_type = krn::AgentStateBase<SharedState>;
+  struct Consumer : agt::BasicSinkAgent {
+    CCM_AGENT_COMMON(Consumer);
+
+    struct Arguments : krn::AgentArguments {};
+
+    using arg_type = Arguments;
     Consumer(arg_type & arg)
       : arg_(arg)
     {}
+    void set_state(State * state) { state_ = state; }
     void sink_transaction (krn::Transaction * t) override {
-      SharedState & state = arg_.state;
-      
       BasicTransaction * bt = static_cast<BasicTransaction *>(t);
       EXPECT_TRUE(bt->is_valid());
       EXPECT_EQ(bt->portid_dst, arg_.id);
-      EXPECT_EQ(bt->portid_src, arg_.state.sender_id);
-      EXPECT_EQ(bt->portid_dst, arg_.state.consumer_id);
-      const std::size_t expected = state.sent.front();
+      EXPECT_EQ(bt->portid_src, state_->sender_id);
+      EXPECT_EQ(bt->portid_dst, state_->consumer_id);
+      const std::size_t expected = state_->sent.front();
       const std::size_t actual = bt->value();
       EXPECT_EQ(expected, actual);
-      state.sent.pop_front();
+      state_->sent.pop_front();
       bt->release();
     }
   private:
+    State * state_;
     arg_type & arg_;
   };
 
   class Top : public krn::Module {
   public:
     Top(std::string name) : krn::Module(name) {
-      pid_ = krn::Agent::get_unique_id();
-      cid_ = krn::Agent::get_unique_id();
-      
-      krn::AgentStateBase<SharedState> pstate{shared_state_};
-      pstate.id = pid_;
-      producer_ = krn::AgentRegistry::construct(this, "Producer", pstate);
+      ccm::register_interconnects(areg_);
+      areg_.register_agent<Producer>();
+      areg_.register_agent<Consumer>();
 
-      krn::AgentStateBase<SharedState> cstate{shared_state_};
-      cstate.id = cid_;
-      consumer_ = krn::AgentRegistry::construct(this, "Consumer", cstate);
+      pargs_.id = 0;
+      pargs_.instance_name = "P";
+      producer_ = static_cast<Producer *>(areg_.construct(this, "Producer", pargs_));
+      producer_->set_state(&state_);
 
-      ccm::FixedLatencyArguments args;
-      args.latency = 16;
-      interconnect_ = krn::InterconnectRegistry::construct(this, "FixedLatency", args);
-      interconnect_->register_agent(pid_, producer_);
-      interconnect_->register_agent(cid_, consumer_);
+      cargs_.id = 1;
+      cargs_.instance_name = "C";
+      consumer_ = static_cast<Consumer *>(areg_.construct(this, "Consumer", cargs_));
+      producer_->set_state(&state_);
+
+      fargs_.id = 2;
+      fargs_.instance_name = "F";
+      fargs_.in_ports = 1;
+      fargs_.out_ports = 1;
+      fixed_latency_ = static_cast<ccm::FixedLatency *>(areg_.construct(this, "FixedLatency", fargs_));
+
+      producer_->out_ = fixed_latency_->ins_[0];
+      fixed_latency_->outs_[0] = consumer_->in_;
     }
   private:
-    std::size_t pid_, cid_;
-    SharedState shared_state_;
-    krn::Agent *producer_, *consumer_;
-    krn::Interconnect  *interconnect_;
+    
+    Producer::Arguments pargs_;
+    Consumer::Arguments cargs_;
+    ccm::FixedLatency::Arguments fargs_;
+    krn::AgentRegistry areg_;
+    State state_;
+    Producer * producer_;
+    Consumer * consumer_;
+    ccm::FixedLatency * fixed_latency_;
   };
   
 } // namespace

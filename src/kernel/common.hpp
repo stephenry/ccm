@@ -30,6 +30,7 @@
 
 #include <vector>
 #include <memory>
+#include <iostream>
 
 #define CCM_MACRO_BEGIN do {
 #define CCM_MACRO_END   } while (false)
@@ -93,6 +94,35 @@ namespace ccm {
     std::size_t m_;
     std::vector<std::unique_ptr<T>> ts_;
     std::vector<T *> fl_;
+  };
+
+  template<typename T>
+  struct StaticResource {
+    StaticResource()
+      : is_initialized_(false) {
+      std::cerr << "Constructing\n";
+    }
+    ~StaticResource() {
+      if (is_initialized_)
+        delete t_;
+    }
+    T& operator*() {
+      if (!is_initialized_)
+        do_init();
+      return *t_;
+    }
+    T* operator->() {
+      if (!is_initialized_)
+        do_init();
+      return t_;
+    }
+  private:
+    void do_init() {
+      t_ = new T{};
+      is_initialized_ = true;
+    }
+    T * t_;
+    bool is_initialized_{false};
   };
 
 } // namespace ccm

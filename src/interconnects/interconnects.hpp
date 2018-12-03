@@ -25,11 +25,16 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __CCM_HPP__
-#define __CCM_HPP__
+#ifndef __INTERCONNECTS_HPP__
+#define __INTERCONNECTS_HPP__
 
 #include "kernel/kernel.hpp"
-#include "interconnects/interconnects.hpp"
-#include "agents/agents.hpp"
+#include "fixed_latency.hpp"
+
+namespace ccm {
+
+  void register_interconnects(kernel::AgentRegistry & r);
+
+} // namespace ccm
 
 #endif

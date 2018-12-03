@@ -25,11 +25,41 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __CCM_HPP__
-#define __CCM_HPP__
+#ifndef __BASIC_HPP__
+#define __BASIC_HPP__
 
 #include "kernel/kernel.hpp"
-#include "interconnects/interconnects.hpp"
-#include "agents/agents.hpp"
+namespace krn = ccm::kernel;
+
+namespace ccm::agents {
+
+  class BasicSourceAgent : public krn::Agent {
+    struct EmitProcess;
+  public:
+    BasicSourceAgent(std::size_t period);
+
+    krn::TMailBoxIf * out_;
+  protected:
+    virtual krn::Transaction * source_transaction() = 0;
+  private:
+    EmitProcess * p_;
+    std::size_t period_;
+  };
+
+  class BasicSinkAgent : public krn::Agent {
+    struct ConsumeProcess;
+  public:
+    BasicSinkAgent();
+    
+    krn::TMailBox * in_;
+  protected:
+    virtual void sink_transaction (krn::Transaction * t) = 0;
+  private:
+    void cb__on_initialization() override;
+
+    ConsumeProcess * p_;
+  };
+
+} // namespace ccm::agents
 
 #endif

@@ -37,12 +37,25 @@
 
 namespace ccm::kernel {
 
+class Transaction;
+class TMailBox;
+
+class TMailBoxIf {
+ public:
+  virtual bool can_push() const = 0;
+  virtual void push(Transaction * t) = 0;
+  virtual EventHandle event() = 0;
+  virtual ~TMailBoxIf() {}
+};
+
 class Module {
   friend class Scheduler;
   friend class AgentRegistry;
   friend class InterconnectRegistry;
 
 public:
+
+  static void bind(TMailBox * sink, TMailBoxIf * source);
 
   //
   Module () : Module("<ANONYMOUS>") {}

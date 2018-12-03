@@ -25,11 +25,14 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __CCM_HPP__
-#define __CCM_HPP__
+#include "agents.hpp"
 
-#include "kernel/kernel.hpp"
-#include "interconnects/interconnects.hpp"
-#include "agents/agents.hpp"
+#include "basic.hpp"
 
-#endif
+namespace ccm::agents {
+
+  void register_agents(krn::AgentRegistry & r) {
+    // TODO:
+  }
+
+} // namespace ccm::agents
