@@ -77,6 +77,10 @@ namespace ccm::kernel {
     static Pool<WakeProcessAtTimeTask> pool_;
     
     Sensitive & top = sensitive_.back();
+
+    if (!top.is_valid)
+      return ;
+    
     if (top.on == SensitiveOn::Event) {
       top.e.add_to_wait_set(this);
     } else {

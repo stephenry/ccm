@@ -51,6 +51,7 @@ namespace ccm::kernel {
   };
 
   struct EventWaitable : Waitable {
+    void reset() {}
     void set_e(Event e) { e_ = e; }
     void notify() override { e_.notify(); }
   private:
@@ -63,14 +64,35 @@ namespace ccm::kernel {
     {}
 
     virtual void notify(std::size_t t = 0) = 0;
-    virtual void add_to_wait_set(Process * p) = 0;
-    virtual void wake_waiting_processes() = 0;
+    void add_to_wait_set(Process * p) {
+      static Pool<ProcessWaitable> pool_;
 
+      ProcessWaitable * w = pool_.alloc();
+      w->set_sch(sch_);
+      w->set_p(p);
+      waiting_.push_back(w);
+    }
+    void add_to_wait_set(Event e) {
+      static Pool<EventWaitable> pool_;
+
+      EventWaitable * w = pool_.alloc();
+      w->set_e(e);
+      waiting_.push_back(w);
+    }
+    void wake() {
+      for (Waitable * w : waiting_) {
+        w->notify();
+        w->release();
+      }
+      waiting_.clear();
+    }
+  protected:
+    std::vector<Waitable *> waiting_;
     Scheduler * sch_;
   };
 
   struct NotifyEventFrontierTask : Frontier::Task {
-    void apply () override { ctxt_->wake_waiting_processes(); }
+    void apply () override { ctxt_->wake(); }
     std::size_t time () const override { return time_; }
     void reset() override { ctxt_ = nullptr; }
     std::size_t time_;
@@ -81,7 +103,7 @@ namespace ccm::kernel {
     NormalEventContext(Scheduler * sch)
       : EventContext(sch)
     {}
-    void notify(std::size_t t = 0) {
+    void notify(std::size_t t = 0) override {
       static Pool<NotifyEventFrontierTask> pool_;
       
       NotifyEventFrontierTask * p = pool_.alloc();
@@ -89,23 +111,6 @@ namespace ccm::kernel {
       p->time_ = t;
       sch_->add_frontier_task(p);
     }
-    void add_to_wait_set(Process * p) {
-      static Pool<ProcessWaitable> pool_;
-
-      ProcessWaitable * w = pool_.alloc();
-      w->set_sch(sch_);
-      w->set_p(p);
-      waiting_.push_back(w);
-    }
-    void wake_waiting_processes() {
-      for (Waitable * w : waiting_) {
-        w->notify();
-        w->release();
-      }
-      waiting_.clear();
-    }
-  private:
-    std::vector<Waitable *> waiting_;
   };
 
   Event EventBuilder::construct_event() const {
@@ -117,11 +122,7 @@ namespace ccm::kernel {
     OrEventContext(Scheduler * sch)
       : EventContext(sch)
     {}
-    virtual void notify(std::size_t t = 0) {
-    }
-    virtual void add_to_wait_set(Process * p) {
-    }
-    virtual void wake_waiting_processes() {
+    virtual void notify(std::size_t t = 0) override {
     }
   };
 
@@ -134,11 +135,7 @@ namespace ccm::kernel {
     AndEventContext(Scheduler * sch)
       : EventContext(sch)
     {}
-    virtual void notify(std::size_t t = 0) {
-    }
-    virtual void add_to_wait_set(Process * p) {
-    }
-    virtual void wake_waiting_processes() {
+    virtual void notify(std::size_t t = 0) override {
     }
   };
 

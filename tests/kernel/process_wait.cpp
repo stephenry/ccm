@@ -46,11 +46,15 @@ namespace {
         state_.e.notify(ctxt_.now() + 10);
       }
       void cb__on_invoke() override {
-        if (--state_.n != 0)
+        if (state_.n != 0) {
           state_.e.notify(ctxt_.now() + 10);
+          --state_.n;
+        }
       }
       void cb__on_termination() override {
         EXPECT_EQ(state_.n, 0);
+        const std::size_t end_time = 10 * 100000;
+        EXPECT_EQ(ctxt_.now(), end_time);
       }
       SharedState state_;
     };
@@ -74,7 +78,7 @@ namespace {
     struct SharedState {
       std::size_t n{100000};
       std::size_t delay{10};
-      std::size_t next_time;
+      std::size_t next_time{0};
     };
 
     struct ProcessWaitFor : public ccm::kernel::Process {
@@ -114,7 +118,7 @@ namespace {
     struct SharedState {
       std::size_t n{100000};
       std::size_t delay{10};
-      std::size_t next_time;
+      std::size_t next_time{0};
     };
 
     struct ProcessWaitUntil : public ccm::kernel::Process {
