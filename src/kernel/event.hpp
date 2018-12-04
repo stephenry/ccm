@@ -29,6 +29,7 @@
 #define __EVENT_HPP__
 
 #include "common.hpp"
+#include <vector>
 
 namespace ccm::kernel {
 
@@ -61,23 +62,17 @@ namespace ccm::kernel {
   class EventBuilder {
     friend class Scheduler;
     friend class Context;
-    
+
     EventBuilder(Scheduler * sch)
       : sch_(sch)
     {}
 
   public:
-    Event construct_event() const;
-
-    template<typename FwdIt>
-    Event construct_and_event(FwdIt begin, FwdIt end) const {
-      return {}; // TODO
-    }
+    using list_type = std::vector<Event>;
     
-    template<typename FwdIt>
-    Event construct_or_event(FwdIt begin, FwdIt end) const {
-      return {}; // TODO
-    }
+    Event construct_event() const;
+    Event construct_and_event(const list_type & l) const;
+    Event construct_or_event(const list_type & l) const;
     
   private:
     mutable Scheduler * sch_{nullptr};

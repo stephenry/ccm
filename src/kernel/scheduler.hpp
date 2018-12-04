@@ -91,6 +91,7 @@ namespace ccm::kernel {
   class Scheduler {
     friend class Module;
     friend class Process;
+    friend class ProcessWaitable;
     friend class NormalEventContext;
     friend class WakeProcessAtTimeTask;
   

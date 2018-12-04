@@ -33,6 +33,30 @@
 
 namespace ccm::kernel {
 
+  struct Waitable : Poolable {
+    virtual void notify() = 0;
+  };
+
+  struct ProcessWaitable : Waitable {
+    void reset() { sch_ = nullptr; p_ = nullptr; }
+    void set_sch(Scheduler * sch) { sch_ = sch; }
+    void set_p(Process * p) { p_ = p; }
+    void notify() override {
+      if (p_)
+        sch_->add_process_next_delta(p_);
+    }
+  private:
+    Scheduler * sch_;
+    Process * p_;
+  };
+
+  struct EventWaitable : Waitable {
+    void set_e(Event e) { e_ = e; }
+    void notify() override { e_.notify(); }
+  private:
+    Event e_;
+  };
+
   struct EventContext : ReferenceCounted {
     EventContext(Scheduler * sch)
       : sch_(sch)
@@ -66,29 +90,62 @@ namespace ccm::kernel {
       sch_->add_frontier_task(p);
     }
     void add_to_wait_set(Process * p) {
-      suspended_processes_.push_back(p);
+      static Pool<ProcessWaitable> pool_;
+
+      ProcessWaitable * w = pool_.alloc();
+      w->set_sch(sch_);
+      w->set_p(p);
+      waiting_.push_back(w);
     }
     void wake_waiting_processes() {
-      for (Process * p : suspended_processes_)
-        if (p != nullptr)
-          sch_->add_process_next_delta(p);
-      suspended_processes_.clear();
+      for (Waitable * w : waiting_) {
+        w->notify();
+        w->release();
+      }
+      waiting_.clear();
     }
   private:
-    std::vector<Process *> suspended_processes_;
+    std::vector<Waitable *> waiting_;
   };
+
+  Event EventBuilder::construct_event() const {
+    NormalEventContext * ctxt = new NormalEventContext(sch_);
+    return Event{ctxt};
+  }
 
   struct OrEventContext : EventContext {
     OrEventContext(Scheduler * sch)
       : EventContext(sch)
     {}
+    virtual void notify(std::size_t t = 0) {
+    }
+    virtual void add_to_wait_set(Process * p) {
+    }
+    virtual void wake_waiting_processes() {
+    }
   };
+
+  Event EventBuilder::construct_or_event(const list_type & l) const {
+    OrEventContext * ctxt = new OrEventContext{sch_};
+    return Event{ctxt};
+  }
 
   struct AndEventContext : EventContext {
     AndEventContext(Scheduler * sch)
       : EventContext(sch)
     {}
+    virtual void notify(std::size_t t = 0) {
+    }
+    virtual void add_to_wait_set(Process * p) {
+    }
+    virtual void wake_waiting_processes() {
+    }
   };
+
+  Event EventBuilder::construct_and_event(const list_type & l) const {
+    AndEventContext * ctxt = new AndEventContext{sch_};
+    return Event{ctxt};
+  }
 
   Event::Event(EventContext * ctxt) : ctxt_(ctxt) {}
   Event::Event() : ctxt_{nullptr} {}
@@ -110,10 +167,5 @@ namespace ccm::kernel {
   bool Event::is_valid() const { return ctxt_ != nullptr; }
   void Event::notify(std::size_t t) { ctxt_->notify(t); }
   void Event::add_to_wait_set(Process * p) { ctxt_->add_to_wait_set(p); }
-
-  Event EventBuilder::construct_event() const {
-    NormalEventContext * ctxt = new NormalEventContext(sch_);
-    return Event{ctxt};
-  }
 
 } // namespace ccm::kernel
