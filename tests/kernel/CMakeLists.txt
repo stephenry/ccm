@@ -26,9 +26,6 @@
 ##========================================================================== //
 
 create_test(process_wait)
-#create_test(wake_after)
 create_test(wake_on_event)
 create_test(run_for_time)
-#create_test(run_until_exhaust)
-#create_test(event_or_list)
 create_test(event_queue)
