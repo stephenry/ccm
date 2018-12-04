@@ -31,6 +31,7 @@
 #include <vector>
 #include <memory>
 #include <iostream>
+#include <string>
 
 #define CCM_MACRO_BEGIN do {
 #define CCM_MACRO_END   } while (false)
@@ -40,6 +41,7 @@
   if (!(__cond)) {                                              \
     std::cout << __FILE__ << ":" << __LINE__                    \
               << " assertion failed: " << #__cond << "\n";      \
+    std::exit(1);                                               \
   }                                                             \
   CCM_MACRO_END
 
@@ -47,6 +49,7 @@ namespace ccm {
 
   class PoolBase;
   class Poolable;
+  class Scheduler;
   
   class Poolable {
     friend class PoolBase;
@@ -123,6 +126,19 @@ namespace ccm {
     }
     T * t_;
     bool is_initialized_{false};
+  };
+
+  class ReferenceCounted {
+  public:
+    ReferenceCounted()
+      : cnt_(1) {}
+    void inc() { cnt_++; }
+    void dec() {
+      if (cnt_-- == 0)
+        delete this;
+    }
+  private:
+    std::size_t cnt_;
   };
 
 } // namespace ccm

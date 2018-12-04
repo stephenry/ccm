@@ -28,8 +28,9 @@
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(kernel)
-add_subdirectory(interconnects)
-add_subdirectory(agents)
+#add_subdirectory(interconnects)
+#add_subdirectory(agents)
 
 add_library(ccm STATIC)
-target_link_libraries(ccm PRIVATE kernel interconnects agents)
+#target_link_libraries(ccm PRIVATE kernel interconnects agents)
+target_link_libraries(ccm PRIVATE kernel)

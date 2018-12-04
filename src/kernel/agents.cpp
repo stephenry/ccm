@@ -38,7 +38,7 @@ namespace ccm::kernel {
     
     AgentPtr ptr = agents_[name]->construct(args);
     Agent *ret{ptr.get()};
-    m->add_child(std::move(ptr));
+    //    m->add_child(std::move(ptr));
     return ret;
   }
 

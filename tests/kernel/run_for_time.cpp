@@ -30,12 +30,12 @@
 
 namespace {
 
-struct RunForTime : public ccm::kernel::Module {
+struct RunForTime : public ccm::kernel::TopModule {
 
   class P0 : public ccm::kernel::Process {
   public:
-    P0(RunForTime * prnt)
-      : prnt_(prnt)
+    P0(const ccm::kernel::Context & context, RunForTime * prnt)
+      : Process(context), prnt_(prnt)
     {}
   private:
     virtual void cb__on_initialization() override {
@@ -51,21 +51,20 @@ struct RunForTime : public ccm::kernel::Module {
     RunForTime * prnt_;
   };
 
-  RunForTime(const std::string & name)
-    : Module(name) {
-    create_process<P0>(this);
+  RunForTime(ccm::kernel::Scheduler & sch)
+    : TopModule(std::addressof(sch), "top") {
+    p0_ = create_process<P0>("P0", this);
   }
   std::size_t n_{100};
+  P0 * p0_;
 };
 
 } // namespace
 
 TEST(RunForTime, t_100) {
   ccm::kernel::Scheduler sch;
+  sch.set_top(new RunForTime(sch));
 
-  ccm::kernel::ModulePtr top = sch.construct_top<RunForTime>("RunForTime");
-  sch.set_top(std::move(top));
-  
   ccm::kernel::RunOptions opts{100};
   sch.run(opts);
   EXPECT_EQ(sch.now(), 100);

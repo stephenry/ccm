@@ -29,77 +29,91 @@
 #include "scheduler.hpp"
 
 #include <algorithm>
+#include <vector>
 
 namespace ccm::kernel {
 
-bool operator==(EventHandle const & a, EventHandle const & b) {
-  return (a.ed_ == b.ed_);
-}
+  struct EventContext : ReferenceCounted {
+    EventContext(Scheduler * sch)
+      : sch_(sch)
+    {}
 
-bool operator!=(EventHandle const & a, EventHandle const & b) {
-  return !(a.ed_ == b.ed_);
-}
+    virtual void notify(std::size_t t = 0) = 0;
+    virtual void add_to_wait_set(Process * p) = 0;
+    virtual void wake_waiting_processes() = 0;
 
-bool EventHandle::is_valid() const {
-  return ed_ != nullptr;
-}
+    Scheduler * sch_;
+  };
 
-void EventHandle::notify_after(std::size_t t) {
-  ed_->notify_after(*this, t);
-};
+  struct NotifyEventFrontierTask : Frontier::Task {
+    void apply () override { ctxt_->wake_waiting_processes(); }
+    std::size_t time () const override { return time_; }
+    void reset() override { ctxt_ = nullptr; }
+    std::size_t time_;
+    EventContext * ctxt_;
+  };
 
-void EventHandle::notify_on(std::size_t t) {
-  ed_->notify_on(*this, t);
-};
+  struct NormalEventContext : EventContext {
+    NormalEventContext(Scheduler * sch)
+      : EventContext(sch)
+    {}
+    void notify(std::size_t t = 0) {
+      static Pool<NotifyEventFrontierTask> pool_;
+      
+      NotifyEventFrontierTask * p = pool_.alloc();
+      p->ctxt_ = this;
+      p->time_ = t;
+      sch_->add_frontier_task(p);
+    }
+    void add_to_wait_set(Process * p) {
+      suspended_processes_.push_back(p);
+    }
+    void wake_waiting_processes() {
+      for (Process * p : suspended_processes_)
+        if (p != nullptr)
+          sch_->add_process_next_delta(p);
+      suspended_processes_.clear();
+    }
+  private:
+    std::vector<Process *> suspended_processes_;
+  };
 
-void EventHandle::add_to_wait_set(Process * p) {
-  ed_->add_to_wait_set(p);
-}
+  struct OrEventContext : EventContext {
+    OrEventContext(Scheduler * sch)
+      : EventContext(sch)
+    {}
+  };
 
-void EventHandle::remove_from_wait_set(Process * p) {
-  ed_->remove_from_wait_set(p);
-}
+  struct AndEventContext : EventContext {
+    AndEventContext(Scheduler * sch)
+      : EventContext(sch)
+    {}
+  };
 
-void EventHandle::wake_waiting_processes() {
-  ed_->wake_waiting_processes();
-}
+  Event::Event(EventContext * ctxt) : ctxt_(ctxt) {}
+  Event::Event() : ctxt_{nullptr} {}
+  Event::~Event() { if (is_valid()) ctxt_->dec(); }
 
-void EventDescriptor::notify_after(EventHandle e, std::size_t t) {
-  sch_->add_task_notify_after(e, t);
-}
+  Event::Event(const Event & e) {
+    if (e.is_valid()) {
+      ctxt_ = e.ctxt_;
+      ctxt_->inc();
+    }
+  }
+  Event & Event::operator=(Event e) {
+    e.swap(*this);
+    if (is_valid())
+      ctxt_->inc();
+    return *this;
+  }
 
-void EventDescriptor::notify_on(EventHandle e, std::size_t t) {
-  sch_->add_task_notify_on(e, t);
-}
+  bool Event::is_valid() const { return ctxt_ != nullptr; }
+  void Event::notify(std::size_t t) { ctxt_->notify(t); }
+  void Event::add_to_wait_set(Process * p) { ctxt_->add_to_wait_set(p); }
 
-void EventDescriptor::wake_waiting_processes() {
-  for (Process * p : suspended_on_)
-    if (p != nullptr)
-      sch_->add_task_next_delta(p);
-  suspended_on_.clear();
-}
-
-void EventDescriptor::add_to_wait_set(Process * p) {
-  suspended_on_.push_back(p);
-}
-
-void EventDescriptor::remove_from_wait_set(Process * p) {
-  // Convert pointer to nullptr for speed, skip nullptrs on notify.
-  //
-  Process * replace{nullptr};
-  std::replace(suspended_on_.begin(), suspended_on_.end(), p, replace);
-}
-
-  //void EventOrDescriptor::notify(EventHandle h, std::size_t t) {
-  // for (Process * p : suspended_on_) {
-  //   if (p != nullptr)
-  //     sch_->add_task_wake_after(p, t);
-
-  //   for (EventHandle e : el_) {
-  //     if (e != h)
-  //       e.remove_from_wait_set(p);
-  //   }
-  // }
-  //}
+  Event EventBuilder::construct_event() const {
+    NormalEventContext * ctxt = new NormalEventContext(sch_);
+    return Event{ctxt};
+  }
 
 } // namespace ccm::kernel

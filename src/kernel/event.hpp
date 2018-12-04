@@ -30,65 +30,58 @@
 
 #include "common.hpp"
 
-#include <memory>
-#include <vector>
-
 namespace ccm::kernel {
 
-class Process;
-class EventDescriptor;
-class Scheduler;
+  class Process;
+  class Scheduler;
+  class EventContext;
 
-class EventHandle {
-  friend class Scheduler;
-  friend class NotifyEventTask;
+  class Event {
+    friend class Process;
+    friend class EventBuilder;
 
-  friend bool operator==(EventHandle const & a, EventHandle const & b);
-  friend bool operator!=(EventHandle const & a, EventHandle const & b);
+    Event(EventContext * ctxt);
+  public:
+    Event();
+    ~Event();
 
-  EventHandle(EventDescriptor * ed) : ed_(ed) {}
-public:
-  EventHandle() : ed_{nullptr} {}
-  bool is_valid() const;
-  void notify_after(std::size_t t = 0);
-  void notify_on(std::size_t t = 0);
-private:
-  void add_to_wait_set(Process * p);
-  void remove_from_wait_set(Process *p);
-  void wake_waiting_processes();
-  EventDescriptor *ed_{nullptr};
-};
+    Event(const Event & h);
+    Event & operator=(Event h);
+    
+    bool is_valid() const;
+    void notify(std::size_t t = 0);
+    void swap(Event & h) { std::swap(ctxt_, h.ctxt_); }
 
-using EventOrList = std::vector<EventHandle>;
+  private:
+    void add_to_wait_set(Process * p);
+    
+    EventContext *ctxt_{nullptr};
+  };
 
-class EventDescriptor {
-  friend class Scheduler;
- protected:
-  EventDescriptor(Scheduler * sch) : sch_(sch) {}
- public:
-  virtual void notify_after(EventHandle h, std::size_t t = 0);
-  virtual void notify_on(EventHandle h, std::size_t t = 0);
-  virtual void add_to_wait_set(Process * p);
-  virtual void remove_from_wait_set(Process * p);
-  virtual void wake_waiting_processes();
-  virtual ~EventDescriptor() {}
- protected:
-  std::vector<Process *> suspended_on_;
-  Scheduler * sch_;
-};
+  class EventBuilder {
+    friend class Scheduler;
+    friend class Context;
+    
+    EventBuilder(Scheduler * sch)
+      : sch_(sch)
+    {}
 
-class EventOrDescriptor : public EventDescriptor {
-  friend class Scheduler;
+  public:
+    Event construct_event() const;
 
-  EventOrDescriptor(Scheduler * sch, EventOrList const & el)
-      : EventDescriptor(sch), el_(el) {}
- public:
-  //  void notify(EventHandle h, std::size_t t = 0) override;
- private:
-  EventOrList const & el_;
-};
-
-using EventDescriptorPtr = std::unique_ptr<EventDescriptor>;
+    template<typename FwdIt>
+    Event construct_and_event(FwdIt begin, FwdIt end) const {
+      return {}; // TODO
+    }
+    
+    template<typename FwdIt>
+    Event construct_or_event(FwdIt begin, FwdIt end) const {
+      return {}; // TODO
+    }
+    
+  private:
+    mutable Scheduler * sch_{nullptr};
+  };
 
 } // namespace ccm::kernel
 

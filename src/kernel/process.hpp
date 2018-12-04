@@ -28,8 +28,8 @@
 #ifndef __PROCESS_HPP__
 #define __PROCESS_HPP__
 
-#include "fwd.hpp"
 #include "event.hpp"
+#include "module.hpp"
 
 namespace ccm::kernel {
 
@@ -40,7 +40,7 @@ struct Sensitive {
   Sensitive()
     : is_valid(false)
   {}
-  Sensitive(SensitiveTo to, EventHandle e)
+  Sensitive(SensitiveTo to, Event e)
     : is_valid(true), to(to), on(SensitiveOn::Event), e(e)
   {}
   Sensitive(SensitiveTo to, std::size_t t)
@@ -49,10 +49,8 @@ struct Sensitive {
   bool is_valid;
   SensitiveTo to;
   SensitiveOn on;
-  union {
-    EventHandle e;
-    std::size_t t;
-  };
+  Event e;
+  std::size_t t;
 };
 
 class Process {
@@ -61,20 +59,15 @@ class Process {
   
  public:
 
-  Process () : Process("<ANONYMOUS>") {}
-  Process (std::string name) : name_(name) {}
+  Process (const Context & context);
   
   //
   virtual ~Process() {}
 
   //
-  void set_sensitive_on(EventHandle e);
+  void set_sensitive_on(Event e);
 
 protected:
-  
-  //
-  std::size_t now() const;
-  std::size_t delta() const;
 
   //
   virtual void cb__on_elaboration() {}
@@ -83,30 +76,24 @@ protected:
   virtual void cb__on_termination() {}
 
   //
-  void wait(EventHandle e);
+  void wait(Event e);
   void wait_for(std::size_t t = 0);
   void wait_until(std::size_t t);
 
+  //
+  Context ctxt_;
 private:
   //
-  void call_on_elaboration(ElaborationState const & state);
+  void call_on_elaboration();
   void call_on_initialization();
   void call_on_invoke();
   void call_on_termination();
-  //
-  void set_scheduler(Scheduler * sch) { sch_ = sch; }
-  void set_parent(Module * parent) { parent_ = parent; }
 
   //
-  void apply_sensitivity(Sensitive s);
+  void update_sensitivity();
 
   //
-  Scheduler * sch_{nullptr};
-  Module * parent_{nullptr};
-  std::string name_;
-
-  Sensitive s_static_;
-  Sensitive s_dynamic_;
+  std::vector<Sensitive> sensitive_;
 };
 
 } // namespace ccm::kernel

@@ -33,7 +33,7 @@
 namespace {
 
 template<typename MSG>
-class EventQueueTestTop: public ccm::kernel::Module {
+class EventQueueTestTop: public ccm::kernel::TopModule {
   struct FrontierEntry {
     std::size_t t;
     MSG msg;
@@ -45,36 +45,39 @@ class EventQueueTestTop: public ccm::kernel::Module {
   } state_;
 
   struct P0 : public ccm::kernel::Process {
-    P0(State & state) : state_(state) {}
+    P0(const ccm::kernel::Context & ctxt, State & state)
+      : Process(ctxt), state_(state) {}
     void cb__on_initialization() override {
       size_ = state_.frontier.size();
     }
     void cb__on_invoke() override {
       const FrontierEntry & e = state_.frontier.front();
       
-      EXPECT_EQ(now(), e.t);
-      EXPECT_TRUE(state_.eq->has_msg(now()));
+      EXPECT_EQ(ctxt_.now(), e.t);
+      EXPECT_TRUE(state_.eq->has_msg(ctxt_.now()));
 
       MSG msg;
-      EXPECT_TRUE(state_.eq->get(msg, now()));
+      EXPECT_TRUE(state_.eq->get(msg, ctxt_.now()));
       EXPECT_EQ(msg, e.msg);
 
       state_.frontier.pop_front();
       n_++;
-      last_time_ = now();
+      last_time_ = ctxt_.now();
     }
     void cb__on_termination() override {
       EXPECT_EQ(state_.frontier.size(), 0);
       EXPECT_EQ(n_, size_);
-      EXPECT_EQ(now(), last_time_);
+      EXPECT_EQ(ctxt_.now(), last_time_);
     }
    private:
     State & state_;
     std::size_t size_{0}, n_{0}, last_time_{0};
   };
  public:
-  EventQueueTestTop(std::string name) : ccm::kernel::Module(name) {
-    p0_ = create_process<P0>(state_);
+  EventQueueTestTop(ccm::kernel::Scheduler & sch,
+                    const std::string & instance_name = "top")
+    : ccm::kernel::TopModule(std::addressof(sch), instance_name) {
+    p0_ = create_process<P0>("p0", state_);
     state_.eq = create_child<ccm::kernel::EventQueue<MSG>>("eq");
     for (std::size_t i = 1; i < 1000; i++) {
       const std::size_t msg = i;
@@ -98,11 +101,8 @@ private:
 
 TEST(EventQueueTest, t0) {
   ccm::kernel::Scheduler sch;
-  {
-    ccm::kernel::ModulePtr top = sch.construct_top<
-      EventQueueTestTop<std::size_t>>("EventQueueTestTop");
-    sch.set_top(std::move(top));
-  }
+  ccm::kernel::Module * t = new EventQueueTestTop<std::size_t>(sch);
+  sch.set_top(t);
   sch.run();
 }
 

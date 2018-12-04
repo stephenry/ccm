@@ -26,67 +26,61 @@
 //========================================================================== //
 
 #include "module.hpp"
+#include "process.hpp"
 #include "scheduler.hpp"
 
 #include <algorithm>
 
 namespace ccm::kernel {
 
-  Module::~Module () {
-  }
-
-  SimState Module::state() const { return sch_->state(); }
-  std::size_t Module::now() const { return sch_->now(); }
-  std::size_t Module::delta() const { return sch_->delta(); }
+  Module::Module (const Context & ctxt)
+    : ctxt_(ctxt) {}
   
-  //
-  EventHandle Module::create_event() {
-    return sch_->create_event();
+  Module::~Module() {
+    for (Module * m : children_)
+      delete m;
+    for (Process * p : processes_)
+      delete p;
   }
 
-  //
-  EventHandle Module::create_event(EventOrList const & e) {
-    return sch_->create_event(e);
-  }
+  std::size_t Context::now() const { return sch_->now(); }
+  std::size_t Context::delta() const { return sch_->delta(); }
+  std::string Context::instance_name() const { return instance_name_; }
+  EventBuilder Context::event_builder() const { return EventBuilder{sch_}; }
+  Scheduler * Context::sch() const { return sch_; }
 
-  //
-  void Module::add_child (ModulePtr && ptr) {
-    children_.push_back(std::move(ptr));
-  }
-
-  void Module::call_on_elaboration(ElaborationState const & state) {
+  void Module::call_on_elaboration() {
     std::for_each(children_.begin(), children_.end(),
-                  [=](ModulePtr & ptr) {
-                    ptr->call_on_elaboration(state);
-                  });
-    std::for_each(processes_.begin(), processes_.end(),
-                  [=](ProcessPtr & ptr) {
-                    ptr->call_on_elaboration(state);
-                  });
-    set_scheduler(state.sch);
-    cb__on_elaboration();
-  }
+                  [=](Module * p) {
+                     p->call_on_elaboration();
+                   });
+     std::for_each(processes_.begin(), processes_.end(),
+                   [=](Process * p) {
+                     p->call_on_elaboration();
+                   });
+     cb__on_elaboration();
+   }
   
   void Module::call_on_initialization() {
     std::for_each(children_.begin(), children_.end(),
-                  [=](ModulePtr & ptr) {
-                    ptr->call_on_initialization();
+                  [=](Module * m) {
+                    m->call_on_initialization();
                   });
     std::for_each(processes_.begin(), processes_.end(),
-                  [=](ProcessPtr & ptr) {
-                    ptr->call_on_initialization();
+                  [=](Process * p) {
+                    p->call_on_initialization();
                   });
     cb__on_initialization();
   }
   
   void Module::call_on_termination() {
     std::for_each(children_.begin(), children_.end(),
-                  [=](ModulePtr & ptr) {
-                    ptr->call_on_termination();
+                  [=](Module * m) {
+                    m->call_on_termination();
                   });
     std::for_each(processes_.begin(), processes_.end(),
-                  [=](ProcessPtr & ptr) {
-                    ptr->call_on_termination();
+                  [=](Process * p) {
+                    p->call_on_termination();
                   });
     cb__on_termination();
   }

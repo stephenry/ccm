@@ -35,85 +35,94 @@
 #include <deque>
 
 namespace ccm::kernel {
-  
-class TMailBox : public Module, public TMailBoxIf {
- public:
-  TMailBox(const std::string & name, std::size_t n = 1)
-    : Module(name), n_(n)
-  {}
-  void push(Transaction * t) override {
-    ts_.push_back(t);
-    e_.notify_on();
-  }
-  bool can_push() const override {
-    return (ts_.size() < n_);
-  }
-  EventHandle event() override { return e_; }
-  bool get(Transaction * & t) {
-    if (!has_mail())
-      return false;
-    
-    t = ts_.back();
-    ts_.pop_back();
-    return true;
-  }
-  bool has_mail() const { return !ts_.empty(); }
- private:
-  void cb__on_elaboration() override {
-    e_ = create_event();
-  }
-  std::size_t n_;
-  std::vector<Transaction *> ts_;
-  EventHandle e_;
-};
-using TMailBoxPtr = std::unique_ptr<TMailBox>;
 
-template<typename MSG>
-class EventQueue : public Module {
-  struct QueueEntry {
-    std::size_t t;
-    MSG msg;
+  template<typename T>
+  class MailBoxIf {
+  public:
+    virtual bool can_push() const = 0;
+    virtual void push(const T & t) = 0;
+    virtual Event event() = 0;
+    virtual ~MailBoxIf() {}
   };
- public:
-  EventQueue(const std::string & name) : Module(name)
-  {}
-  EventHandle event() { return e_; }
-  void set (MSG const & msg, std::size_t t = 0) {
-    if (v_.size() == 0)
-      e_.notify_on(t);
-    v_.push_back(QueueEntry{t, msg});
-  }
-  bool has_msg(std::size_t t) const {
-    if (!has_events())
-      return false;
-    
-    const QueueEntry & qe = v_.front();
-    return (qe.t <= t);
-  }
-  bool get(MSG & msg, std::size_t t) {
-    const bool valid = has_msg(t);
-    if (valid) {
-      const QueueEntry & qe = v_.front();
-      msg = qe.msg;
-      v_.pop_front();
 
-      if (has_events()) {
-        const QueueEntry & qe = v_.front();
-        e_.notify_on(qe.t);
-      }
+  template<typename T>
+  class MailBox : public Module, public MailBoxIf<T> {
+  public:
+    MailBox(const Context & ctxt, std::size_t n = 1)
+      : Module(ctxt), n_(n) {
+      const EventBuilder b = ctxt.event_builder();
+      e_ = b.construct_event();
     }
-    return valid;
-  }
- private:
-  void cb__on_elaboration() override {
-    e_ = create_event();
-  }
-  bool has_events() const {
-    return (v_.size() != 0);
-  }
-  std::deque<QueueEntry> v_;
-  EventHandle e_;
-};
+    void push(const T & t) override {
+      ts_.push_back(t);
+      e_.notify();
+    }
+    bool can_push() const override {
+      return (ts_.size() < n_);
+    }
+    Event event() override { return e_; }
+    bool get(T & t) {
+      if (!has_mail())
+        return false;
+    
+      t = ts_.back();
+      ts_.pop_back();
+      return true;
+    }
+    bool has_mail() const { return !ts_.empty(); }
+  private:
+    std::size_t n_;
+    std::vector<T> ts_;
+    Event e_;
+  };
+  using TMailBox = MailBox<Transaction *>;
+  using TMailBoxIf = MailBoxIf<Transaction *>;
+
+  template<typename MSG>
+  class EventQueue : public Module {
+    struct QueueEntry {
+      std::size_t t;
+      MSG msg;
+    };
+  public:
+    EventQueue(const Context & ctxt) : Module(ctxt) {
+      EventBuilder b = ctxt.event_builder();
+      e_ = b.construct_event();
+    }
+    Event event() { return e_; }
+    void set (MSG const & msg, std::size_t t = 0) {
+      if (v_.size() == 0)
+        e_.notify(t);
+      v_.push_back(QueueEntry{t, msg});
+    }
+    bool has_msg(std::size_t t) const {
+      if (!has_events())
+        return false;
+    
+      const QueueEntry & qe = v_.front();
+      return (qe.t <= t);
+    }
+    bool get(MSG & msg, std::size_t t) {
+      const bool valid = has_msg(t);
+      if (valid) {
+        const QueueEntry & qe = v_.front();
+        msg = qe.msg;
+        v_.pop_front();
+
+        if (has_events()) {
+          const QueueEntry & qe = v_.front();
+          e_.notify(qe.t);
+        }
+      }
+      return valid;
+    }
+  private:
+    bool has_events() const {
+      return (v_.size() != 0);
+    }
+    std::deque<QueueEntry> v_;
+    Event e_;
+  };
 
 } // namespace ccm::kernel
 

@@ -37,51 +37,53 @@ struct TestOptions {
   std::size_t delay{10};
 };
   
-class WakeOnEventTop : public ccm::kernel::Module {
+class WakeOnEventTop : public ccm::kernel::TopModule {
   struct SharedState {
     TestOptions opts;
     std::size_t next_process{0};
     std::size_t n{0};
-    std::vector<ccm::kernel::EventHandle> es;
+    std::vector<ccm::kernel::Event> es;
     std::vector<ccm::kernel::Process *> processes_;
   };
   struct WakeOnEventProcess : ccm::kernel::Process {
-    WakeOnEventProcess(std::size_t id, SharedState & state)
-      : id_(id), state_(state)
+    WakeOnEventProcess(const ccm::kernel::Context & context,
+                       std::size_t id, SharedState & state)
+      : Process(context), id_(id), state_(state)
     {}
     void cb__on_invoke() override {
       EXPECT_EQ(state_.next_process, id_);
 
       state_.next_process = ccm::rand_int();
-      if (--state_.n != 0) {
-        state_.es[state_.next_process].notify_after(state_.opts.delay);
-      }
+      if (--state_.n != 0)
+        state_.es[state_.next_process].notify(ctxt_.now() + state_.opts.delay);
     }
   private:
     std::size_t id_;
     SharedState & state_;
   };
  public:
-  WakeOnEventTop(std::string name, TestOptions const & opts = TestOptions())
-    : ccm::kernel::Module(name) {
+  WakeOnEventTop(ccm::kernel::Scheduler & sch,
+                 const std::string & instance_name = "top",
+                 const TestOptions & opts = TestOptions{})
+    : ccm::kernel::TopModule(std::addressof(sch), instance_name) {
     state_.opts = opts;
-    for (std::size_t i = 0; i < state_.opts.process_n; i++)
-      state_.processes_.push_back(create_process<WakeOnEventProcess>(i, state_));
-  }
- private:
-  void cb__on_elaboration() override {
     for (std::size_t i = 0; i < state_.opts.process_n; i++) {
-      state_.es.push_back(create_event());
-      state_.processes_[i]->set_sensitive_on(state_.es.back());
+      ccm::kernel::Process * p = create_process<WakeOnEventProcess>("p0", i, state_);
+      const ccm::kernel::EventBuilder b = ctxt_.event_builder();
+      ccm::kernel::Event e = b.construct_event();
+      p->set_sensitive_on(e);
+      state_.es.push_back(e);
+      state_.processes_.push_back(p);
     }
   }
+ private:
   void cb__on_initialization() override {
     state_.n = state_.opts.notify_n;
-    state_.es[0].notify_on(10);
+    state_.es[0].notify(10);
   }
   void cb__on_termination() override {
     EXPECT_EQ(state_.n, 0);
-    EXPECT_EQ(now(), state_.opts.delay * state_.opts.notify_n);
+    EXPECT_EQ(ctxt_.now(), state_.opts.delay * state_.opts.notify_n);
   }
   SharedState state_;
 };
@@ -89,11 +91,7 @@ class WakeOnEventTop : public ccm::kernel::Module {
 TEST(WakeOnEvent, t0) {
   TestOptions opts;
   ccm::kernel::Scheduler sch;
-  {
-    ccm::kernel::ModulePtr top =
-      sch.construct_top<WakeOnEventTop>("WakeOnEventTop");
-    sch.set_top(std::move(top));
-  }
+  sch.set_top(new WakeOnEventTop(sch, "WakeOnEventTop", opts));
   sch.run();
 }
 

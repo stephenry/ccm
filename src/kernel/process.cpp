@@ -30,72 +30,78 @@
 
 namespace ccm::kernel {
 
-//
-std::size_t Process::now() const { return sch_->now(); }
-std::size_t Process::delta() const { return sch_->delta(); }
+  struct WakeProcessAtTimeTask : Frontier::Task {
+    void apply () override { sch_->add_process_next_delta(p_); }
+    std::size_t time() const { return time_; }
+    void reset() override { sch_ = nullptr; p_ = nullptr; }
 
-//
-void Process::wait(EventHandle e) {
-  s_dynamic_ = Sensitive{SensitiveTo::Dynamic, e};
-}
+    std::size_t time_;
+    Scheduler * sch_;
+    Process * p_;
+  };
 
-//
-void Process::wait_for(std::size_t t) {
-  wait_until(now() + t);
-}
-
-//
-void Process::wait_until(std::size_t t) {
-  s_dynamic_ = Sensitive{SensitiveTo::Dynamic, t};
-}
-
-//
-void Process::call_on_elaboration(ElaborationState const & state) {
-  set_scheduler(state.sch);
-  cb__on_elaboration();
-}
-
-//
-void Process::call_on_initialization() {
-  cb__on_initialization();
-}
-
-//
-void Process::call_on_invoke() {
-  s_dynamic_ = Sensitive{};
-  cb__on_invoke();
-  if (s_dynamic_.is_valid) {
-    apply_sensitivity(s_dynamic_);
-  } else {
-    apply_sensitivity(s_static_);
+  Process::Process (const Context & context)
+    : ctxt_(context) {
+    sensitive_.resize(1);
   }
-}
 
-//
-void Process::apply_sensitivity(Sensitive s) {
-  switch (s.on) {
-  case SensitiveOn::Event: {
-    sch_->add_task_wake_on(this, s.e);
-  } break;
-  case SensitiveOn::Time: {
-    if (now() == s.t) {
-      sch_->add_task_next_delta(this);
+  //
+  void Process::wait(Event e) {
+    sensitive_.push_back(Sensitive{SensitiveTo::Dynamic, e});
+  }
+
+  //
+  void Process::wait_for(std::size_t t) { wait_until(ctxt_.now() + t); }
+  void Process::wait_until(std::size_t t) {
+    sensitive_.push_back(Sensitive{SensitiveTo::Dynamic, t});
+  }
+
+  //
+  void Process::call_on_elaboration() {
+    cb__on_elaboration();
+  }
+
+  //
+  void Process::call_on_initialization() {
+    cb__on_initialization();
+    update_sensitivity();
+  }
+
+  //
+  void Process::call_on_invoke() {
+    cb__on_invoke();
+    update_sensitivity();
+  }
+
+  void Process::update_sensitivity() {
+    static Pool<WakeProcessAtTimeTask> pool_;
+    
+    Sensitive & top = sensitive_.back();
+    if (top.on == SensitiveOn::Event) {
+      top.e.add_to_wait_set(this);
     } else {
-      sch_->add_task_wake_after(this, s.t);
+      Scheduler * sch = ctxt_.sch();
+      
+      WakeProcessAtTimeTask * p = pool_.alloc();
+      p->time_ = top.t;
+      p->sch_ = sch;
+      p->p_ = this;
+      sch->add_frontier_task(p);
     }
-  }
-  }
-}
 
-//
-void Process::call_on_termination() {
-  cb__on_termination();
-}
+    if (top.to == SensitiveTo::Dynamic)
+      sensitive_.pop_back();
+  }
 
-//
-void Process::set_sensitive_on(EventHandle e) {
-  s_static_ = Sensitive{SensitiveTo::Static, e};
-  sch_->add_task_wake_on(this, e);
-}
+  //
+  void Process::call_on_termination() {
+    cb__on_termination();
+  }
+
+  //
+  void Process::set_sensitive_on(Event e) {
+    sensitive_[0] = Sensitive{SensitiveTo::Static, e};
+    e.add_to_wait_set(this);
+  }
 
 } // namespace ccm::kernel

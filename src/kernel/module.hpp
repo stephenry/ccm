@@ -28,8 +28,7 @@
 #ifndef __MODULE_HPP__
 #define __MODULE_HPP__
 
-#include "process.hpp"
-#include "scheduler.hpp"
+#include "event.hpp"
 
 #include <vector>
 #include <memory>
@@ -37,93 +36,92 @@
 
 namespace ccm::kernel {
 
-class Transaction;
-class TMailBox;
+  class Transaction;
 
-class TMailBoxIf {
- public:
-  virtual bool can_push() const = 0;
-  virtual void push(Transaction * t) = 0;
-  virtual EventHandle event() = 0;
-  virtual ~TMailBoxIf() {}
-};
+  class TopModule;
+  class Module;
+  class Scheduler;
 
-class Module {
-  friend class Scheduler;
-  friend class AgentRegistry;
-  friend class InterconnectRegistry;
+  class Context {
+    friend class Scheduler;
+    friend class Module;
+    friend class TopModule;
+    
+    Context(Scheduler * sch, Module * parent, const std::string & instance_name)
+      : sch_(sch), parent_(parent), instance_name_(instance_name) {}
 
-public:
+    Context create_child(Module * self, const std::string & instance_name) {
+      return Context{sch_, self, instance_name};
+    }
+    
+  public:
+    std::size_t now() const;
+    std::size_t delta() const;
+    std::string instance_name() const;
+    EventBuilder event_builder() const;
+    Scheduler * sch() const;
 
-  static void bind(TMailBox * sink, TMailBoxIf * source);
+  private:
+    Scheduler * sch_;
+    std::string instance_name_;
+    Module * parent_{nullptr};
+  };
 
-  //
-  Module () : Module("<ANONYMOUS>") {}
-  Module (std::string name) : name_(name) {}
+  class Module {
+    friend class Scheduler;
+    friend class AgentRegistry;
+    friend class InterconnectRegistry;
+
+  public:
+    
+    //
+    Module (const Context & ctxt);
+    virtual ~Module();
+
+  protected:
+
+    //
+    template<typename MODULE, typename ...ARGS>
+    MODULE * create_child(const std::string & instance_name, ARGS && ... args) {
+      const Context ctxt = ctxt_.create_child(this, instance_name);
+      MODULE * ptr = new MODULE(ctxt, args...);
+      children_.push_back(ptr);
+      return ptr;
+    }
+
+    template<typename PROCESS, typename ...ARGS>
+    PROCESS * create_process(const std::string & name, ARGS && ... args) {
+      const Context ctxt = ctxt_.create_child(this, name);
+      PROCESS * ptr = new PROCESS(ctxt, args...);
+      processes_.push_back(ptr);
+      return ptr;
+    }
   
-  //
-  virtual ~Module();
-  
-  //
-  SimState state() const;
-  std::size_t now() const;
-  std::size_t delta() const;
+    //
+    virtual void cb__on_elaboration() {};
+    virtual void cb__on_initialization() {};
+    virtual void cb__on_termination() {};
 
-protected:
+    //
+    Context ctxt_;
+  private:
 
-  //
-  EventHandle create_event();
-  EventHandle create_event(EventOrList const & e);
+    //
+    void call_on_elaboration();
+    void call_on_initialization();
+    void call_on_termination();
 
-  //
-  template<typename MODULE, typename ...ARGS>
-  MODULE * create_child(ARGS && ... args) {
-    ModulePtr ptr = std::make_unique<MODULE>(args...);
-    ptr->set_parent(this);
+    //
+    std::vector<Module *> children_;
+    std::vector<Process *> processes_;
+    std::string name_;
+  };
 
-    MODULE * ret = static_cast<MODULE *>(ptr.get());
-    children_.push_back(std::move(ptr));
-    return ret;
-  }
-
-  template<typename PROCESS, typename ...ARGS>
-  PROCESS * create_process (ARGS && ... args) {
-    ProcessPtr ptr = std::make_unique<PROCESS>(args...);
-    ptr->set_parent(this);
-
-    PROCESS * ret = static_cast<PROCESS *>(ptr.get());
-    processes_.push_back(std::move(ptr));
-    return ret;
-  }
-
-  //
-  void add_child (ModulePtr && ptr);
-  
-  //
-  virtual void cb__on_elaboration() {};
-  virtual void cb__on_initialization() {};
-  virtual void cb__on_termination() {};
-
-private:
-
-  //
-  void call_on_elaboration(ElaborationState const & state);
-  void call_on_initialization();
-  void call_on_termination();
-  
-  //
-  void set_scheduler(Scheduler * sch) { sch_ = sch; }
-  void set_parent(Module * parent) { parent_ = parent; }
-
-  //
-  Scheduler * sch_{nullptr};
-  Module * parent_{nullptr};
-
-  //
-  std::vector<ModulePtr> children_;
-  std::vector<ProcessPtr> processes_;
-  std::string name_;
-};
+  class TopModule : public Module {
+  public:
+    TopModule (Scheduler * sch, const std::string & instance_name)
+      : Module(Context{sch, nullptr, instance_name}) {}
+  };
 
 } // namespace ccm::kernel
 
