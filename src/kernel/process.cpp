@@ -105,7 +105,6 @@ namespace ccm::kernel {
   //
   void Process::set_sensitive_on(Event e) {
     sensitive_[0] = Sensitive{SensitiveTo::Static, e};
-    e.add_to_wait_set(this);
   }
 
 } // namespace ccm::kernel

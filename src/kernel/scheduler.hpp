@@ -77,7 +77,9 @@ namespace ccm::kernel {
 
     //
     bool work_remains() const { return !f_.empty(); }
-    void add_work(std::size_t t, Task * p) { f_[t].push_back(std::move(p)); }
+    void add_work(std::size_t t, Task * p) {
+      f_[t].push_back(std::move(p));
+    }
 
     //
     std::size_t next_time() const { return f_.begin()->first; }

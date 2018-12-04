@@ -33,7 +33,7 @@ namespace {
   class ProcessWaitOnEventTop : public ccm::kernel::TopModule {
 
     struct SharedState {
-      std::size_t n{1000};
+      std::size_t n{100000};
       ccm::kernel::Event e;
     };
 
@@ -44,9 +44,9 @@ namespace {
     private:
       void cb__on_initialization() override {
         state_.e.notify(ctxt_.now() + 10);
+        --state_.n;
       }
       void cb__on_invoke() override {
-        std::cout << "now = " << ctxt_.now() << "\n";
         if (state_.n != 0) {
           state_.e.notify(ctxt_.now() + 10);
           --state_.n;
