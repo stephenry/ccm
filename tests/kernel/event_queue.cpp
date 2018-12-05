@@ -77,23 +77,19 @@ class EventQueueTestTop: public ccm::kernel::TopModule {
   EventQueueTestTop(ccm::kernel::Scheduler & sch,
                     const std::string & instance_name = "top")
     : ccm::kernel::TopModule(std::addressof(sch), instance_name) {
-    p0_ = create_process<P0>("p0", state_);
     state_.eq = create_child<ccm::kernel::EventQueue<MSG>>("eq");
+    p0_ = create_process<P0>("p0", state_);
+    p0_->set_sensitive_on(state_.eq->event());
     for (std::size_t i = 1; i < 1000; i++) {
       const std::size_t msg = i;
       const std::size_t t = i * 10;
       const FrontierEntry fe{t, msg};
       
       state_.frontier.push_back(fe);
+      state_.eq->set(msg, t);
     }
   }
 private:
-  void cb__on_initialization() override {
-    p0_->set_sensitive_on(state_.eq->event());
-    for (const FrontierEntry & e : state_.frontier) {
-      state_.eq->set(e.msg, e.t);
-    }
-  }
   ccm::kernel::Process * p0_;
 };
   
