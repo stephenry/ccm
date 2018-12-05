@@ -35,29 +35,31 @@ namespace ccm::kernel {
     sensitive_.resize(1);
   }
 
-  //
   void Process::wait(Event e) {
-    sensitive_.push_back(Sensitive{SensitiveTo::Dynamic, e});
+    sensitive_.push_back(Sensitive{e});
   }
 
-  //
-  void Process::wait_for(std::size_t t) { wait_until(ctxt_.now() + t); }
+  void Process::wait_for(std::size_t t) {
+    wait_until(ctxt_.now() + t);
+  }
+
   void Process::wait_until(std::size_t t) {
-    sensitive_.push_back(Sensitive{SensitiveTo::Dynamic, t});
+    sensitive_.push_back(Sensitive{SensitiveOn::TimeAbsolute, t});
   }
 
-  //
+  void Process::kill() {
+    sensitive_.back().is_valid = false;
+  }
+
   void Process::call_on_elaboration() {
     cb__on_elaboration();
   }
 
-  //
   void Process::call_on_initialization() {
     cb__on_initialization();
     update_sensitivity();
   }
 
-  //
   void Process::call_on_invoke() {
     cb__on_invoke();
     update_sensitivity();
@@ -82,13 +84,16 @@ namespace ccm::kernel {
         Process * p_;
         std::size_t t_;
       };
-      
+
+      if (top.on == SensitiveOn::TimeRelative)
+        top.t += ctxt_.now();
+
       Scheduler * sch = ctxt_.sch();
       sch->add_frontier_task(std::make_unique<WakeProcess>(sch, this, top.t));
     }
 
-    if (top.to == SensitiveTo::Dynamic)
-      sensitive_.pop_back();
+    if (sensitive_.size() > 1)
+      sensitive_.resize(1);
   }
 
   //
@@ -98,7 +103,13 @@ namespace ccm::kernel {
 
   //
   void Process::set_sensitive_on(Event e) {
-    sensitive_[0] = Sensitive{SensitiveTo::Static, e};
+    sensitive_[0] = Sensitive{e};
+    //        update_sensitivity();
+  }
+
+  void Process::set_periodic(std::size_t t) {
+    sensitive_[0] = Sensitive{SensitiveOn::TimeRelative, t};
+    //    update_sensitivity();
   }
 
 } // namespace ccm::kernel

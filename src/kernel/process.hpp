@@ -33,21 +33,19 @@
 
 namespace ccm::kernel {
 
-enum class SensitiveTo { Static, Dynamic };
-enum class SensitiveOn { Event, Time };
+enum class SensitiveOn { Event, TimeAbsolute, TimeRelative };
 
 struct Sensitive {
   Sensitive()
     : is_valid(false)
   {}
-  Sensitive(SensitiveTo to, Event e)
-    : is_valid(true), to(to), on(SensitiveOn::Event), e(e)
+  Sensitive(Event e)
+    : is_valid(true), on(SensitiveOn::Event), e(e)
   {}
-  Sensitive(SensitiveTo to, std::size_t t)
-    : is_valid(true), to(to), on(SensitiveOn::Time), t(t)
+  Sensitive(SensitiveOn on, std::size_t t)
+    : is_valid(true), on(on), t(t)
   {}
   bool is_valid;
-  SensitiveTo to;
   SensitiveOn on;
   Event e;
   std::size_t t;
@@ -66,6 +64,7 @@ class Process {
 
   //
   void set_sensitive_on(Event e);
+  void set_periodic(std::size_t t);
 
 protected:
 
@@ -79,6 +78,9 @@ protected:
   void wait(Event e);
   void wait_for(std::size_t t = 0);
   void wait_until(std::size_t t);
+
+  //
+  void kill();
 
   //
   Context ctxt_;
