@@ -84,7 +84,7 @@ namespace ccm::kernel {
     template<typename MODULE, typename ...ARGS>
     MODULE * create_child(const std::string & instance_name, ARGS && ... args) {
       const Context ctxt = ctxt_.create_child(this, instance_name);
-      MODULE * ptr = new MODULE(ctxt, args...);
+      MODULE * ptr = new MODULE(ctxt, std::forward<ARGS>(args)...);
       children_.push_back(ptr);
       return ptr;
     }
@@ -92,7 +92,7 @@ namespace ccm::kernel {
     template<typename PROCESS, typename ...ARGS>
     PROCESS * create_process(const std::string & name, ARGS && ... args) {
       const Context ctxt = ctxt_.create_child(this, name);
-      PROCESS * ptr = new PROCESS(ctxt, args...);
+      PROCESS * ptr = new PROCESS(ctxt, std::forward<ARGS>(args)...);
       processes_.push_back(ptr);
       return ptr;
     }

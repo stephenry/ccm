@@ -68,13 +68,24 @@ namespace ccm::kernel {
     {}
 
   public:
-    using list_type = std::vector<Event>;
-    
     Event construct_event() const;
-    Event construct_and_event(const list_type & l) const;
-    Event construct_or_event(const list_type & l) const;
+    
+    template<typename FwdIt>
+    Event construct_or_event(FwdIt begin, FwdIt end) const {
+      using value_type = typename std::iterator_traits<FwdIt>::value_type;
+      return construct_or_event(std::vector<value_type>{begin, end});
+    }
+
+    template<typename FwdIt>
+    Event construct_and_event(FwdIt begin, FwdIt end) const {
+      using value_type = typename std::iterator_traits<FwdIt>::value_type;
+      return construct_and_event(std::vector<value_type>{begin, end});
+    }
     
   private:
+    Event construct_or_event(const std::vector<Event> & l) const;
+    Event construct_and_event(const std::vector<Event> & l) const;
+    
     mutable Scheduler * sch_{nullptr};
   };
 

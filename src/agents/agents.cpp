@@ -29,9 +29,11 @@
 
 #include "basic.hpp"
 
+namespace krn = ::ccm::kernel;
+
 namespace ccm::agents {
 
-  void register_agents(krn::AgentRegistry & r) {
+  void register_agents(krn::BuildableRegistry & r) {
     // TODO:
   }
 

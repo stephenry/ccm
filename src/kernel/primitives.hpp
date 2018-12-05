@@ -75,8 +75,6 @@ namespace ccm::kernel {
     std::vector<T> ts_;
     Event e_;
   };
-  using TMailBox = MailBox<Transaction *>;
-  using TMailBoxIf = MailBoxIf<Transaction *>;
 
   template<typename MSG>
   class EventQueue : public Module {

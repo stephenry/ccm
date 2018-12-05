@@ -27,21 +27,22 @@
 
 #include "basic.hpp"
 
+namespace krn = ::ccm::kernel;
+
 namespace ccm::agents {
 
   struct BasicSourceAgent::EmitProcess : krn::Process {
-    EmitProcess(BasicSourceAgent * agnt, std::size_t period)
-      : agnt_(agnt), period_(period)
+    EmitProcess(const krn::Context & ctxt, BasicSourceAgent * agnt, std::size_t period)
+      : Process(ctxt), agnt_(agnt), period_(period)
     {}
-      
     void cb__on_initialization() override {
-      wait_until(now() + period_);
+      wait_until(ctxt_.now() + period_);
     }
     void cb__on_invoke() override  {
       krn::Transaction * t = agnt_->source_transaction();
       if (t != nullptr) {
         agnt_->out_->push(t);
-        wait_until(now() + period_);
+        wait_until(ctxt_.now() + period_);
       }
     }
   private:
@@ -49,14 +50,14 @@ namespace ccm::agents {
     BasicSourceAgent * agnt_;
   };
   
-  BasicSourceAgent::BasicSourceAgent(std::size_t period)
-    : period_(period) {
-    p_ = create_process<EmitProcess>(this, period);
+  BasicSourceAgent::BasicSourceAgent(const krn::Context & ctxt, std::size_t period)
+    : Buildable(ctxt), period_(period) {
+    p_ = create_process<EmitProcess>("PEmit", this, period);
   }
 
   struct BasicSinkAgent::ConsumeProcess : krn::Process {
-    ConsumeProcess(BasicSinkAgent * agnt)
-      : agnt_(agnt)
+    ConsumeProcess(const krn::Context & ctxt, BasicSinkAgent * agnt)
+      : Process(ctxt), agnt_(agnt)
     {}
   private:
     virtual void cb__on_invoke() {
@@ -67,13 +68,11 @@ namespace ccm::agents {
     BasicSinkAgent * agnt_;
   };
 
-  BasicSinkAgent::BasicSinkAgent() {
+  BasicSinkAgent::BasicSinkAgent(const krn::Context & ctxt)
+    : Buildable(ctxt) {
     in_ = create_child<krn::TMailBox>("in");
-    p_ = create_process<ConsumeProcess>(this);
-  }
-
-  void BasicSinkAgent::cb__on_initialization() {
+    p_ = create_process<ConsumeProcess>("PConsume", this);
     p_->set_sensitive_on(in_->event());
-  };
+  }
 
 } // namespace ccm::agents

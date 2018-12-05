@@ -25,55 +25,57 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __AGENTS_HPP__
-#define __AGENTS_HPP__
+#ifndef __BUILDER_HPP__
+#define __BUILDER_HPP__
 
 #include "module.hpp"
 #include <unordered_map>
 #include <memory>
 
-#define CCM_AGENT_COMMON(__cls)                                         \
-  friend class ::ccm::kernel::AgentRegistry;                            \
-  struct Factory : ::ccm::kernel::AgentFactory {                        \
+#define CCM_BUILDABLE_COMMON(__cls)                                     \
+  friend class ::ccm::kernel::BuildableRegistry;                        \
+  struct Factory : ::ccm::kernel::BuildableFactory {                    \
     const char * name() const { return #__cls; }                        \
-    ::ccm::kernel::AgentPtr construct(                                  \
-                       ::ccm::kernel::AgentArguments & args) override { \
+    ::ccm::kernel::Buildable * construct(                               \
+                    const ::ccm::kernel::Context & ctxt,                \
+                    ::ccm::kernel::BuildableArguments & args) override {\
       using arg_type = typename __cls::Arguments;                       \
-      return std::make_unique<__cls>(static_cast<arg_type &>(args));    \
+      return new __cls(ctxt, static_cast<arg_type &>(args));            \
     }                                                                   \
   };                                                                    \
 
 namespace ccm::kernel {
 
-  struct AgentArguments {
-    std::size_t id;
-    std::string instance_name;
+  struct BuildableArguments {
+    BuildableArguments(std::size_t id, const std::string & instance_name)
+      : id_(id), instance_name_(instance_name)
+    {}
+    std::size_t id_;
+    std::string instance_name_;
   };
 
-  struct Agent : public Module {
+  struct Buildable : public Module {
+    Buildable(const Context & ctxt);
   };
-  using AgentPtr = std::unique_ptr<Agent>;
 
-  struct AgentFactory {
+  struct BuildableFactory {
     virtual const char * name() const = 0;
-    virtual AgentPtr construct(AgentArguments & opts) = 0;
+    virtual Buildable* construct(const Context & ctxt, BuildableArguments & opts) = 0;
   };
 
-  class AgentRegistry {
+  class BuildableRegistry {
   public:
     template<typename T>
     void register_agent() {
       using factory_type = typename T::Factory;
       factory_type * factory = new factory_type{};
-      agents_[factory->name()] = factory;
+      buildables_[factory->name()] = factory;
     }
-    void register_agent(std::string name, AgentFactory * f);
-    Agent * construct(Module * m,
-                      std::string name,
-                      AgentArguments & args);
+    void register_agent(std::string name, BuildableFactory * f);
+    Buildable * construct(const Context & ctxt, std::string name, BuildableArguments & args);
 
   private:
-    std::unordered_map<std::string, AgentFactory *> agents_;
+    std::unordered_map<std::string, BuildableFactory *> buildables_;
   };
 
 } // namespace ccm::kernel

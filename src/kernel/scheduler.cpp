@@ -31,11 +31,19 @@
 
 namespace ccm::kernel {
 
-  Frontier::Frontier() {
-  }
 
-  Scheduler::Scheduler() {
+  //
+  void Frontier::add_work(std::size_t t, Frontier::TaskPtr && p) {
+    f_[t].push_back(std::move(p));
   }
+  bool Frontier::work_remains() const { return !f_.empty(); }
+  std::size_t Frontier::next_time() const { return f_.begin()->first; }
+  std::vector<Frontier::TaskPtr> & Frontier::next() { return f_.begin()->second; }
+  void Frontier::advance() { f_.erase(f_.begin()); }
+
+  Frontier::Frontier() {}
+
+  Scheduler::Scheduler() {}
 
   Scheduler::~Scheduler() {
     delete top_;
@@ -46,14 +54,11 @@ namespace ccm::kernel {
     
     //
     set_state(SimState::Elaboration);
-    if (top_) {
-      top_->call_on_elaboration();
-    }
+    top_->call_on_elaboration();
 
     //
     set_state(SimState::Initialization);
-    if (top_)
-      top_->call_on_initialization();
+    top_->call_on_initialization();
 
     //
     set_state(SimState::Running);
@@ -63,44 +68,37 @@ namespace ccm::kernel {
         break;
 
       now_ = next_time;
-      delta_ = 0;
 
-      current_delta_.clear();
       next_delta_.clear();
-    
-      for (Frontier::Task * p : frontier_.next()) {
-        p->apply();
-        p->release();
-      }
 
-      do_next_delta();
-      while (!next_delta_.empty()) {
-        ++delta_;
-        do_next_delta();
-      }
+      for (Frontier::TaskPtr & p : frontier_.next())
+        p->apply();
+
+      delta_ = 0;
+      do {
+        current_delta_.clear();
+        std::swap(current_delta_, next_delta_);
+
+        for (Process * p : current_delta_)
+          p->call_on_invoke();
+
+        if (++delta_ == Scheduler::DELTA_MAX)
+          break;
+
+      } while (next_delta_.size() != 0);
+
       frontier_.advance();
     }
 
     //
     set_state(SimState::Termination);
-    if (top_)
-      top_->call_on_termination();
+    top_->call_on_termination();
   }
 
   void Scheduler::set_top (Module * ptr) { top_ = ptr; }
 
-  void Scheduler::do_next_delta() {
-    std::swap(current_delta_, next_delta_);
-    for (Process * p : current_delta_) {
-      switch (state()) {
-      case SimState::Initialization: p->call_on_initialization(); break;
-      case SimState::Running: p->call_on_invoke(); break;
-      }
-    }
-  }
-
-  void Scheduler::add_frontier_task(Frontier::Task * t) {
-    frontier_.add_work(t->time(), t);
+  void Scheduler::add_frontier_task(Frontier::TaskPtr && t) {
+    frontier_.add_work(t->time(), std::move(t));
   }
   void Scheduler::add_process_next_delta(Process * p) {
     next_delta_.push_back(p);

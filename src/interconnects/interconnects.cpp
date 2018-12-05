@@ -30,7 +30,7 @@
 
 namespace ccm::interconnects {
 
-  void register_interconnects(kernel::AgentRegistry & r) {
+  void register_interconnects(kernel::BuildableRegistry & r) {
     r.register_agent<FixedLatency>();
   }
   

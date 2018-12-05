@@ -33,88 +33,58 @@
 
 namespace ccm::kernel {
 
-  struct Waitable : Poolable {
-    virtual void notify() = 0;
-  };
-
-  struct ProcessWaitable : Waitable {
-    void reset() { sch_ = nullptr; p_ = nullptr; }
-    void set_sch(Scheduler * sch) { sch_ = sch; }
-    void set_p(Process * p) { p_ = p; }
-    void notify() override {
-      if (p_)
-        sch_->add_process_next_delta(p_);
-    }
+  struct RaiseEventAtTime : Frontier::Task {
+    RaiseEventAtTime(EventContext * ctxt, std::size_t t);
+    void apply() override;
+    std::size_t time() const override;
   private:
-    Scheduler * sch_;
-    Process * p_;
-  };
-
-  struct EventWaitable : Waitable {
-    void reset() {}
-    void set_e(Event e) { e_ = e; }
-    void notify() override { e_.notify(); }
-  private:
-    Event e_;
+    EventContext * ctxt_;
+    std::size_t t_;
   };
 
   struct EventContext : ReferenceCounted {
     EventContext(Scheduler * sch)
       : sch_(sch)
     {}
-
-    virtual void notify(std::size_t t = 0) = 0;
-    void add_to_wait_set(Process * p) {
-      static Pool<ProcessWaitable> pool_;
-
-      ProcessWaitable * w = pool_.alloc();
-      w->set_sch(sch_);
-      w->set_p(p);
-      waiting_.push_back(w);
+    virtual void child_event_notify(EventContext * ec) {};
+    virtual void finalize() {}
+    void add_to_wait_set(Process * p) { ps_.push_back(p); }
+    void del_from_wait_set(Process * p) {
+      ps_.erase(std::remove(ps_.begin(), ps_.end(), p), ps_.end());
     }
-    void add_to_wait_set(Event e) {
-      static Pool<EventWaitable> pool_;
-
-      EventWaitable * w = pool_.alloc();
-      w->set_e(e);
-      waiting_.push_back(w);
+    void add_to_wait_set(EventContext * e) { es_.push_back(e); }
+    void del_from_wait_set(EventContext * e) {
+      es_.erase(std::remove(es_.begin(), es_.end(), e), es_.end());
     }
     void wake() {
-      for (Waitable * w : waiting_) {
-        w->notify();
-        w->release();
-      }
-      waiting_.clear();
+      for (Process * p : ps_)
+        sch_->add_process_next_delta(p);
+      ps_.clear();
+      for (EventContext * e : es_)
+        e->child_event_notify(this);
+    }
+    void raise_after(std::size_t t = 0) {
+      sch_->add_frontier_task(std::make_unique<RaiseEventAtTime>(this, t));
     }
   protected:
-    std::vector<Waitable *> waiting_;
+    std::vector<Process *> ps_;
+    std::vector<EventContext *> es_;
     Scheduler * sch_;
   };
 
-  struct NotifyEventFrontierTask : Frontier::Task {
-    void apply () override { ctxt_->wake(); }
-    std::size_t time () const override { return time_; }
-    void reset() override { ctxt_ = nullptr; }
-    std::size_t time_;
-    EventContext * ctxt_;
-  };
+  RaiseEventAtTime::RaiseEventAtTime(EventContext * ctxt, std::size_t t)
+    : ctxt_(ctxt), t_(t) {}
+  void RaiseEventAtTime::apply() {  ctxt_->wake(); }
+  std::size_t RaiseEventAtTime::time() const { return t_; }
 
   struct NormalEventContext : EventContext {
     NormalEventContext(Scheduler * sch)
-      : EventContext(sch)
-    {}
-    void notify(std::size_t t = 0) override {
-      static Pool<NotifyEventFrontierTask> pool_;
-      
-      NotifyEventFrontierTask * p = pool_.alloc();
-      p->ctxt_ = this;
-      p->time_ = t;
-      sch_->add_frontier_task(p);
-    }
+      : EventContext(sch) {}
   };
 
   Event EventBuilder::construct_event() const {
     NormalEventContext * ctxt = new NormalEventContext(sch_);
+    ctxt->finalize();
     return Event{ctxt};
   }
 
@@ -122,12 +92,22 @@ namespace ccm::kernel {
     OrEventContext(Scheduler * sch)
       : EventContext(sch)
     {}
-    virtual void notify(std::size_t t = 0) override {
+    void child_event_notify(EventContext * ec) override {
+      wake();
     }
+    void add_event(EventContext * e) {
+      e->add_to_wait_set(this);
+      es_.push_back(e);
+    }
+  private:
+    std::vector<EventContext *> es_;
   };
 
-  Event EventBuilder::construct_or_event(const list_type & l) const {
+  Event EventBuilder::construct_or_event(const std::vector<Event> & l) const {
     OrEventContext * ctxt = new OrEventContext{sch_};
+    for (Event e : l)
+      ctxt->add_event(e.ctxt_);
+    ctxt->finalize();
     return Event{ctxt};
   }
 
@@ -135,12 +115,29 @@ namespace ccm::kernel {
     AndEventContext(Scheduler * sch)
       : EventContext(sch)
     {}
-    virtual void notify(std::size_t t = 0) override {
+    void child_event_notify(EventContext * ec) override {
+      es_pending_.erase(std::remove(es_pending_.begin(), es_pending_.end(), ec),
+                        es_pending_.end());
+      if (es_pending_.size() == 0) {
+        es_pending_ = es_;
+        wake();
+      }
     }
+    void finalize() override { es_pending_ = es_; }
+    void add_event(EventContext * e) {
+      e->add_to_wait_set(this);
+      es_.push_back(e);
+    }
+  private:
+    std::vector<EventContext *> es_pending_;
+    std::vector<EventContext *> es_;
   };
 
-  Event EventBuilder::construct_and_event(const list_type & l) const {
+  Event EventBuilder::construct_and_event(const std::vector<Event> & l) const {
     AndEventContext * ctxt = new AndEventContext{sch_};
+    for (Event e : l)
+      ctxt->add_event(e.ctxt_);
+    ctxt->finalize();
     return Event{ctxt};
   }
 
@@ -162,7 +159,12 @@ namespace ccm::kernel {
   }
 
   bool Event::is_valid() const { return ctxt_ != nullptr; }
-  void Event::notify(std::size_t t) { ctxt_->notify(t); }
   void Event::add_to_wait_set(Process * p) { ctxt_->add_to_wait_set(p); }
+  void Event::notify(std::size_t t) {
+    if (t == 0)
+      ctxt_->wake();
+    else
+      ctxt_->raise_after(t);
+  }
 
 } // namespace ccm::kernel

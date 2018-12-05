@@ -29,33 +29,31 @@
 #define __BASIC_HPP__
 
 #include "kernel/kernel.hpp"
-namespace krn = ccm::kernel;
 
 namespace ccm::agents {
 
-  class BasicSourceAgent : public krn::Agent {
+  class BasicSourceAgent : public ::ccm::kernel::Buildable {
     struct EmitProcess;
   public:
-    BasicSourceAgent(std::size_t period);
+    BasicSourceAgent(const ::ccm::kernel::Context & ctxt, std::size_t period);
 
-    krn::TMailBoxIf * out_;
+    ::ccm::kernel::TMailBoxIf * out_;
   protected:
-    virtual krn::Transaction * source_transaction() = 0;
+    virtual ::ccm::kernel::Transaction * source_transaction() = 0;
   private:
     EmitProcess * p_;
     std::size_t period_;
   };
 
-  class BasicSinkAgent : public krn::Agent {
+  class BasicSinkAgent : public ::ccm::kernel::Buildable {
     struct ConsumeProcess;
   public:
-    BasicSinkAgent();
+    BasicSinkAgent(const ::ccm::kernel::Context & ctxt);
     
-    krn::TMailBox * in_;
+    ::ccm::kernel::TMailBox * in_;
   protected:
-    virtual void sink_transaction (krn::Transaction * t) = 0;
+    virtual void sink_transaction (::ccm::kernel::Transaction * t) = 0;
   private:
-    void cb__on_initialization() override;
 
     ConsumeProcess * p_;
   };

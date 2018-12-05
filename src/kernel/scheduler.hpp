@@ -68,34 +68,33 @@ namespace ccm::kernel {
   class Frontier {
   public:
 
-    struct Task : Poolable {
+    struct Task {
       virtual void apply() = 0;
       virtual std::size_t time() const = 0;
     };
+    using TaskPtr = std::unique_ptr<Task>;
 
     Frontier();
 
     //
-    bool work_remains() const { return !f_.empty(); }
-    void add_work(std::size_t t, Task * p) {
-      f_[t].push_back(std::move(p));
-    }
-
-    //
-    std::size_t next_time() const { return f_.begin()->first; }
-    std::vector<Task *> & next() { return f_.begin()->second; }
-    void advance() { f_.erase(f_.begin()); }
+    bool work_remains() const;
+    void add_work(std::size_t t, TaskPtr && p);
+    std::size_t next_time() const;
+    std::vector<TaskPtr> & next();
+    void advance();
   
   private:
-    std::map<std::size_t, std::vector<Task *> > f_;
+    std::map<std::size_t, std::vector<TaskPtr> > f_;
   };
 
   class Scheduler {
     friend class Module;
     friend class Process;
-    friend class ProcessWaitable;
     friend class NormalEventContext;
     friend class WakeProcessAtTimeTask;
+    friend class EventContext;
+
+    static const std::size_t DELTA_MAX = 1000;
   
   public:
     //
@@ -119,15 +118,13 @@ namespace ccm::kernel {
     void add_process (Process * p);
 
     //
-    void add_frontier_task(Frontier::Task * t);
+    void add_frontier_task(Frontier::TaskPtr && t);
     void add_process_next_delta(Process * p);
    
     //
     void set_state(SimState sim_state) { sim_state_ = sim_state; };
-    void do_next_delta();
   
     //
-    //  std::vector<EventDescriptorPtr> events_;
     std::vector<Process *> current_delta_, next_delta_;
     Frontier frontier_;
     SimState sim_state_{SimState::Initialization};

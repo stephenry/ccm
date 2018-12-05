@@ -29,31 +29,41 @@
 #include "kernel/kernel.hpp"
 #include <string>
 
+namespace krn = ::ccm::kernel;
+
 namespace ccm::interconnects {
 
-  struct FixedLatency::PushProcess : kernel::Process {
-    PushProcess(std::size_t id, FixedLatency * fl)
-      : id_(id), fl_(fl)
+  FixedLatencyTransaction * flt(krn::Transaction * t) {
+    return static_cast<FixedLatencyTransaction *>(t);
+  }
+
+  struct FixedLatency::PushProcess : krn::Process {
+    PushProcess(const krn::Context & ctxt,
+                std::size_t id, FixedLatency * fl)
+      : Process(ctxt), id_(id), fl_(fl)
     {}
+    virtual ~PushProcess() {}
   private:
     virtual void cb__on_invoke() override {
-      kernel::Transaction * t;
+      krn::Transaction * t;
       if (fl_->ins_[id_]->get(t)) {
-        fl_->eqs_[t->portid_dst]->set(t, now() + fl_->arg_.latency);
+        fl_->eqs_[flt(t)->portid_dst]->set(t, ctxt_.now() + fl_->args_.latency);
       }
     }
     std::size_t id_;
     FixedLatency * fl_;
   };
   
-  struct FixedLatency::PopProcess : kernel::Process {
-    PopProcess(std::size_t id, FixedLatency * fl)
-      : id_(id), fl_(fl)
+  struct FixedLatency::PopProcess : krn::Process {
+    PopProcess(const krn::Context & ctxt,
+               std::size_t id, FixedLatency * fl)
+      : Process(ctxt), id_(id), fl_(fl)
     {}
+    virtual ~PopProcess() {}
   private:
     virtual void cb__on_invoke() override {
-      kernel::Transaction * t;
-      if (fl_->eqs_[id_]->get(t, now())) {
+      krn::Transaction * t;
+      if (fl_->eqs_[id_]->get(t, ctxt_.now())) {
         fl_->outs_[id_]->push(t);
       }
     }
@@ -61,34 +71,25 @@ namespace ccm::interconnects {
     FixedLatency * fl_;
   };
   
+  FixedLatency::FixedLatency(const krn::Context & ctxt, const Arguments & args)
+    : Buildable(ctxt), args_(args) {
 
-  FixedLatency::FixedLatency(const Arguments & arg)
-    : arg_(arg) {
-
-    for (std::size_t i = 0; i < arg_.in_ports; i++) {
-      p_push_.push_back(create_process<PushProcess>(i, this));
-      ins_.push_back(create_child<kernel::TMailBox>(std::string("in") +
-                                                    std::to_string(i)));
+    const std::string sin{"in"};
+    for (std::size_t i = 0; i < args_.in_ports; i++) {
+      ins_.push_back(create_child<krn::TMailBox>(sin + std::to_string(i)));
+      p_push_.push_back(create_process<PushProcess>("PPush", i, this));
+      p_push_.back()->set_sensitive_on(ins_.back()->event());
     }
 
-    for (std::size_t i = 0; i < arg_.out_ports; i++) {
-      event_queue_type * eq = create_child<
-        kernel::EventQueue<kernel::Transaction *>>(std::string("eq") +
-                                                   std::to_string(i));
-      PopProcess * p = create_process<PopProcess>(i, this);
-      p_pop_.push_back(p);
-      eqs_.push_back(eq);
+    const std::string seq{"eq"};
+    for (std::size_t i = 0; i < args_.out_ports; i++) {
+      eqs_.push_back(create_child<krn::TEventQueue>(seq + std::to_string(i)));
+      p_pop_.push_back(create_process<PopProcess>("PPop", i, this));
+      p_pop_.back()->set_sensitive_on(eqs_.back()->event());
     }
-    outs_.resize(arg_.out_ports);
+    outs_.resize(args_.out_ports);
   }
 
-  void FixedLatency::cb__on_initialization() {
-    for (std::size_t i = 0; i < p_push_.size(); i++) {
-      p_push_[i]->set_sensitive_on(ins_[i]->event());
-    }
-    for (std::size_t i = 0; i < p_pop_.size(); i++) {
-      p_pop_[i]->set_sensitive_on(eqs_[i]->event());
-    }
-  }
-
+  FixedLatency::~FixedLatency() {}
+  
 } // namespace ccm::interconnects

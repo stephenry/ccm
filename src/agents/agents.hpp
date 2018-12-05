@@ -29,13 +29,12 @@
 #define __AGENTS_AGENTS_HPP__
 
 #include "kernel/kernel.hpp"
-namespace krn = ccm::kernel;
 
 #include "basic.hpp"
 
 namespace ccm::agents {
 
-  void register_agents(krn::AgentRegistry & r);
+  void register_agents(::ccm::kernel::BuildableRegistry & r);
 
 } // namespace ccm::agents
 

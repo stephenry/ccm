@@ -33,31 +33,36 @@
 
 namespace ccm::interconnects {
 
-  class FixedLatency : public kernel::Agent {
-    using event_queue_type = kernel::EventQueue<kernel::Transaction *>;
-    
+  struct FixedLatencyTransaction : ccm::kernel::Transaction {
+    std::size_t portid_src;
+    std::size_t portid_dst;
+  };
+
+  class FixedLatency : public ::ccm::kernel::Buildable {
     struct PushProcess;
     struct PopProcess;
   public:
-    CCM_AGENT_COMMON(FixedLatency);
+    CCM_BUILDABLE_COMMON(FixedLatency);
 
-    struct Arguments : kernel::AgentArguments {
+    struct Arguments : ::ccm::kernel::BuildableArguments {
+      Arguments(std::size_t id, const std::string & instance_name)
+        : BuildableArguments(id, instance_name)
+      {}
       std::size_t in_ports;
       std::size_t out_ports;
       std::size_t latency;
     };
-    using arg_type = Arguments;
     
-    FixedLatency(const arg_type & arg);
-    void push (kernel::Transaction * t);
+    FixedLatency(const ::ccm::kernel::Context & ctxt, const Arguments & arg);
+    virtual ~FixedLatency();
+    void push (::ccm::kernel::Transaction * t);
     
-    std::vector<kernel::TMailBox *> ins_;
-    std::vector<kernel::TMailBoxIf *> outs_;
+    std::vector<::ccm::kernel::TMailBox *> ins_;
+    std::vector<::ccm::kernel::TMailBoxIf *> outs_;
   private:
-    virtual void cb__on_initialization() override;
 
-    std::vector<kernel::EventQueue<kernel::Transaction *> *> eqs_;
-    arg_type arg_;
+    std::vector<::ccm::kernel::TEventQueue *> eqs_;
+    Arguments args_;
 
     std::vector<PushProcess *> p_push_;
     std::vector<PopProcess *> p_pop_;

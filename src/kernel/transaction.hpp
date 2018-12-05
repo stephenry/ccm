@@ -33,18 +33,13 @@
 
 namespace ccm::kernel {
 
-  template<typename T>
-  struct TransactionTraits;
+  struct Transaction : public Poolable
+  {};
 
-  struct Transaction : public Poolable {
-    std::size_t portid_src;
-    std::size_t portid_dst;
-  };
-
-  template<>
-  struct TransactionTraits<Transaction> {
-    using portid_type = std::size_t;
-  };
+  using TMailBox = MailBox<Transaction *>;
+  using TMailBoxIf = MailBoxIf<Transaction *>;
+  
+  using TEventQueue = EventQueue<Transaction *>;
 
 } // namespace ccm::kernel
 

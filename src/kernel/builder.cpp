@@ -25,21 +25,22 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "agents.hpp"
+#include "builder.hpp"
 
 namespace ccm::kernel {
 
-  void AgentRegistry::register_agent (std::string name, AgentFactory * f) {
-    agents_.insert(std::make_pair(name, f));
+  Buildable::Buildable(const Context & ctxt)
+    : Module(ctxt)
+  {}
+  
+  void BuildableRegistry::register_agent (std::string name, BuildableFactory * f) {
+    buildables_.insert(std::make_pair(name, f));
   }
 
-  Agent * AgentRegistry::construct(Module * m, std::string name, AgentArguments & args) {
-    CCM_ASSERT(agents_.count(name) != 0);
-    
-    AgentPtr ptr = agents_[name]->construct(args);
-    Agent *ret{ptr.get()};
-    //    m->add_child(std::move(ptr));
-    return ret;
+  Buildable * BuildableRegistry::construct(const Context & ctxt,
+                                   std::string name, BuildableArguments & args) {
+    CCM_ASSERT(buildables_.count(name) != 0);
+    return buildables_[name]->construct(ctxt, args);
   }
 
 } // namespace ccm::kernel

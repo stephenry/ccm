@@ -33,4 +33,4 @@ macro (create_test fn)
 endmacro ()
 
 add_subdirectory(kernel)
-#add_subdirectory(basic)
+add_subdirectory(basic)

@@ -30,16 +30,6 @@
 
 namespace ccm::kernel {
 
-  struct WakeProcessAtTimeTask : Frontier::Task {
-    void apply () override { sch_->add_process_next_delta(p_); }
-    std::size_t time() const { return time_; }
-    void reset() override { sch_ = nullptr; p_ = nullptr; }
-
-    std::size_t time_;
-    Scheduler * sch_;
-    Process * p_;
-  };
-
   Process::Process (const Context & context)
     : ctxt_(context) {
     sensitive_.resize(1);
@@ -74,8 +64,6 @@ namespace ccm::kernel {
   }
 
   void Process::update_sensitivity() {
-    static Pool<WakeProcessAtTimeTask> pool_;
-    
     Sensitive & top = sensitive_.back();
 
     if (!top.is_valid)
@@ -84,13 +72,19 @@ namespace ccm::kernel {
     if (top.on == SensitiveOn::Event) {
       top.e.add_to_wait_set(this);
     } else {
-      Scheduler * sch = ctxt_.sch();
+      struct WakeProcess : Frontier::Task {
+        WakeProcess(Scheduler * sch, Process * p, std::size_t t)
+          : p_(p), sch_(sch), t_(t) {}
+        void apply() override { sch_->add_process_next_delta(p_); }
+        std::size_t time() const override { return t_; }
+      private:
+        Scheduler * sch_;
+        Process * p_;
+        std::size_t t_;
+      };
       
-      WakeProcessAtTimeTask * p = pool_.alloc();
-      p->time_ = top.t;
-      p->sch_ = sch;
-      p->p_ = this;
-      sch->add_frontier_task(p);
+      Scheduler * sch = ctxt_.sch();
+      sch->add_frontier_task(std::make_unique<WakeProcess>(sch, this, top.t));
     }
 
     if (top.to == SensitiveTo::Dynamic)
