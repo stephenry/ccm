@@ -55,7 +55,7 @@ class WakeOnEventTop : public ccm::kernel::TopModule {
 
       state_.next_process = ccm::rand_int();
       if (--state_.n != 0)
-        state_.es[state_.next_process].notify(ctxt_.now() + state_.opts.delay);
+        state_.es[state_.next_process].notify(context().now() + state_.opts.delay);
     }
   private:
     std::size_t id_;
@@ -69,7 +69,7 @@ class WakeOnEventTop : public ccm::kernel::TopModule {
     state_.opts = opts;
     for (std::size_t i = 0; i < state_.opts.process_n; i++) {
       ccm::kernel::Process * p = create_process<WakeOnEventProcess>("p0", i, state_);
-      const ccm::kernel::EventBuilder b = ctxt_.event_builder();
+      const ccm::kernel::EventBuilder b = context().event_builder();
       ccm::kernel::Event e = b.construct_event();
       p->set_sensitive_on(e);
       state_.es.push_back(e);
@@ -83,7 +83,7 @@ class WakeOnEventTop : public ccm::kernel::TopModule {
   }
   void cb__on_termination() override {
     EXPECT_EQ(state_.n, 0);
-    EXPECT_EQ(ctxt_.now(), state_.opts.delay * state_.opts.notify_n);
+    EXPECT_EQ(context().now(), state_.opts.delay * state_.opts.notify_n);
   }
   SharedState state_;
 };

@@ -25,47 +25,42 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __LOG_HPP__
-#define __LOG_HPP__
+#ifndef __CONTEXT_HPP__
+#define __CONTEXT_HPP__
 
-#include <sstream>
-#include <iostream>
+#include "event.hpp"
+#include <string>
 
 namespace ccm::kernel {
 
-enum class LogLevel {
-  Fatal,
-  Error,
-  Warning,
-  Info,
-  Debug
-};
+class Scheduler;
+class Module;
 
-const char * to_string(LogLevel ll);
+class Context {
+  friend class Scheduler;
+  friend class Module;
+  friend class TopModule;
+    
+  Context(Scheduler * sch, Module * parent, const std::string & instance_name)
+      : sch_(sch), parent_(parent), instance_name_(instance_name) {}
 
-struct Logger {
-
-  template<typename ... ARGS>
-  void log(LogLevel ll, ARGS && ... args) {
-    log_helper(std::cout, std::forward<ARGS>(args)...);
-    std::cout << "\n";
+  Context create_child(Module * self, const std::string & instance_name) {
+    return Context{sch_, self, instance_name};
   }
+    
+ public:
+  std::size_t now() const;
+  std::size_t delta() const;
+  std::string instance_name() const;
+  EventBuilder event_builder() const;
+  Scheduler * sch() const;
 
  private:
-
-  //
-  template<typename ARG, typename ... ARGS>
-  void log_helper(std::ostream & os, ARG arg, ARGS && ... args) {
-    log_helper(os << arg, std::forward<ARGS>(args)...);
-  }
-
-  //
-  template<typename ARG>
-  void log_helper(std::ostream & os, ARG arg) {
-    os << arg;
-  }
+  Scheduler * sch_;
+  std::string instance_name_;
+  Module * parent_{nullptr};
 };
-  
+
 } // namespace ccm::kernel
 
 #endif

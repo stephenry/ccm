@@ -53,21 +53,21 @@ class EventQueueTestTop: public ccm::kernel::TopModule {
     void cb__on_invoke() override {
       const FrontierEntry & e = state_.frontier.front();
       
-      EXPECT_EQ(ctxt_.now(), e.t);
-      EXPECT_TRUE(state_.eq->has_msg(ctxt_.now()));
+      EXPECT_EQ(context().now(), e.t);
+      EXPECT_TRUE(state_.eq->has_msg(context().now()));
 
       MSG msg;
-      EXPECT_TRUE(state_.eq->get(msg, ctxt_.now()));
+      EXPECT_TRUE(state_.eq->get(msg, context().now()));
       EXPECT_EQ(msg, e.msg);
 
       state_.frontier.pop_front();
       n_++;
-      last_time_ = ctxt_.now();
+      last_time_ = context().now();
     }
     void cb__on_termination() override {
       EXPECT_EQ(state_.frontier.size(), 0);
       EXPECT_EQ(n_, size_);
-      EXPECT_EQ(ctxt_.now(), last_time_);
+      EXPECT_EQ(context().now(), last_time_);
     }
    private:
     State & state_;

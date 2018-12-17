@@ -33,61 +33,65 @@
 
 namespace ccm::kernel {
 
-  class Process;
-  class Scheduler;
-  class EventContext;
+class Process;
+class Scheduler;
+class EventContext;
 
-  class Event {
-    friend class Process;
-    friend class EventBuilder;
+class Event {
+  friend class Process;
+  friend class EventBuilder;
 
-    Event(EventContext * ctxt);
-  public:
-    Event();
-    ~Event();
+  Event(EventContext * ctxt);
+ public:
+  Event();
+  ~Event();
 
-    Event(const Event & h);
-    Event & operator=(Event h);
+  Event(const Event & h);
+  Event & operator=(Event h);
     
-    bool is_valid() const;
-    void notify(std::size_t t = 0);
-    void swap(Event & h) { std::swap(ctxt_, h.ctxt_); }
+  bool is_valid() const;
+  void notify(std::size_t t = 0);
+  void swap(Event & h) { std::swap(ctxt_, h.ctxt_); }
 
-  private:
-    void add_to_wait_set(Process * p);
+ private:
+  void add_to_wait_set(Process * p);
     
-    EventContext *ctxt_{nullptr};
-  };
+  EventContext *ctxt_{nullptr};
+};
 
-  class EventBuilder {
-    friend class Scheduler;
-    friend class Context;
+class EventBuilder {
+  friend class Scheduler;
+  friend class Context;
 
-    EventBuilder(Scheduler * sch)
+  EventBuilder(Scheduler * sch)
       : sch_(sch)
-    {}
+  {}
 
-  public:
-    Event construct_event() const;
+ public:
+  Event construct_event(const std::string & name = "AnonymousEvent") const;
     
-    template<typename FwdIt>
-    Event construct_or_event(FwdIt begin, FwdIt end) const {
-      using value_type = typename std::iterator_traits<FwdIt>::value_type;
-      return construct_or_event(std::vector<value_type>{begin, end});
-    }
+  template<typename FwdIt>
+  Event construct_or_event(FwdIt begin, FwdIt end,
+                           const std::string & name = "AnonymousOrEvent") const {
+    using value_type = typename std::iterator_traits<FwdIt>::value_type;
+    return construct_or_event(std::vector<value_type>{begin, end}, name);
+  }
 
-    template<typename FwdIt>
-    Event construct_and_event(FwdIt begin, FwdIt end) const {
-      using value_type = typename std::iterator_traits<FwdIt>::value_type;
-      return construct_and_event(std::vector<value_type>{begin, end});
-    }
+  template<typename FwdIt>
+  Event construct_and_event(FwdIt begin, FwdIt end,
+                            const std::string & name = "AnonymousAndEvent") const {
+    using value_type = typename std::iterator_traits<FwdIt>::value_type;
+    return construct_and_event(std::vector<value_type>{begin, end}, name);
+  }
     
-  private:
-    Event construct_or_event(const std::vector<Event> & l) const;
-    Event construct_and_event(const std::vector<Event> & l) const;
+ private:
+  Event construct_or_event(const std::vector<Event> & l,
+                           const std::string & name) const;
+  Event construct_and_event(const std::vector<Event> & l,
+                            const std::string & name) const;
     
-    mutable Scheduler * sch_{nullptr};
-  };
+  mutable Scheduler * sch_{nullptr};
+};
 
 } // namespace ccm::kernel
 

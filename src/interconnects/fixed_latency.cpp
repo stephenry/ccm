@@ -47,7 +47,7 @@ namespace ccm::interconnects {
     virtual void cb__on_invoke() override {
       krn::Transaction * t;
       if (fl_->ins_[id_]->get(t)) {
-        fl_->eqs_[flt(t)->portid_dst]->set(t, ctxt_.now() + fl_->args_.latency);
+        fl_->eqs_[flt(t)->portid_dst]->set(t, context().now() + fl_->args_.latency);
       }
     }
     std::size_t id_;
@@ -63,7 +63,7 @@ namespace ccm::interconnects {
   private:
     virtual void cb__on_invoke() override {
       krn::Transaction * t;
-      if (fl_->eqs_[id_]->get(t, ctxt_.now())) {
+      if (fl_->eqs_[id_]->get(t, context().now())) {
         fl_->outs_[id_]->push(t);
       }
     }

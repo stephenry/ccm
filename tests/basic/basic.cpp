@@ -32,126 +32,126 @@
 
 namespace {
 
-  namespace krn = ::ccm::kernel;
-  namespace agt = ::ccm::agents;
-  namespace itc = ::ccm::interconnects;
+namespace krn = ::ccm::kernel;
+namespace agt = ::ccm::agents;
+namespace itc = ::ccm::interconnects;
 
-  struct State {
-    std::size_t n{10000};
-    std::size_t sender_id;
-    std::size_t consumer_id;
-    std::deque<std::size_t> sent;
-  };
+struct State {
+  std::size_t n{10000};
+  std::size_t sender_id;
+  std::size_t consumer_id;
+  std::deque<std::size_t> sent;
+};
 
-  struct BasicTransaction : itc::FixedLatencyTransaction {
-    void reset() override {
-      is_valid_ = false;
-    }
-    bool is_valid() const { return is_valid_; }
-    std::size_t value() const { return value_; }
-    void set(std::size_t value) {
-      is_valid_ = true;
-      value_ = value;
-    }
-  private:
-    bool is_valid_;
-    std::size_t value_;
-  };
+struct BasicTransaction : itc::FixedLatencyTransaction {
+  void reset() override {
+    is_valid_ = false;
+  }
+  bool is_valid() const { return is_valid_; }
+  std::size_t value() const { return value_; }
+  void set(std::size_t value) {
+    is_valid_ = true;
+    value_ = value;
+  }
+ private:
+  bool is_valid_;
+  std::size_t value_;
+};
 
-  struct Producer : agt::BasicSourceAgent {
-    CCM_BUILDABLE_COMMON(Producer);
-    struct Arguments : krn::BuildableArguments {
-      Arguments(std::size_t id, const std::string & instance_name)
+struct Producer : agt::BasicSourceAgent {
+  CCM_BUILDABLE_COMMON(Producer);
+  struct Arguments : krn::BuildableArguments {
+    Arguments(std::size_t id, const std::string & instance_name)
         : BuildableArguments(id, instance_name)
-      {}
-      std::size_t period{16};
-    };
-    Producer(const krn::Context & ctxt, const Arguments & args)
+    {}
+    std::size_t period{16};
+  };
+  Producer(const krn::Context & ctxt, const Arguments & args)
       : agt::BasicSourceAgent(ctxt, args.period), args_(args)
-    {}
-    void set_state(State * state) { state_ = state; }
-    krn::Transaction * source_transaction() override {
-      if (state_->n-- == 0)
-        return nullptr;
+  {}
+  void set_state(State * state) { state_ = state; }
+  krn::Transaction * source_transaction() override {
+    if (state_->n-- == 0)
+      return nullptr;
 
-      BasicTransaction * bt = p_.alloc();
-      EXPECT_EQ(args_.id_, state_->sender_id);
-      bt->portid_src = args_.id_;
-      bt->portid_dst = state_->consumer_id;
-      EXPECT_TRUE(!bt->is_valid());
-      bt->set(ccm::rand_int());
-      return bt;
-    }
-  private:
-    Arguments args_;
-    ccm::Pool<BasicTransaction> p_;
-    State * state_;
-  };
+    BasicTransaction * bt = p_.alloc();
+    EXPECT_EQ(args_.id_, state_->sender_id);
+    bt->portid_src = args_.id_;
+    bt->portid_dst = state_->consumer_id;
+    EXPECT_TRUE(!bt->is_valid());
+    bt->set(ccm::rand_int());
+    return bt;
+  }
+ private:
+  Arguments args_;
+  ccm::Pool<BasicTransaction> p_;
+  State * state_;
+};
 
-  struct Consumer : agt::BasicSinkAgent {
-    CCM_BUILDABLE_COMMON(Consumer);
+struct Consumer : agt::BasicSinkAgent {
+  CCM_BUILDABLE_COMMON(Consumer);
 
-    struct Arguments : krn::BuildableArguments {
-      Arguments(std::size_t id, const std::string & instance_name)
+  struct Arguments : krn::BuildableArguments {
+    Arguments(std::size_t id, const std::string & instance_name)
         : BuildableArguments(id, instance_name)
-      {}
-    };
-    Consumer(const krn::Context & ctxt, const Arguments & args)
-      : BasicSinkAgent(ctxt), args_(args)
     {}
-    void set_state(State * state) { state_ = state; }
-    void sink_transaction (krn::Transaction * t) override {
-      BasicTransaction * bt = static_cast<BasicTransaction *>(t);
-      EXPECT_TRUE(bt->is_valid());
-      EXPECT_EQ(bt->portid_dst, args_.id_);
-      EXPECT_EQ(bt->portid_src, state_->sender_id);
-      EXPECT_EQ(bt->portid_dst, state_->consumer_id);
-      const std::size_t expected = state_->sent.front();
-      const std::size_t actual = bt->value();
-      EXPECT_EQ(expected, actual);
-      state_->sent.pop_front();
-      bt->release();
-    }
-  private:
-    State * state_;
-    Arguments args_;
   };
+  Consumer(const krn::Context & ctxt, const Arguments & args)
+      : BasicSinkAgent(ctxt), args_(args)
+  {}
+  void set_state(State * state) { state_ = state; }
+  void sink_transaction (krn::Transaction * t) override {
+    BasicTransaction * bt = static_cast<BasicTransaction *>(t);
+    EXPECT_TRUE(bt->is_valid());
+    EXPECT_EQ(bt->portid_dst, args_.id_);
+    EXPECT_EQ(bt->portid_src, state_->sender_id);
+    EXPECT_EQ(bt->portid_dst, state_->consumer_id);
+    const std::size_t expected = state_->sent.front();
+    const std::size_t actual = bt->value();
+    EXPECT_EQ(expected, actual);
+    state_->sent.pop_front();
+    bt->release();
+  }
+ private:
+  State * state_;
+  Arguments args_;
+};
 
-  class Top : public krn::TopModule {
-  public:
-    Top(ccm::kernel::Scheduler & sch,
-        const std::string & instance_name = "top")
+class Top : public krn::TopModule {
+ public:
+  Top(ccm::kernel::Scheduler & sch,
+      const std::string & instance_name = "top")
       : ccm::kernel::TopModule(std::addressof(sch), instance_name) {
       
-      ccm::interconnects::register_interconnects(breg_);
-      breg_.register_agent<Producer>();
-      breg_.register_agent<Consumer>();
+    ccm::interconnects::register_interconnects(breg_);
+    breg_.register_agent<Producer>();
+    breg_.register_agent<Consumer>();
 
-      Producer::Arguments pargs{0, "P"};
-      producer_ = static_cast<Producer *>(breg_.construct(ctxt_, "Producer", pargs));
-      producer_->set_state(&state_);
+    Producer::Arguments pargs{0, "P"};
+    producer_ = static_cast<Producer *>(breg_.construct(context(), "Producer", pargs));
+    producer_->set_state(&state_);
 
-      Consumer::Arguments cargs{1, "C"};
-      consumer_ = static_cast<Consumer *>(breg_.construct(ctxt_, "Consumer", cargs));
-      producer_->set_state(&state_);
+    Consumer::Arguments cargs{1, "C"};
+    consumer_ = static_cast<Consumer *>(breg_.construct(context(), "Consumer", cargs));
+    producer_->set_state(&state_);
 
-      ccm::interconnects::FixedLatency::Arguments fargs{2, "F"};
-      fargs.in_ports = 1;
-      fargs.out_ports = 1;
-      fixed_latency_ = static_cast<
-        ccm::interconnects::FixedLatency *>(breg_.construct(ctxt_, "FixedLatency", fargs));
+    ccm::interconnects::FixedLatency::Arguments fargs{2, "F"};
+    fargs.in_ports = 1;
+    fargs.out_ports = 1;
+    fixed_latency_ = static_cast<
+      ccm::interconnects::FixedLatency *>(breg_.construct(context(), "FixedLatency", fargs));
 
-      producer_->out_ = fixed_latency_->ins_[0];
-      fixed_latency_->outs_[0] = consumer_->in_;
-    }
-  private:
+    producer_->out_ = fixed_latency_->ins_[0];
+    fixed_latency_->outs_[0] = consumer_->in_;
+  }
+ private:
     
-    krn::BuildableRegistry breg_;
-    State state_;
-    Producer * producer_;
-    Consumer * consumer_;
-    ccm::interconnects::FixedLatency * fixed_latency_;
-  };
+  krn::BuildableRegistry breg_;
+  State state_;
+  Producer * producer_;
+  Consumer * consumer_;
+  ccm::interconnects::FixedLatency * fixed_latency_;
+};
   
 } // namespace
 

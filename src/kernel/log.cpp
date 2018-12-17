@@ -25,47 +25,19 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __LOG_HPP__
-#define __LOG_HPP__
-
-#include <sstream>
-#include <iostream>
+#include "log.hpp"
 
 namespace ccm::kernel {
 
-enum class LogLevel {
-  Fatal,
-  Error,
-  Warning,
-  Info,
-  Debug
-};
-
-const char * to_string(LogLevel ll);
-
-struct Logger {
-
-  template<typename ... ARGS>
-  void log(LogLevel ll, ARGS && ... args) {
-    log_helper(std::cout, std::forward<ARGS>(args)...);
-    std::cout << "\n";
+const char * to_string(LogLevel ll) {
+  switch (ll) {
+    case LogLevel::Fatal: return "Fatal";
+    case LogLevel::Error: return "Error";
+    case LogLevel::Warning: return "Warning";
+    case LogLevel::Info: return "Info";
+    case LogLevel::Debug: return "Debug";
   }
+  return "Unknown";
+}
 
- private:
-
-  //
-  template<typename ARG, typename ... ARGS>
-  void log_helper(std::ostream & os, ARG arg, ARGS && ... args) {
-    log_helper(os << arg, std::forward<ARGS>(args)...);
-  }
-
-  //
-  template<typename ARG>
-  void log_helper(std::ostream & os, ARG arg) {
-    os << arg;
-  }
-};
-  
 } // namespace ccm::kernel
-
-#endif

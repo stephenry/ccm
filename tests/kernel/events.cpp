@@ -33,85 +33,93 @@ namespace krn = ccm::kernel;
 
 namespace {
 
-  struct EventOrTestTop : krn::TopModule {
-    struct {
-      bool did_run_invoke{false};
-      bool did_run_validate{false};
-      void validate() {
-        did_run_validate = true;
-        EXPECT_TRUE(did_run_invoke);
-      }
-      std::vector<krn::Event> e;
-      std::vector<std::size_t> times;
-    } state_;
+struct EventOrTestTop : krn::TopModule {
+  struct {
+    bool did_run_invoke{false};
+    bool did_run_validate{false};
+    void validate() {
+      did_run_validate = true;
+      EXPECT_TRUE(did_run_invoke);
+    }
+    std::vector<krn::Event> e;
+    std::vector<std::size_t> times;
+  } state_;
 
-    struct P0 : krn::Process {
-      P0(const krn::Context & ctxt, EventOrTestTop * p)
+  struct P0 : krn::Process {
+    P0(const krn::Context & ctxt, EventOrTestTop * p)
         : Process(ctxt), p_(p) {}
-      void cb__on_invoke() override {
-        std::size_t t = 10;
-        p_->state_.times.push_back(t);
-        p_->state_.e[0].notify(t);
+    void cb__on_invoke() override {
+      std::size_t t = 10;
+      p_->state_.times.push_back(t);
+      p_->state_.e[0].notify(t);
 
-        if (--n_ == 0)
-          kill();
-      }
-      EventOrTestTop * p_;
-      std::size_t n_{1000};
-    };
+      if (--n_ == 0)
+        kill();
+    }
+    EventOrTestTop * p_;
+    std::size_t n_{1000};
+  };
 
-    struct P1 : krn::Process {
-      P1(const krn::Context & ctxt, EventOrTestTop * p)
+  struct P1 : krn::Process {
+    P1(const krn::Context & ctxt, EventOrTestTop * p)
         : Process(ctxt), p_(p) {}
-      void cb__on_invoke() override {
-        p_->state_.did_run_invoke = true;
-        ASSERT_FALSE(p_->state_.times.empty());
+    void cb__on_invoke() override {
+      p_->state_.did_run_invoke = true;
+      ASSERT_FALSE(p_->state_.times.empty());
         
-        EXPECT_EQ(ctxt_.now(), p_->state_.times.back());
-        p_->state_.times.pop_back();
-      }
-      EventOrTestTop * p_;
-    };
+      EXPECT_EQ(context().now(), p_->state_.times.back());
+      p_->state_.times.pop_back();
+    }
+    EventOrTestTop * p_;
+  };
 
-    EventOrTestTop(krn::Scheduler & sch)
+  EventOrTestTop(krn::Scheduler & sch)
       : TopModule(&sch, "t") {
-      p0_ = create_process<P0>("P0", this);
-      p0_->set_periodic(1000);
-      p1_ = create_process<P1>("P1", this);
-      krn::EventBuilder b = ctxt_.event_builder();
-      for (int i = 0; i < 3; i++)
-        state_.e.push_back(b.construct_event());
-      eor_ = b.construct_or_event(state_.e.begin(), state_.e.end());
-      p0_->set_sensitive_on(eor_);
-    }
-    ~EventOrTestTop() {
-      EXPECT_TRUE(state_.did_run_validate);
-    }
-    void cb__on_termination() override {
-      state_.validate();
-    }
-    P0 * p0_;
-    P1 * p1_;
-    krn::Event eor_;
-  };
+    p0_ = create_process<P0>("P0", this);
+    p0_->set_periodic(1000);
+    p1_ = create_process<P1>("P1", this);
+    krn::EventBuilder b = context().event_builder();
+    for (int i = 0; i < 3; i++)
+      state_.e.push_back(b.construct_event());
+    eor_ = b.construct_or_event(state_.e.begin(), state_.e.end(), "EOR");
+    p0_->set_sensitive_on(eor_);
+  }
+  ~EventOrTestTop() {
+    EXPECT_TRUE(state_.did_run_validate);
+  }
+  void cb__on_termination() override {
+    state_.validate();
+  }
+  P0 * p0_;
+  P1 * p1_;
+  krn::Event eor_;
+};
 
-  struct EventAndTestTop : krn::TopModule {
-    EventAndTestTop(krn::Scheduler & sch)
+struct EventAndTestTop : krn::TopModule {
+  EventAndTestTop(krn::Scheduler & sch)
       : TopModule(&sch, "t")
-    {}
-  };
+  {}
+};
   
 } // namespace
 
 TEST(EventOrTest, basic) {
   krn::Scheduler sch;
-  sch.set_top(new EventOrTestTop{sch});
+  std::unique_ptr<krn::Module> top = krn::TopModule::construct<EventOrTestTop>(sch);
+  std::unique_ptr<krn::Logger> logger = std::make_unique<krn::Logger>();
+  top->set_logger(logger.get());
+  sch.set_top(top.get());
+  sch.set_logger(logger.get());
   sch.run();
 }
 
 TEST(EventAndTest, basic) {
   krn::Scheduler sch;
-  sch.set_top(new EventAndTestTop{sch});
+  std::unique_ptr<krn::Module> top = krn::TopModule::construct<EventAndTestTop>(sch);
+  std::unique_ptr<krn::Logger> logger = std::make_unique<krn::Logger>();
+  top->set_logger(logger.get());
+  sch.set_top(top.get());
+  sch.set_logger(logger.get());
   sch.run();
 }
 

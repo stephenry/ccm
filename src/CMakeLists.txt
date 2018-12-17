@@ -31,5 +31,5 @@ add_subdirectory(kernel)
 add_subdirectory(interconnects)
 add_subdirectory(agents)
 
-add_library(ccm STATIC)
+add_library(ccm STATIC ccm.cpp)
 target_link_libraries(ccm PRIVATE kernel interconnects agents)

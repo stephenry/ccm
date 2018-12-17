@@ -25,47 +25,25 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __LOG_HPP__
-#define __LOG_HPP__
-
+#include "object.hpp"
+#include "module.hpp"
+#include "utility.hpp"
 #include <sstream>
-#include <iostream>
 
 namespace ccm::kernel {
 
-enum class LogLevel {
-  Fatal,
-  Error,
-  Warning,
-  Info,
-  Debug
-};
+const char Object::SEP = '.';
 
-const char * to_string(LogLevel ll);
-
-struct Logger {
-
-  template<typename ... ARGS>
-  void log(LogLevel ll, ARGS && ... args) {
-    log_helper(std::cout, std::forward<ARGS>(args)...);
-    std::cout << "\n";
-  }
-
- private:
-
-  //
-  template<typename ARG, typename ... ARGS>
-  void log_helper(std::ostream & os, ARG arg, ARGS && ... args) {
-    log_helper(os << arg, std::forward<ARGS>(args)...);
-  }
-
-  //
-  template<typename ARG>
-  void log_helper(std::ostream & os, ARG arg) {
-    os << arg;
-  }
-};
+std::string Object::path() {
+  if (!path_)
+    path_ = parent_ ? join(parent_->path(), Object::SEP, name_) : "";
+  return path_.value();
+}
   
-} // namespace ccm::kernel
+std::string Object::prefix() {
+  std::stringstream ss;
+  ss << "[" << context_.now() << "] {" << path() << "}:";
+  return ss.str();
+}
 
-#endif
+} // namespace ccm::kerenl

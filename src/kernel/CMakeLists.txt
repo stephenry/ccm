@@ -33,4 +33,7 @@ add_library(kernel STATIC
   process.cpp
   module.cpp
   builder.cpp
+  object.cpp
+  log.cpp
+  context.cpp
   )

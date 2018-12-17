@@ -25,47 +25,59 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __LOG_HPP__
-#define __LOG_HPP__
+#ifndef __OBJECT_HPP__
+#define __OBJECT_HPP__
 
-#include <sstream>
-#include <iostream>
+#include "context.hpp"
+#include "log.hpp"
+#include <string>
+#include <optional>
 
 namespace ccm::kernel {
 
-enum class LogLevel {
-  Fatal,
-  Error,
-  Warning,
-  Info,
-  Debug
-};
+class Module;
+class Logger;
 
-const char * to_string(LogLevel ll);
+class Object {
+  static const char SEP;
 
-struct Logger {
+  friend class Module;
+  friend class Process;
+  
+  Object(const Context & context, const std::string & name = "Unnamed")
+      : context_(context), name_(name)
+  {}
+ public:
+  virtual ~Object() {}
+  std::string name() const { return name_; }
+  void set_name(const std::string & name) { name_ = name; }
+  void set_parent(Module * parent) { parent_ = parent; }
+  void set_logger(Logger * logger) { logger_ = logger; }
+  std::string path();
+  std::string prefix();
+  Context & context() { return context_; }
 
-  template<typename ... ARGS>
-  void log(LogLevel ll, ARGS && ... args) {
-    log_helper(std::cout, std::forward<ARGS>(args)...);
-    std::cout << "\n";
+ protected:
+#define DECLARE_LOGGER(__suffix, __enum)                                \
+  template<typename ... ARGS> void log_ ## __suffix(ARGS && ... args) { \
+  if (logger_)                                                          \
+    logger_->log(__enum, prefix(), std::forward<ARGS>(args)...);        \
   }
+  DECLARE_LOGGER(fatal, LogLevel::Fatal)
+  DECLARE_LOGGER(error, LogLevel::Error)
+  DECLARE_LOGGER(warning, LogLevel::Warning)
+  DECLARE_LOGGER(info, LogLevel::Info)
+  DECLARE_LOGGER(debug, LogLevel::Debug)
+#undef DECLARE_LOGGER
 
  private:
-
-  //
-  template<typename ARG, typename ... ARGS>
-  void log_helper(std::ostream & os, ARG arg, ARGS && ... args) {
-    log_helper(os << arg, std::forward<ARGS>(args)...);
-  }
-
-  //
-  template<typename ARG>
-  void log_helper(std::ostream & os, ARG arg) {
-    os << arg;
-  }
+  Context context_;
+  std::string name_;
+  std::optional<std::string> path_;
+  Module * parent_{nullptr};
+  Logger * logger_{nullptr};
 };
-  
+
 } // namespace ccm::kernel
 
 #endif

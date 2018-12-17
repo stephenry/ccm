@@ -33,56 +33,45 @@
 
 namespace ccm::kernel {
 
-  Module::Module (const Context & ctxt)
-    : ctxt_(ctxt) {}
+Module::Module (const Context & ctxt)
+    : Object(ctxt) {}
   
-  Module::~Module() {
-    for (Module * m : children_)
-      delete m;
-    for (Process * p : processes_)
-      delete p;
-  }
+Module::~Module() {}
 
-  std::size_t Context::now() const { return sch_->now(); }
-  std::size_t Context::delta() const { return sch_->delta(); }
-  std::string Context::instance_name() const { return instance_name_; }
-  EventBuilder Context::event_builder() const { return EventBuilder{sch_}; }
-  Scheduler * Context::sch() const { return sch_; }
-
-  void Module::call_on_elaboration() {
-    std::for_each(children_.begin(), children_.end(),
-                  [=](Module * p) {
-                     p->call_on_elaboration();
-                   });
-     std::for_each(processes_.begin(), processes_.end(),
-                   [=](Process * p) {
-                     p->call_on_elaboration();
-                   });
-     cb__on_elaboration();
-   }
+void Module::call_on_elaboration() {
+  std::for_each(children_.begin(), children_.end(),
+                [=](std::unique_ptr<Module> & p) {
+                  p->call_on_elaboration();
+                });
+  std::for_each(processes_.begin(), processes_.end(),
+                [=](std::unique_ptr<Process> & p) {
+                  p->call_on_elaboration();
+                });
+  cb__on_elaboration();
+}
   
-  void Module::call_on_initialization() {
-    std::for_each(children_.begin(), children_.end(),
-                  [=](Module * m) {
-                    m->call_on_initialization();
-                  });
-    std::for_each(processes_.begin(), processes_.end(),
-                  [=](Process * p) {
-                    p->call_on_initialization();
-                  });
-    cb__on_initialization();
-  }
+void Module::call_on_initialization() {
+  std::for_each(children_.begin(), children_.end(),
+                [=](std::unique_ptr<Module> & m) {
+                  m->call_on_initialization();
+                });
+  std::for_each(processes_.begin(), processes_.end(),
+                [=](std::unique_ptr<Process> & p) {
+                  p->call_on_initialization();
+                });
+  cb__on_initialization();
+}
   
-  void Module::call_on_termination() {
-    std::for_each(children_.begin(), children_.end(),
-                  [=](Module * m) {
-                    m->call_on_termination();
-                  });
-    std::for_each(processes_.begin(), processes_.end(),
-                  [=](Process * p) {
-                    p->call_on_termination();
-                  });
-    cb__on_termination();
-  }
+void Module::call_on_termination() {
+  std::for_each(children_.begin(), children_.end(),
+                [=](std::unique_ptr<Module> & m) {
+                  m->call_on_termination();
+                });
+  std::for_each(processes_.begin(), processes_.end(),
+                [=](std::unique_ptr<Process> & p) {
+                  p->call_on_termination();
+                });
+  cb__on_termination();
+}
 
 } // namespace ccm::kernel

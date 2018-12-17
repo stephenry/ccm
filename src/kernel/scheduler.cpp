@@ -32,76 +32,98 @@
 namespace ccm::kernel {
 
 
-  //
-  void Frontier::add_work(std::size_t t, Frontier::TaskPtr && p) {
-    f_[t].push_back(std::move(p));
-  }
-  bool Frontier::work_remains() const { return !f_.empty(); }
-  std::size_t Frontier::next_time() const { return f_.begin()->first; }
-  std::vector<Frontier::TaskPtr> & Frontier::next() { return f_.begin()->second; }
-  void Frontier::advance() { f_.erase(f_.begin()); }
+//
+void Frontier::add_work(std::size_t t, std::unique_ptr<Task> && p) {
+  f_[t].push_back(std::move(p));
+}
 
-  Frontier::Frontier() {}
+bool Frontier::work_remains() const {
+  return !f_.empty();
+}
 
-  Scheduler::Scheduler() {}
+std::size_t Frontier::next_time() const {
+  return f_.begin()->first;
+}
 
-  Scheduler::~Scheduler() {
-    delete top_;
-  }
+std::vector<std::unique_ptr<Task> > & Frontier::next() {
+  return f_.begin()->second;
+}
 
-  void Scheduler::run(RunOptions const & run_options) {
-    CCM_ASSERT(top_ != nullptr);
+void Frontier::advance() {
+  f_.erase(f_.begin());
+}
+
+Frontier::Frontier() {
+}
+
+Scheduler::Scheduler() {
+}
+
+Scheduler::~Scheduler() {
+}
+
+void Scheduler::run(RunOptions const & run_options) {
+  CCM_ASSERT(top_ != nullptr);
     
-    //
-    set_state(SimState::Elaboration);
-    top_->call_on_elaboration();
+  //
+  set_state(SimState::Elaboration);
+  top_->call_on_elaboration();
 
-    //
-    set_state(SimState::Initialization);
-    top_->call_on_initialization();
+  //
+  set_state(SimState::Initialization);
+  top_->call_on_initialization();
 
-    //
-    set_state(SimState::Running);
-    while (frontier_.work_remains()) {
-      const std::size_t next_time = frontier_.next_time();
-      if (!run_options.can_run_at_time(next_time))
+  //
+  set_state(SimState::Running);
+  while (frontier_.work_remains()) {
+    const std::size_t next_time = frontier_.next_time();
+    if (!run_options.can_run_at_time(next_time))
+      break;
+
+    now_ = next_time;
+
+    next_delta_.clear();
+
+    for (std::unique_ptr<Task> & p : frontier_.next())
+      p->apply();
+
+    delta_ = 0;
+    do {
+      current_delta_.clear();
+      std::swap(current_delta_, next_delta_);
+
+      for (Process * p : current_delta_)
+        p->call_on_invoke();
+
+      if (++delta_ == Scheduler::DELTA_MAX)
         break;
 
-      now_ = next_time;
+    } while (next_delta_.size() != 0);
 
-      next_delta_.clear();
-
-      for (Frontier::TaskPtr & p : frontier_.next())
-        p->apply();
-
-      delta_ = 0;
-      do {
-        current_delta_.clear();
-        std::swap(current_delta_, next_delta_);
-
-        for (Process * p : current_delta_)
-          p->call_on_invoke();
-
-        if (++delta_ == Scheduler::DELTA_MAX)
-          break;
-
-      } while (next_delta_.size() != 0);
-
-      frontier_.advance();
-    }
-
-    //
-    set_state(SimState::Termination);
-    top_->call_on_termination();
+    frontier_.advance();
   }
 
-  void Scheduler::set_top (Module * ptr) { top_ = ptr; }
+  //
+  set_state(SimState::Termination);
+  top_->call_on_termination();
+}
 
-  void Scheduler::add_frontier_task(Frontier::TaskPtr && t) {
-    frontier_.add_work(t->time(), std::move(t));
-  }
-  void Scheduler::add_process_next_delta(Process * p) {
-    next_delta_.push_back(p);
-  }
+void Scheduler::set_top(Module * ptr) {
+  top_ = ptr;
+}
+
+void Scheduler::add_frontier_task(std::unique_ptr<Task> && task) {
+  debug("Add task to frontier: ", task->what());
+  frontier_.add_work(task->time(), std::move(task));
+}
+void Scheduler::add_process_next_delta(Process * p) {
+  next_delta_.push_back(p);
+}
+
+std::string Scheduler::prefix() const {
+  std::stringstream ss;
+  ss << "[Scheduler: " << now_ << ":" << delta_ << "] ";
+  return ss.str();
+}
 
 } // namespace ccm::kernel

@@ -25,47 +25,15 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __LOG_HPP__
-#define __LOG_HPP__
-
-#include <sstream>
-#include <iostream>
+#include "context.hpp"
+#include "scheduler.hpp"
 
 namespace ccm::kernel {
 
-enum class LogLevel {
-  Fatal,
-  Error,
-  Warning,
-  Info,
-  Debug
-};
+std::size_t Context::now() const { return sch_->now(); }
+std::size_t Context::delta() const { return sch_->delta(); }
+std::string Context::instance_name() const { return instance_name_; }
+EventBuilder Context::event_builder() const { return EventBuilder{sch_}; }
+Scheduler * Context::sch() const { return sch_; }
 
-const char * to_string(LogLevel ll);
-
-struct Logger {
-
-  template<typename ... ARGS>
-  void log(LogLevel ll, ARGS && ... args) {
-    log_helper(std::cout, std::forward<ARGS>(args)...);
-    std::cout << "\n";
-  }
-
- private:
-
-  //
-  template<typename ARG, typename ... ARGS>
-  void log_helper(std::ostream & os, ARG arg, ARGS && ... args) {
-    log_helper(os << arg, std::forward<ARGS>(args)...);
-  }
-
-  //
-  template<typename ARG>
-  void log_helper(std::ostream & os, ARG arg) {
-    os << arg;
-  }
-};
-  
 } // namespace ccm::kernel
-
-#endif

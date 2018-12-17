@@ -38,5 +38,6 @@
 #include "primitives.hpp"
 #include "builder.hpp"
 #include "transaction.hpp"
+#include "log.hpp"
 
 #endif

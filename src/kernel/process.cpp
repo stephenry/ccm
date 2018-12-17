@@ -30,86 +30,91 @@
 
 namespace ccm::kernel {
 
-  Process::Process (const Context & context)
-    : ctxt_(context) {
-    sensitive_.resize(1);
-  }
+Process::Process (const Context & context)
+    : Object(context) {
+  sensitive_.resize(1);
+}
 
-  void Process::wait(Event e) {
-    sensitive_.push_back(Sensitive{e});
-  }
+void Process::wait(Event e) {
+  sensitive_.push_back(Sensitive{e});
+}
 
-  void Process::wait_for(std::size_t t) {
-    wait_until(ctxt_.now() + t);
-  }
+void Process::wait_for(std::size_t t) {
+  wait_until(context().now() + t);
+}
 
-  void Process::wait_until(std::size_t t) {
-    sensitive_.push_back(Sensitive{SensitiveOn::TimeAbsolute, t});
-  }
+void Process::wait_until(std::size_t t) {
+  sensitive_.push_back(Sensitive{SensitiveOn::TimeAbsolute, t});
+}
 
-  void Process::kill() {
-    sensitive_.back().is_valid = false;
-  }
+void Process::kill() {
+  sensitive_.back().is_valid = false;
+}
 
-  void Process::call_on_elaboration() {
-    cb__on_elaboration();
-  }
+void Process::call_on_elaboration() {
+  cb__on_elaboration();
+}
 
-  void Process::call_on_initialization() {
-    cb__on_initialization();
-    update_sensitivity();
-  }
+void Process::call_on_initialization() {
+  cb__on_initialization();
+  update_sensitivity();
+}
 
-  void Process::call_on_invoke() {
-    cb__on_invoke();
-    update_sensitivity();
-  }
+void Process::call_on_invoke() {
+  cb__on_invoke();
+  update_sensitivity();
+}
 
-  void Process::update_sensitivity() {
-    Sensitive & top = sensitive_.back();
+void Process::update_sensitivity() {
+  Sensitive & top = sensitive_.back();
 
-    if (!top.is_valid)
-      return ;
+  if (!top.is_valid)
+    return ;
     
-    if (top.on == SensitiveOn::Event) {
-      top.e.add_to_wait_set(this);
-    } else {
-      struct WakeProcess : Frontier::Task {
-        WakeProcess(Scheduler * sch, Process * p, std::size_t t)
+  if (top.on == SensitiveOn::Event) {
+    top.e.add_to_wait_set(this);
+  } else {
+    struct WakeProcess : Task {
+      WakeProcess(Scheduler * sch, Process * p, std::size_t t)
           : p_(p), sch_(sch), t_(t) {}
-        void apply() override { sch_->add_process_next_delta(p_); }
-        std::size_t time() const override { return t_; }
-      private:
-        Scheduler * sch_;
-        Process * p_;
-        std::size_t t_;
-      };
+      void apply() override { sch_->add_process_next_delta(p_); }
+      std::size_t time() const override { return t_; }
+      std::string what() const override {
+        std::stringstream ss;
+        ss << "WakeProcess " << p_->name() << " at: " << time();
+        return ss.str();
+      }
+     private:
+      Scheduler * sch_;
+      Process * p_;
+      std::size_t t_;
+    };
 
-      if (top.on == SensitiveOn::TimeRelative)
-        top.t += ctxt_.now();
+    if (top.on == SensitiveOn::TimeRelative)
+      top.t += context().now();
 
-      Scheduler * sch = ctxt_.sch();
-      sch->add_frontier_task(std::make_unique<WakeProcess>(sch, this, top.t));
-    }
-
-    if (sensitive_.size() > 1)
-      sensitive_.resize(1);
+    Scheduler * sch = context().sch();
+    sch->add_frontier_task(std::make_unique<WakeProcess>(sch, this, top.t));
   }
 
-  //
-  void Process::call_on_termination() {
-    cb__on_termination();
-  }
+  if (sensitive_.size() > 1)
+    sensitive_.resize(1);
+}
 
-  //
-  void Process::set_sensitive_on(Event e) {
-    sensitive_[0] = Sensitive{e};
-    //        update_sensitivity();
-  }
+//
+void Process::call_on_termination() {
+  cb__on_termination();
+}
 
-  void Process::set_periodic(std::size_t t) {
-    sensitive_[0] = Sensitive{SensitiveOn::TimeRelative, t};
-    //    update_sensitivity();
-  }
+//
+void Process::set_sensitive_on(Event e) {
+  sensitive_[0] = Sensitive{e};
+  //        update_sensitivity();
+}
+
+void Process::set_periodic(std::size_t t) {
+  sensitive_[0] = Sensitive{SensitiveOn::TimeRelative, t};
+  update_sensitivity();
+}
 
 } // namespace ccm::kernel

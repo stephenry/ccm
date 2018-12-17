@@ -30,127 +30,127 @@
 
 namespace {
 
-  class ProcessWaitOnEventTop : public ccm::kernel::TopModule {
+class ProcessWaitOnEventTop : public ccm::kernel::TopModule {
 
-    struct SharedState {
-      std::size_t n{100000};
-      ccm::kernel::Event e;
-    };
+  struct SharedState {
+    std::size_t n{100000};
+    ccm::kernel::Event e;
+  };
 
-    struct ProcessWaitOnEvent : public ccm::kernel::Process {
-      ProcessWaitOnEvent(const ccm::kernel::Context & context, SharedState & state)
+  struct ProcessWaitOnEvent : public ccm::kernel::Process {
+    ProcessWaitOnEvent(const ccm::kernel::Context & context, SharedState & state)
         : Process(context), state_(state)
-      {}
-    private:
-      void cb__on_initialization() override {
-        state_.e.notify(ctxt_.now() + 10);
+    {}
+   private:
+    void cb__on_initialization() override {
+      state_.e.notify(context().now() + 10);
+      --state_.n;
+    }
+    void cb__on_invoke() override {
+      if (state_.n != 0) {
+        state_.e.notify(context().now() + 10);
         --state_.n;
       }
-      void cb__on_invoke() override {
-        if (state_.n != 0) {
-          state_.e.notify(ctxt_.now() + 10);
-          --state_.n;
-        }
-      }
-      void cb__on_termination() override {
-        EXPECT_EQ(state_.n, 0);
-        const std::size_t end_time = 10 * 100000;
-        EXPECT_EQ(ctxt_.now(), end_time);
-      }
-      SharedState state_;
-    };
-  public:
-    ProcessWaitOnEventTop(ccm::kernel::Scheduler & sch,
-                          const std::string & instance_name = "top")
+    }
+    void cb__on_termination() override {
+      EXPECT_EQ(state_.n, 0);
+      const std::size_t end_time = 10 * 100000;
+      EXPECT_EQ(context().now(), end_time);
+    }
+    SharedState state_;
+  };
+ public:
+  ProcessWaitOnEventTop(ccm::kernel::Scheduler & sch,
+                        const std::string & instance_name = "top")
       : ccm::kernel::TopModule(std::addressof(sch), instance_name) {
-      const ccm::kernel::EventBuilder b = ctxt_.event_builder();
-      state_.e = b.construct_event();
+    const ccm::kernel::EventBuilder b = context().event_builder();
+    state_.e = b.construct_event();
     
-      p_ = create_process<ProcessWaitOnEvent>("p0", state_);
-      p_->set_sensitive_on(state_.e);
-    }
-  private:
-    SharedState state_;
-    ccm::kernel::Process * p_;
+    p_ = create_process<ProcessWaitOnEvent>("p0", state_);
+    p_->set_sensitive_on(state_.e);
+  }
+ private:
+  SharedState state_;
+  ccm::kernel::Process * p_;
+};
+
+class ProcessWaitForTestTop : public ccm::kernel::TopModule {
+
+  struct SharedState {
+    std::size_t n{100000};
+    std::size_t delay{10};
+    std::size_t next_time{0};
   };
 
-  class ProcessWaitForTestTop : public ccm::kernel::TopModule {
-
-    struct SharedState {
-      std::size_t n{100000};
-      std::size_t delay{10};
-      std::size_t next_time{0};
-    };
-
-    struct ProcessWaitFor : public ccm::kernel::Process {
-      ProcessWaitFor(const ccm::kernel::Context & context, SharedState & state)
+  struct ProcessWaitFor : public ccm::kernel::Process {
+    ProcessWaitFor(const ccm::kernel::Context & context, SharedState & state)
         : Process(context), state_(state)
-      {}
-    private:
-      void cb__on_initialization() override {
-        update();
-      }
-      void cb__on_invoke() override {
-        EXPECT_EQ(ctxt_.now(), state_.next_time);
-        update();
-      }
-      void update() {
-        state_.next_time += state_.delay;
-        if (--state_.n != 0)
-          wait_for(state_.delay);
-      }
-      SharedState & state_;
-    };
-  public:
-    ProcessWaitForTestTop(ccm::kernel::Scheduler & sch,
+    {}
+   private:
+    void cb__on_initialization() override {
+      update();
+    }
+    void cb__on_invoke() override {
+      EXPECT_EQ(context().now(), state_.next_time);
+      update();
+    }
+    void update() {
+      state_.next_time += state_.delay;
+      if (--state_.n != 0)
+        wait_for(state_.delay);
+    }
+    SharedState & state_;
+  };
+ public:
+  ProcessWaitForTestTop(ccm::kernel::Scheduler & sch,
+                        const std::string & instance_name = "top")
+      : ccm::kernel::TopModule(std::addressof(sch), instance_name) {
+    p_ = create_process<ProcessWaitFor>("p0", state_);
+  }
+ private:
+  void cb__on_elaboration() override {
+  }
+  SharedState state_;
+  ccm::kernel::Process * p_;
+};
+
+class ProcessWaitUntilTestTop : public ccm::kernel::TopModule {
+
+  struct SharedState {
+    std::size_t n{100000};
+    std::size_t delay{10};
+    std::size_t next_time{0};
+  };
+
+  struct ProcessWaitUntil : public ccm::kernel::Process {
+    ProcessWaitUntil(const ccm::kernel::Context & context, SharedState & state)
+        : Process(context), state_(state)
+    {}
+   private:
+    void cb__on_initialization() override {
+      update();
+    }
+    void cb__on_invoke() override {
+      EXPECT_EQ(context().now(), state_.next_time);
+      update();
+    }
+    void update() {
+      state_.next_time += state_.delay;
+      if (--state_.n != 0)
+        wait_until(state_.next_time);
+    }
+    SharedState & state_;
+  };
+ public:
+  ProcessWaitUntilTestTop(ccm::kernel::Scheduler & sch,
                           const std::string & instance_name = "top")
       : ccm::kernel::TopModule(std::addressof(sch), instance_name) {
-      p_ = create_process<ProcessWaitFor>("p0", state_);
-    }
-  private:
-    void cb__on_elaboration() override {
-    }
-    SharedState state_;
-    ccm::kernel::Process * p_;
-  };
-
-  class ProcessWaitUntilTestTop : public ccm::kernel::TopModule {
-
-    struct SharedState {
-      std::size_t n{100000};
-      std::size_t delay{10};
-      std::size_t next_time{0};
-    };
-
-    struct ProcessWaitUntil : public ccm::kernel::Process {
-      ProcessWaitUntil(const ccm::kernel::Context & context, SharedState & state)
-        : Process(context), state_(state)
-      {}
-    private:
-      void cb__on_initialization() override {
-        update();
-      }
-      void cb__on_invoke() override {
-        EXPECT_EQ(ctxt_.now(), state_.next_time);
-        update();
-      }
-      void update() {
-        state_.next_time += state_.delay;
-        if (--state_.n != 0)
-          wait_until(state_.next_time);
-      }
-      SharedState & state_;
-    };
-  public:
-    ProcessWaitUntilTestTop(ccm::kernel::Scheduler & sch,
-                            const std::string & instance_name = "top")
-      : ccm::kernel::TopModule(std::addressof(sch), instance_name) {
-      p_ = create_process<ProcessWaitUntil>("p0", state_);
-    }
-  private:
-    SharedState state_;
-    ccm::kernel::Process * p_;
-  };
+    p_ = create_process<ProcessWaitUntil>("p0", state_);
+  }
+ private:
+  SharedState state_;
+  ccm::kernel::Process * p_;
+};
 
 } // namespace
 

@@ -51,7 +51,7 @@ struct Sensitive {
   std::size_t t;
 };
 
-class Process {
+class Process : public Object {
   friend class Scheduler;
   friend class Module;
   
@@ -82,8 +82,6 @@ protected:
   //
   void kill();
 
-  //
-  Context ctxt_;
 private:
   //
   void call_on_elaboration();

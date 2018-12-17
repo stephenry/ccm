@@ -35,7 +35,7 @@
 #define CCM_BUILDABLE_COMMON(__cls)                                     \
   friend class ::ccm::kernel::BuildableRegistry;                        \
   struct Factory : ::ccm::kernel::BuildableFactory {                    \
-    const char * name() const { return #__cls; }                        \
+    const char * name() const override { return #__cls; }               \
     ::ccm::kernel::Buildable * construct(                               \
                     const ::ccm::kernel::Context & ctxt,                \
                     ::ccm::kernel::BuildableArguments & args) override {\

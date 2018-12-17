@@ -25,47 +25,29 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __LOG_HPP__
-#define __LOG_HPP__
-
 #include <sstream>
-#include <iostream>
 
 namespace ccm::kernel {
 
-enum class LogLevel {
-  Fatal,
-  Error,
-  Warning,
-  Info,
-  Debug
-};
+namespace detail {
 
-const char * to_string(LogLevel ll);
+template<typename ARG>
+std::ostream & join_helper(std::ostream & os, ARG && arg) {
+  return (os << arg);
+}
 
-struct Logger {
+template<typename ARG, typename ... REST>
+std::ostream & join_helper(std::ostream & os, ARG && arg, REST && ... rest) {
+  return join_helper(os << arg, std::forward<REST>(rest)...);
+}
 
-  template<typename ... ARGS>
-  void log(LogLevel ll, ARGS && ... args) {
-    log_helper(std::cout, std::forward<ARGS>(args)...);
-    std::cout << "\n";
-  }
+} // namespace detail
 
- private:
+template<typename ...ARGS>
+std::string join(ARGS && ... args) {
+  std::stringstream ss;
+  detail::join_helper(ss, std::forward<ARGS>(args)...);
+  return ss.str();
+}
 
-  //
-  template<typename ARG, typename ... ARGS>
-  void log_helper(std::ostream & os, ARG arg, ARGS && ... args) {
-    log_helper(os << arg, std::forward<ARGS>(args)...);
-  }
-
-  //
-  template<typename ARG>
-  void log_helper(std::ostream & os, ARG arg) {
-    os << arg;
-  }
-};
-  
 } // namespace ccm::kernel
-
-#endif
