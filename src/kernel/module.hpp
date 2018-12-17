@@ -54,6 +54,9 @@ class Module : public Object {
   Module (const Context & ctxt);
   virtual ~Module();
 
+  //
+  void set_logger(Logger * logger) override;
+
  protected:
 
   //

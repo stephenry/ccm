@@ -36,4 +36,5 @@ add_library(kernel STATIC
   object.cpp
   log.cpp
   context.cpp
+  random.cpp
   )

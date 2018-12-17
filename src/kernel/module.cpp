@@ -33,10 +33,21 @@
 
 namespace ccm::kernel {
 
-Module::Module (const Context & ctxt)
-    : Object(ctxt) {}
+void Module::set_logger(Logger * logger) {
+  for (std::unique_ptr<Module> & m : children_)
+    m->set_logger(logger);
+  for (std::unique_ptr<Process> & p : processes_)
+    p->set_logger(logger);
   
-Module::~Module() {}
+  Object::set_logger(logger);
+}
+
+Module::Module (const Context & ctxt)
+    : Object(ctxt)
+{}
+  
+Module::~Module()
+{}
 
 void Module::call_on_elaboration() {
   std::for_each(children_.begin(), children_.end(),

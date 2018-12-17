@@ -39,5 +39,6 @@
 #include "builder.hpp"
 #include "transaction.hpp"
 #include "log.hpp"
+#include "random.hpp"
 
 #endif

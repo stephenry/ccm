@@ -45,9 +45,17 @@ const char * to_string(LogLevel ll);
 
 struct Logger {
 
+  Logger()
+      : os_(std::cout)
+  {}
+
+  ~Logger() {
+    os_.flush();
+  }
+
   template<typename ... ARGS>
   void log(LogLevel ll, ARGS && ... args) {
-    log_helper(std::cout, std::forward<ARGS>(args)...);
+    log_helper(os_, std::forward<ARGS>(args)...);
     std::cout << "\n";
   }
 
@@ -64,6 +72,8 @@ struct Logger {
   void log_helper(std::ostream & os, ARG arg) {
     os << arg;
   }
+
+  std::ostream & os_;
 };
   
 } // namespace ccm::kernel

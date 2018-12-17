@@ -36,24 +36,26 @@ struct TestOptions {
   std::size_t process_n{10};
   std::size_t delay{10};
 };
+
+namespace krn = ccm::kernel;
   
-class WakeOnEventTop : public ccm::kernel::TopModule {
+class WakeOnEventTop : public krn::TopModule {
   struct SharedState {
     TestOptions opts;
     std::size_t next_process{0};
     std::size_t n{0};
-    std::vector<ccm::kernel::Event> es;
-    std::vector<ccm::kernel::Process *> processes_;
+    std::vector<krn::Event> es;
+    std::vector<krn::Process *> processes_;
   };
-  struct WakeOnEventProcess : ccm::kernel::Process {
-    WakeOnEventProcess(const ccm::kernel::Context & context,
+  struct WakeOnEventProcess : krn::Process {
+    WakeOnEventProcess(const krn::Context & context,
                        std::size_t id, SharedState & state)
       : Process(context), id_(id), state_(state)
     {}
     void cb__on_invoke() override {
       EXPECT_EQ(state_.next_process, id_);
 
-      state_.next_process = ccm::rand_int();
+      state_.next_process = krn::Random::uniform<std::size_t>(state_.processes_.size());
       if (--state_.n != 0)
         state_.es[state_.next_process].notify(context().now() + state_.opts.delay);
     }
@@ -62,15 +64,15 @@ class WakeOnEventTop : public ccm::kernel::TopModule {
     SharedState & state_;
   };
  public:
-  WakeOnEventTop(ccm::kernel::Scheduler & sch,
+  WakeOnEventTop(krn::Scheduler & sch,
                  const std::string & instance_name = "top",
                  const TestOptions & opts = TestOptions{})
-    : ccm::kernel::TopModule(std::addressof(sch), instance_name) {
+    : krn::TopModule(std::addressof(sch), instance_name) {
     state_.opts = opts;
     for (std::size_t i = 0; i < state_.opts.process_n; i++) {
-      ccm::kernel::Process * p = create_process<WakeOnEventProcess>("p0", i, state_);
-      const ccm::kernel::EventBuilder b = context().event_builder();
-      ccm::kernel::Event e = b.construct_event();
+      krn::Process * p = create_process<WakeOnEventProcess>("p0", i, state_);
+      const krn::EventBuilder b = context().event_builder();
+      krn::Event e = b.construct_event();
       p->set_sensitive_on(e);
       state_.es.push_back(e);
       state_.processes_.push_back(p);
@@ -90,7 +92,7 @@ class WakeOnEventTop : public ccm::kernel::TopModule {
 
 TEST(WakeOnEvent, t0) {
   TestOptions opts;
-  ccm::kernel::Scheduler sch;
+  krn::Scheduler sch;
   sch.set_top(new WakeOnEventTop(sch, "WakeOnEventTop", opts));
   sch.run();
 }

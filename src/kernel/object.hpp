@@ -50,9 +50,9 @@ class Object {
  public:
   virtual ~Object() {}
   std::string name() const { return name_; }
-  void set_name(const std::string & name) { name_ = name; }
-  void set_parent(Module * parent) { parent_ = parent; }
-  void set_logger(Logger * logger) { logger_ = logger; }
+  virtual void set_name(const std::string & name) { name_ = name; }
+  virtual void set_parent(Module * parent) { parent_ = parent; }
+  virtual void set_logger(Logger * logger) { logger_ = logger; }
   std::string path();
   std::string prefix();
   Context & context() { return context_; }

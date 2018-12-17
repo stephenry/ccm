@@ -27,8 +27,20 @@
 
 #include "random.hpp"
 
-namespace ccm {
+namespace ccm::kernel {
 
-  std::size_t rand_int() { return 0; }
+Random::Random() {
+  std::random_device rd;
+  gen_ = std::mt19937{rd()};
+}
 
-} // namespace ccm
+void Random::init(std::size_t seed) {
+  gen_ = std::mt19937(seed);
+}
+
+
+std::size_t rand_int() { return 0; }
+
+std::mt19937 Random::gen_;
+
+} // namespace ccm::kernel

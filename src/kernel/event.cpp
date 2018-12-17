@@ -54,16 +54,28 @@ struct EventContext : ReferenceCounted {
 
   std::string name() const { return name_; }
 
-  virtual void child_event_notify(EventContext * ec) {};
-  virtual void finalize() {}
-  void add_to_wait_set(Process * p) { ps_.push_back(p); }
+  virtual void child_event_notify(EventContext * ec)
+  {}
+  
+  virtual void finalize()
+  {}
+
+  void add_to_wait_set(Process * p) {
+    ps_.push_back(p);
+  }
+
   void del_from_wait_set(Process * p) {
     ps_.erase(std::remove(ps_.begin(), ps_.end(), p), ps_.end());
   }
-  void add_to_wait_set(EventContext * e) { es_.push_back(e); }
+
+  void add_to_wait_set(EventContext * e) {
+    es_.push_back(e);
+  }
+
   void del_from_wait_set(EventContext * e) {
     es_.erase(std::remove(es_.begin(), es_.end(), e), es_.end());
   }
+
   void wake() {
     for (Process * p : ps_)
       sch_->add_process_next_delta(p);
@@ -71,7 +83,12 @@ struct EventContext : ReferenceCounted {
     for (EventContext * e : es_)
       e->child_event_notify(this);
   }
+  
   void raise_after(std::size_t t = 0) {
+    sch_->add_frontier_task(std::make_unique<RaiseEventAtTime>(this, sch_->now() + t));
+  }
+  
+  void raise_at(std::size_t t = 0) {
     sch_->add_frontier_task(std::make_unique<RaiseEventAtTime>(this, t));
   }
  protected:
@@ -142,16 +159,17 @@ struct AndEventContext : EventContext {
     es_pending_.erase(std::remove(es_pending_.begin(), es_pending_.end(), ec),
                       es_pending_.end());
     if (es_pending_.size() == 0) {
-      es_pending_ = es_;
+      set_pending();
       wake();
     }
   }
-  void finalize() override { es_pending_ = es_; }
+  void finalize() override { set_pending(); }
   void add_event(EventContext * e) {
     e->add_to_wait_set(this);
     es_.push_back(e);
   }
  private:
+  void set_pending() { es_pending_ = es_; }
   std::vector<EventContext *> es_pending_;
   std::vector<EventContext *> es_;
 };
@@ -166,8 +184,12 @@ Event EventBuilder::construct_and_event(const std::vector<Event> & l,
 }
 
 Event::Event(EventContext * ctxt) : ctxt_(ctxt) {}
+
 Event::Event() : ctxt_{nullptr} {}
-Event::~Event() { if (is_valid()) ctxt_->dec(); }
+
+Event::~Event() {
+  if (is_valid()) ctxt_->dec();
+}
 
 Event::Event(const Event & e) {
   if (e.is_valid()) {
@@ -182,8 +204,14 @@ Event & Event::operator=(Event e) {
   return *this;
 }
 
-bool Event::is_valid() const { return ctxt_ != nullptr; }
-void Event::add_to_wait_set(Process * p) { ctxt_->add_to_wait_set(p); }
+bool Event::is_valid() const {
+  return ctxt_ != nullptr;
+}
+
+void Event::add_to_wait_set(Process * p) {
+  ctxt_->add_to_wait_set(p);
+}
+
 void Event::notify(std::size_t t) {
   if (t == 0)
     ctxt_->wake();

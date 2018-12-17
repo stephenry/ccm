@@ -25,35 +25,4 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __RANDOM_HPP__
-#define __RANDOM_HPP__
-
-#include <numeric>
-#include <random>
-#include <type_traits>
-
-namespace ccm::kernel {
-
-struct Random {
-
-  //
-  Random();
-
-  //
-  static void init(std::size_t seed);
-  
-  // Random T in the closed interval [lo, hi)
-  //
-  template<typename T, typename = std::is_integral<T> >
-  static T uniform(T hi, T lo = 0) {
-    std::uniform_int_distribution<T> dist(lo, hi - 1);
-    return dist(gen_);
-  }
-  
- private:
-  static std::mt19937 gen_;
-};
-
-} // namespace ccm::kernel
-
-#endif
+#include "ccm.hpp"

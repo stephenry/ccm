@@ -33,7 +33,11 @@
 
 namespace ccm::kernel {
 
-enum class SensitiveOn { Event, TimeAbsolute, TimeRelative };
+enum class SensitiveOn {
+  Event,
+  TimeAbsolute,
+  TimeRelative
+};
 
 struct Sensitive {
   Sensitive()
@@ -61,7 +65,7 @@ class Process : public Object {
   
   //
   virtual ~Process() {}
-
+  
   //
   void set_sensitive_on(Event e);
   void set_periodic(std::size_t t);
@@ -90,9 +94,10 @@ private:
   void call_on_termination();
 
   //
-  void update_sensitivity();
+  void apply_sensitivity(const Sensitive & s);
 
   //
+  bool is_running_{false};
   std::vector<Sensitive> sensitive_;
 };
 

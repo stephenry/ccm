@@ -79,7 +79,9 @@ struct Producer : agt::BasicSourceAgent {
     bt->portid_src = args_.id_;
     bt->portid_dst = state_->consumer_id;
     EXPECT_TRUE(!bt->is_valid());
-    bt->set(ccm::rand_int());
+    bt->set(0);
+    // TODO
+    //    bt->set(krn::Random::uniform());
     return bt;
   }
  private:

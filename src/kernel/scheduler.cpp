@@ -81,13 +81,12 @@ void Scheduler::run(RunOptions const & run_options) {
       break;
 
     now_ = next_time;
-
     next_delta_.clear();
+    delta_ = 0;
 
     for (std::unique_ptr<Task> & p : frontier_.next())
       p->apply();
 
-    delta_ = 0;
     do {
       current_delta_.clear();
       std::swap(current_delta_, next_delta_);

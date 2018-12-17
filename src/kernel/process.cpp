@@ -48,7 +48,7 @@ void Process::wait_until(std::size_t t) {
 }
 
 void Process::kill() {
-  sensitive_.back().is_valid = false;
+  is_running_ = false;
 }
 
 void Process::call_on_elaboration() {
@@ -57,22 +57,25 @@ void Process::call_on_elaboration() {
 
 void Process::call_on_initialization() {
   cb__on_initialization();
-  update_sensitivity();
+  //  apply_sensitivity(sensitive_.back());
+  //  sensitive_.resize(1);
 }
 
 void Process::call_on_invoke() {
   cb__on_invoke();
-  update_sensitivity();
+  if (!is_running_) {
+    log_debug("Process is terminated.");
+    return;
+  }
+  apply_sensitivity(sensitive_.back());
+  sensitive_.resize(1);
 }
 
-void Process::update_sensitivity() {
-  Sensitive & top = sensitive_.back();
-
-  if (!top.is_valid)
-    return ;
-    
-  if (top.on == SensitiveOn::Event) {
-    top.e.add_to_wait_set(this);
+void Process::apply_sensitivity(const Sensitive & s) {
+  std::size_t t = s.t;
+  if (s.on == SensitiveOn::Event) {
+    Event e = s.e;
+    e.add_to_wait_set(this);
   } else {
     struct WakeProcess : Task {
       WakeProcess(Scheduler * sch, Process * p, std::size_t t)
@@ -89,16 +92,11 @@ void Process::update_sensitivity() {
       Process * p_;
       std::size_t t_;
     };
-
-    if (top.on == SensitiveOn::TimeRelative)
-      top.t += context().now();
-
+    if (s.on == SensitiveOn::TimeRelative)
+      t += context().now();
     Scheduler * sch = context().sch();
-    sch->add_frontier_task(std::make_unique<WakeProcess>(sch, this, top.t));
+    sch->add_frontier_task(std::make_unique<WakeProcess>(sch, this, t));
   }
-
-  if (sensitive_.size() > 1)
-    sensitive_.resize(1);
 }
 
 //
@@ -109,12 +107,14 @@ void Process::call_on_termination() {
 //
 void Process::set_sensitive_on(Event e) {
   sensitive_[0] = Sensitive{e};
-  //        update_sensitivity();
+  is_running_ = true;
+  apply_sensitivity(sensitive_[0]);
 }
 
 void Process::set_periodic(std::size_t t) {
   sensitive_[0] = Sensitive{SensitiveOn::TimeRelative, t};
-  update_sensitivity();
+  is_running_ = true;
+  apply_sensitivity(sensitive_[0]);
 }
 
 } // namespace ccm::kernel
