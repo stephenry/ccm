@@ -117,9 +117,7 @@ struct EventAndTestTop : krn::TopModule {
       const std::size_t e_id = krn::Random::uniform(p_->state_.e.size());
       log_info("Raise event: ", e_id);
       p_->state_.e[e_id].notify(t);
-      log_info("Set size (before): ", p_->state_.set.size());
       p_->state_.set.insert(e_id);
-      log_info("Set size (after): ", p_->state_.set.size());
 
       if (n_++ == 1000)
         kill();
