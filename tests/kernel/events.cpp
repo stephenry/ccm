@@ -75,8 +75,8 @@ struct EventOrTestTop : krn::TopModule {
     EventOrTestTop * p_;
   };
 
-  EventOrTestTop(krn::Scheduler & sch)
-      : TopModule(&sch, "t") {
+  EventOrTestTop(const std::string & name, krn::Scheduler & sch)
+      : TopModule(&sch, name) {
     p0_ = create_process<P0>("P0", this);
     p0_->set_periodic(1000);
     p1_ = create_process<P1>("P1", this);
@@ -138,8 +138,8 @@ struct EventAndTestTop : krn::TopModule {
     }
     EventAndTestTop * p_;
   };
-  EventAndTestTop(krn::Scheduler & sch)
-      : TopModule(&sch, "t") {
+  EventAndTestTop(const std::string & name, krn::Scheduler & sch)
+      : TopModule(&sch, name) {
     p0_ = create_process<P0>("P0", this);
     p0_->set_periodic(1000);
     p1_ = create_process<P1>("P1", this);
@@ -169,7 +169,8 @@ TEST(EventOrTest, basic) {
   krn::Random::init(1);
   
   krn::Scheduler sch;
-  std::unique_ptr<krn::Module> top = krn::TopModule::construct<EventOrTestTop>(sch);
+  std::unique_ptr<krn::Module> top =
+      krn::TopModule::construct<EventOrTestTop>("EventOrTest", sch);
   std::unique_ptr<krn::Logger> logger = std::make_unique<krn::Logger>();
   top->set_logger(logger.get());
   sch.set_top(top.get());
@@ -182,7 +183,8 @@ TEST(EventAndTest, basic) {
   krn::Random::init(1);
   
   krn::Scheduler sch;
-  std::unique_ptr<krn::Module> top = krn::TopModule::construct<EventAndTestTop>(sch);
+  std::unique_ptr<krn::Module> top =
+      krn::TopModule::construct<EventAndTestTop>("EventAndTest", sch);
   std::unique_ptr<krn::Logger> logger = std::make_unique<krn::Logger>();
   top->set_logger(logger.get());
   sch.set_top(top.get());

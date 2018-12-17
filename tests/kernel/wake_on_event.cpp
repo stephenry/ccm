@@ -67,7 +67,7 @@ class WakeOnEventTop : public krn::TopModule {
   WakeOnEventTop(krn::Scheduler & sch,
                  const std::string & instance_name = "top",
                  const TestOptions & opts = TestOptions{})
-    : krn::TopModule(std::addressof(sch), instance_name) {
+      : krn::TopModule(std::addressof(sch), instance_name) {
     state_.opts = opts;
     for (std::size_t i = 0; i < state_.opts.process_n; i++) {
       krn::Process * p = create_process<WakeOnEventProcess>("p0", i, state_);

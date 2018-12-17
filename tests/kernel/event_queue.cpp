@@ -76,7 +76,7 @@ class EventQueueTestTop: public ccm::kernel::TopModule {
  public:
   EventQueueTestTop(ccm::kernel::Scheduler & sch,
                     const std::string & instance_name = "top")
-    : ccm::kernel::TopModule(std::addressof(sch), instance_name) {
+      : ccm::kernel::TopModule(std::addressof(sch), instance_name) {
     state_.eq = create_child<ccm::kernel::EventQueue<MSG>>("eq");
     p0_ = create_process<P0>("p0", state_);
     p0_->set_sensitive_on(state_.eq->event());

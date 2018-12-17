@@ -52,7 +52,7 @@ struct RunForTime : public ccm::kernel::TopModule {
   };
 
   RunForTime(ccm::kernel::Scheduler & sch)
-    : TopModule(std::addressof(sch), "top") {
+      : TopModule(std::addressof(sch), "top") {
     p0_ = create_process<P0>("P0", this);
   }
   std::size_t n_{100};

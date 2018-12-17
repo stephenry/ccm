@@ -117,13 +117,15 @@ class Module : public Object {
 
 class TopModule : public Module {
  public:
-  TopModule (Scheduler * sch, const std::string & instance_name)
+  TopModule (Scheduler * sch, const std::string & instance_name = "t")
       : Module(Context{sch, nullptr, instance_name})
   {}
 
   template<typename MODULE, typename ... ARGS>
-  static std::unique_ptr<Module> construct(ARGS && ... args) {
-    std::unique_ptr<Module> ptr{new MODULE(args...)};
+  static std::unique_ptr<Module> construct(
+      const std::string & name, ARGS && ... args) {
+    std::unique_ptr<Module> ptr{new MODULE(name, args...)};
+    ptr->set_name(name);
     return ptr;
   }
 };

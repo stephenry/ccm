@@ -36,13 +36,13 @@ const char Object::SEP = '.';
 
 std::string Object::path() {
   if (!path_)
-    path_ = parent_ ? join(parent_->path(), Object::SEP, name_) : "";
+    path_ = parent_ ? join(parent_->path(), Object::SEP, name_) : name_;
   return path_.value();
 }
   
 std::string Object::prefix() {
   std::stringstream ss;
-  ss << "[" << context_.now() << "] {" << path() << "}:";
+  ss << "[" << context_.now() << "] {" << path() << "}: ";
   return ss.str();
 }
 
