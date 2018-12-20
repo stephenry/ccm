@@ -44,9 +44,9 @@ const char * to_string(ResponseType r) {
   switch (r) {
 #define __declare_to_string(e)                  \
     case ResponseType::e: return #e;
-    RESPONSE_POLICIES(__declare_to_string)
+    RESPONSE_CLASSES(__declare_to_string)
 #undef __declare_to_string
-        }
+  }
   return "<Unknown Response Type>";
 }
 

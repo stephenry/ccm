@@ -88,42 +88,45 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     if (cache_.is_hit(m->addr(), s)) {
       switch (s) {
         case MsiAgentLineState::IS_D:
-          a.resp = ResponseType::
-          break;
         case MsiAgentLineState::IM_AD:
-          break;
         case MsiAgentLineState::IM_A:
+        case MsiAgentLineState::MI_A:
+        case MsiAgentLineState::SI_A:
+        case MsiAgentLineState::II_A:
+          a.resp = ResponseType::Stall;
           break;
 
-        case MsiAgentLineState::S:;
-        case MsiAgentLineState::SM_AD:;
-        case MsiAgentLineState::SM_A:;
-        case MsiAgentLineState::M:;
-        case MsiAgentLineState::MI_A:;
-        case MsiAgentLineState::SI_A:;
-        case MsiAgentLineState::II_A:;
+        case MsiAgentLineState::S:
+        case MsiAgentLineState::SM_AD:
+        case MsiAgentLineState::SM_A:
+        case MsiAgentLineState::M:
+          a.resp = ResponseType::Hit;
+          break;
 
-        case MsiAgentLineState::I:; // TODO: Invalid state
+        case MsiAgentLineState::I:
+          ; // TODO: Invalid state
       }
-      
-      a.advance = true;
     } else {
-      // Miss, emit GetS
+      // Miss, emit GetS if maximum in-flight count has not yet been reached.
 
-      std::size_t tid;
-      if (ids_.get_id(tid)) {
-        GetSCoherencyMessageBuilder b = gets_.builder();
-        b.set_addr(m->addr());
-        b.set_tid(tid);
+      if (!cache_.requires_eviction(m->addr())) {
+        std::size_t tid;
+        if (ids_.get_id(tid)) {
+          GetSCoherencyMessageBuilder b = gets_.builder();
+          b.set_addr(m->addr());
+          b.set_tid(tid);
 
-        a.resp = ResponseType::Miss;
-        a.msg = b.msg();
+          a.resp = ResponseType::Stall;
+          a.msg = b.msg();
+        } else {
+          // TODO: When ID pool has been exhasuted, fill cannot be issued to
+          // interconnect.
+          a.resp = ResponseType::Blocked;
+        }
+        cache_.update(m->addr(), MsiAgentLineState::IS_D);
       } else {
-        // TODO: When ID pool has been exhasuted, fill cannot be issued to
-        // interconnect.
+        // TODO: Cache eviction if necessary
       }
-      
-      
     }
   }
   
@@ -131,24 +134,50 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     MsiAgentLineState s;
     if (cache_.is_hit(m->addr(), s)) {
       switch (s) {
-        case MsiAgentLineState::IS_D:;
-        case MsiAgentLineState::IM_AD:;
-        case MsiAgentLineState::IM_A:;
-        case MsiAgentLineState::S:;
-        case MsiAgentLineState::SM_AD:;
-        case MsiAgentLineState::SM_A:;
-        case MsiAgentLineState::M:;
-        case MsiAgentLineState::MI_A:;
-        case MsiAgentLineState::SI_A:;
-        case MsiAgentLineState::II_A:;
+        case MsiAgentLineState::IS_D:
+        case MsiAgentLineState::IM_AD:
+        case MsiAgentLineState::IM_A:
+        case MsiAgentLineState::SM_AD:
+        case MsiAgentLineState::SM_A:
+        case MsiAgentLineState::MI_A:
+        case MsiAgentLineState::SI_A:
+        case MsiAgentLineState::II_A:
+          a.resp = ResponseType::Stall;
+          break;
+          
+        case MsiAgentLineState::S: {
+          // Transaction requires line promotion to M before operation may complete.
+          //
+          GetMCoherencyMessageBuilder b = getm_.builder();
+          b.set_addr(m->addr());
+          b.set_tid(tid);
+          
+          a.resp = ResponseType::Stall;
+          a.msg = b.msg();
+          cache_.update(m->addr(), MsiAgentLineState::SM_AD);
+        } break;
+
+        case MsiAgentLineState::M:
+          a.resp = ResponseType::Hit;
+          break;
 
         case MsiAgentLineState::I:; // TODO: Invalid state
       }
-      a.advance = true;
     } else {
-      GetMCoherencyMessageBuilder b = getm_.builder();
-      b.set_addr(m->addr());
-      a.msg = b.msg();
+      // Miss, emit GetM if maximum in-flight count has not yet been reached.
+      
+      std::size_t tid;
+      if (ids_.get_id(tid)) {
+        GetMCoherencyMessageBuilder b = getm_.builder();
+        b.set_addr(m->addr());
+        b.set_tid(tid);
+        
+        a.resp = ResponseType::Stall;
+        a.msg = b.msg();
+        cache_.update(m->addr(), MsiAgentLineState::IM_AD);
+      } else {
+        a.resp = ResponseType::Blocked;
+      }
     }
   }
   

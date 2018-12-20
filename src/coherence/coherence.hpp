@@ -155,7 +155,7 @@ class GetMCoherencyMessage : public CoherencyMessage {
   Addr addr_;
 };
 
-class GetMCoherencyMessageBuilder {
+class GetMCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class GetMCoherencyMessageDirector;
 
   GetMCoherencyMessageBuilder(GetMCoherencyMessage * msg)
@@ -246,6 +246,10 @@ class GenericCacheModel {
     }
     return false;
   }
+
+  void update(Addr a, const T & t) {
+    // TODO
+  }
   
   bool requires_eviction(Addr a) const {
     uint8_t valid = 0;
@@ -319,8 +323,8 @@ struct CoherentAgentContext {
 
 #define RESPONSE_CLASSES(__func)                \
   __func(Hit)                                   \
-  __func(Miss)                                  \
-  __func(NotifyOnRequestReissue)
+  __func(Stall)                                 \
+  __func(Blocked)
 
 enum class ResponseType {
 #define __declare_enum(e) e,
