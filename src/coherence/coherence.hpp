@@ -29,59 +29,46 @@
 #define __COHERENCE_HPP__
 
 #include "kernel/kernel.hpp"
+#include "cache_model.hpp"
 #include <memory>
-#include <vector>
 
 namespace ccm {
 
 enum class Protocol {
-  MSI
+  MSI,
+  MESI,
+  MOSI
 };
 
-#define MESSAGE_CLASSES(__func)                 \
+#define AGENT_MESSAGE_CLASSES(__func)           \
   __func(Load)                                  \
   __func(Store)                                 \
+  __func(FwdGetS)                               \
+  __func(FwdGetM)
+
+#define DIRECTORY_MESSAGE_CLASSES(__func)       \
   __func(GetS)                                  \
   __func(GetM)                                  \
-  __func(Replacement)                           \
-  __func(FwdGetS)                               \
-  __func(FwdGetM)                               \
-  __func(Inv)                                   \
-  __func(PutAck)                                \
-  __func(DataDir)                               \
-  __func(DataOwner)                             \
-  __func(InvAck)
+  __func(PutS)                                  \
+  __func(PutM)
 
 enum class MessageType {
 #define __declare_enum(e) e,
-  MESSAGE_CLASSES(__declare_enum)
+  AGENT_MESSAGE_CLASSES(__declare_enum)
+  DIRECTORY_MESSAGE_CLASSES(__declare_enum)
 #undef __declare_enum
 };
 const char * to_string(MessageType t);
 
-struct Addr {
-  using type = uint64_t;
-
-  Addr() : d_(0) {}
-  Addr(type d) : d_(d) {}
-
-  //
-  operator type() { return d_; }
-
-  //
-  type line(type len) const { return d_ >> kernel::log2ceil(len); }
-  type offset(type len) const { return d_ & ((1 << kernel::log2ceil(len)) - 1); }
-  type tag(type len, type ways_n) {
-    return line(len) >> kernel::log2ceil(ways_n);
-  }
- private:
-  type d_;
-};
-
 class CoherencyMessage : public kernel::Transaction {
   friend class CoherencyMessageBuilder;
+  
   friend class GetSCoherencyMessageBuilder;
   friend class GetMCoherencyMessageBuilder;
+  friend class PutSCoherencyMessageBuilder;
+  friend class PutMCoherencyMessageBuilder;
+  friend class FwdGetSCoherencyMessageBuilder;
+  friend class FwdGetMCoherencyMessageBuilder;
   
  public:
   MessageType type() const { return type_; }
@@ -126,10 +113,14 @@ class GetSCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class GetSCoherencyMessageDirector;
 
   GetSCoherencyMessageBuilder(GetSCoherencyMessage * msg)
-      : msg_(msg)
-  {}
+      : msg_(msg) {}
  public:
-  GetSCoherencyMessage * msg() { return msg_; }
+  ~GetSCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
+  GetSCoherencyMessage * msg() {
+    GetSCoherencyMessage * m{nullptr};
+    std::swap(m, msg_);
+    return msg_;
+  }
   
   void set_addr(Addr a) { msg_->addr_ = a; }
  private:
@@ -159,10 +150,14 @@ class GetMCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class GetMCoherencyMessageDirector;
 
   GetMCoherencyMessageBuilder(GetMCoherencyMessage * msg)
-      : msg_(msg)
-  {}
+      : msg_(msg) {}
  public:
-  GetMCoherencyMessage * msg() { return msg_; }
+  ~GetMCoherencyMessageBuilder() { if (msg_) msg_->release(); }
+  GetMCoherencyMessage * msg() {
+    GetMCoherencyMessage * m{nullptr};
+    std::swap(m, msg_);
+    return m;
+  }
   
   void set_addr(Addr a) { msg_->addr_ = a; }
  private:
@@ -179,137 +174,152 @@ class GetMCoherencyMessageDirector {
   ccm::Pool<GetMCoherencyMessage> pool_;
 };
 
-class ReplacementCoherencyMessage : public CoherencyMessage {
-};
-
-class FwdGetSCoherencyMessage : public CoherencyMessage {
-};
-
-class FwdGetMCoherencyMessage : public CoherencyMessage {
-};
-
-class InvCoherencyMessage : public CoherencyMessage {
-};
-
-class PutAckCoherencyMessage : public CoherencyMessage {
-};
-
-class DataDirCoherencyMessage : public CoherencyMessage {
-};
-
-class DataOwnerCoherencyMessage : public CoherencyMessage {
-};
-
-class InvAckCoherencyMessage : public CoherencyMessage {
-};
-
-#define EVICTION_POLICIES(__func)               \
-  __func(Fixed)                                 \
-  __func(Random)                                \
-  __func(PsuedoLru)                             \
-  __func(TrueLru)
-
-enum class EvictionPolicy {
-#define __declare_eviction_policy(p) p,
-  EVICTION_POLICIES(__declare_eviction_policy)
-#undef __declare_eviction_policy
-};
-const char * to_string(EvictionPolicy p);
-
-struct GenericCacheModelOptions {
-  bool is_valid() const { return true; }
-  
-  uint32_t sets_n{1 << 10};
-  uint8_t ways_n{1};
-  uint8_t line_bytes_n{64};
-  EvictionPolicy eviction_policy{EvictionPolicy::Fixed};
-};
-
-template<typename T>
-class GenericCacheModel {
+class PutSCoherencyMessage : public CoherencyMessage {
+  friend class PutSCoherencyMessageBuilder;
  public:
-  using momento_type = T;
-  
-  GenericCacheModel(const GenericCacheModelOptions & opts)
-      : opts_(opts) {
-    ts_.resize(opts_.sets_n * opts_.ways_n);
-    invalidate();
-  }
-  
-  //
-  bool is_hit(Addr a, momento_type & m) {
-    for (std::size_t i = line_set_base(a); i < line_set_base(a) + opts_.ways_n; i++) {
-      if (ts_[i].is_valid && (ts_[i].tag == a.tag(opts_.line_bytes_n, opts_.ways_n))) {
-        m = ts_[i].momento;
-        return true;
-      }
-    }
-    return false;
-  }
+  Addr addr() const { return addr_; }
+  void reset() override {}
+ private:
+  Addr addr_;
+};
 
-  void update(Addr a, const T & t) {
-    // TODO
-  }
-  
-  bool requires_eviction(Addr a) const {
-    uint8_t valid = 0;
-    for (std::size_t i = line_set_base(a); i < line_set_base(a) + opts_.ways_n; i++)
-      if (ts_[i].is_valid)
-        valid++;
-    return (valid == opts_.ways_n);
-  }
+class PutSCoherencyMessageBuilder : public CoherencyMessageBuilder {
+  friend class PutSCoherencyMessageDirector;
 
-  //
-  void install(Addr a, const momento_type & m) {
-    for (std::size_t i = line_set_base(a); i < line_set_base(a) + opts_.ways_n; i++) {
-      if (!ts_[i].is_valid) {
-        ts_[i].is_valid = true;
-        ts_[i].tag = a.tag(opts_.line_bytes_n, opts_.ways_n);
-        ts_[i].momento = m;
-      }
-    }
+  PutSCoherencyMessageBuilder(PutSCoherencyMessage * msg)
+      : msg_(msg) {}
+ public:
+  ~PutSCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
+  PutSCoherencyMessage * msg() {
+    PutSCoherencyMessage * m{nullptr};
+    std::swap(m, msg_);
+    return msg_;
   }
   
-  void evict(Addr a, momento_type & m) {
-    switch (opts_.eviction_policy) {
-      case EvictionPolicy::Fixed: {
-        CacheEntry & e = ts_[line_set_base(a)];
-        m = e.momento;
-        e.is_valid = false;
-      } break;
-      case EvictionPolicy::Random: {
-      
-      } break;
-      case EvictionPolicy::PsuedoLru: {
-      
-      } break;
-      case EvictionPolicy::TrueLru: {
-      
-      } break;
-      default:
-        ;
-        // TODO
-    }
+  void set_addr(Addr a) { msg_->addr_ = a; }
+ private:
+  PutSCoherencyMessage * msg_;
+};
+
+class PutSCoherencyMessageDirector {
+ public:
+  PutSCoherencyMessageBuilder builder() {
+    return PutSCoherencyMessageBuilder{pool_.alloc()};
   }
 
  private:
-  std::size_t line_set_base(Addr a) const {
-    return opts_.ways_n * a.line(opts_.line_bytes_n);
+  ccm::Pool<PutSCoherencyMessage> pool_;
+};
+
+class PutMCoherencyMessage : public CoherencyMessage {
+  friend class PutMCoherencyMessageBuilder;
+ public:
+  Addr addr() const { return addr_; }
+  void reset() override {}
+ private:
+  Addr addr_;
+};
+
+class PutMCoherencyMessageBuilder : public CoherencyMessageBuilder {
+  friend class PutMCoherencyMessageDirector;
+
+  PutMCoherencyMessageBuilder(PutMCoherencyMessage * msg)
+      : msg_(msg) {}
+ public:
+  ~PutMCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
+  PutMCoherencyMessage * msg() {
+    PutMCoherencyMessage * m{nullptr};
+    std::swap(m, msg_);
+    return msg_;
   }
   
-  void invalidate() {
-    for (CacheEntry & ce : ts_)
-      ce.is_valid = false;
-  }    
+  void set_addr(Addr a) { msg_->addr_ = a; }
+ private:
+  PutMCoherencyMessage * msg_;
+};
+
+class PutMCoherencyMessageDirector {
+ public:
+  PutMCoherencyMessageBuilder builder() {
+    return PutMCoherencyMessageBuilder{pool_.alloc()};
+  }
+
+ private:
+  ccm::Pool<PutMCoherencyMessage> pool_;
+};
+
+class FwdGetSCoherencyMessage : public CoherencyMessage {
+  friend class FwdGetSCoherencyMessageBuilder;
+ public:
+  Addr addr() const { return addr_; }
+  void reset() override {}
+ private:
+  Addr addr_;
+};
+
+class FwdGetSCoherencyMessageBuilder : public CoherencyMessageBuilder {
+  friend class FwdGetSCoherencyMessageDirector;
+
+  FwdGetSCoherencyMessageBuilder(FwdGetSCoherencyMessage * msg)
+      : msg_(msg) {}
+ public:
+  ~FwdGetSCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
+  FwdGetSCoherencyMessage * msg() {
+    FwdGetSCoherencyMessage * m{nullptr};
+    std::swap(m, msg_);
+    return msg_;
+  }
   
-  struct CacheEntry {
-    T momento;
-    Addr::type tag;
-    bool is_valid;
-  };
+  void set_addr(Addr a) { msg_->addr_ = a; }
+ private:
+  FwdGetSCoherencyMessage * msg_;
+};
+
+class FwdGetSCoherencyMessageDirector {
+ public:
+  FwdGetSCoherencyMessageBuilder builder() {
+    return FwdGetSCoherencyMessageBuilder{pool_.alloc()};
+  }
+
+ private:
+  ccm::Pool<FwdGetSCoherencyMessage> pool_;
+};
+
+class FwdGetMCoherencyMessage : public CoherencyMessage {
+  friend class FwdGetMCoherencyMessageBuilder;
+ public:
+  Addr addr() const { return addr_; }
+  void reset() override {}
+ private:
+  Addr addr_;
+};
+
+class FwdGetMCoherencyMessageBuilder : public CoherencyMessageBuilder {
+  friend class FwdGetMCoherencyMessageDirector;
+
+  FwdGetMCoherencyMessageBuilder(FwdGetMCoherencyMessage * msg)
+      : msg_(msg) {}
+ public:
+  ~FwdGetMCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
+  FwdGetMCoherencyMessage * msg() {
+    FwdGetMCoherencyMessage * m{nullptr};
+    std::swap(m, msg_);
+    return msg_;
+  }
   
-  GenericCacheModelOptions opts_;
-  std::vector<CacheEntry> ts_;
+  void set_addr(Addr a) { msg_->addr_ = a; }
+ private:
+  FwdGetMCoherencyMessage * msg_;
+};
+
+class FwdGetMCoherencyMessageDirector {
+ public:
+  FwdGetMCoherencyMessageBuilder builder() {
+    return FwdGetMCoherencyMessageBuilder{pool_.alloc()};
+  }
+
+ private:
+  ccm::Pool<FwdGetMCoherencyMessage> pool_;
 };
 
 struct CoherentAgentOptions {

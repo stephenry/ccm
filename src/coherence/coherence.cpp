@@ -34,7 +34,8 @@ const char * to_string(MessageType t) {
   switch (t) {
 #define __declare_to_string(e)                  \
     case MessageType::e: return #e;
-    MESSAGE_CLASSES(__declare_to_string)
+    AGENT_MESSAGE_CLASSES(__declare_to_string)
+    DIRECTORY_MESSAGE_CLASSES(__declare_to_string)
 #undef __declare_to_string
   }
   return "<Unknown Message Type>";
@@ -66,6 +67,11 @@ std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
     case Protocol::MSI:
       return std::make_unique<MsiCoherentAgentModel>(opts);
       break;
+    case Protocol::MESI:
+    case Protocol::MOSI:
+      // TODO: Not implemented
+      return nullptr;
+      break;
   }
 }
 
@@ -74,6 +80,11 @@ std::unique_ptr<DirectoryModel> directory_factory(
   switch (opts.protocol) {
     case Protocol::MSI:
       return std::make_unique<MsiDirectoryModel>(opts);
+      break;
+    case Protocol::MESI:
+    case Protocol::MOSI:
+      // TODO: Not implemented
+      return nullptr;
       break;
   }
 }

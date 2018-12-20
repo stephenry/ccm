@@ -72,7 +72,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       case MessageType::e:                                              \
         handle__ ## e(static_cast<e ## CoherencyMessage *>(m), a);
 
-      MESSAGE_CLASSES(__declare_dispatcher)
+      AGENT_MESSAGE_CLASSES(__declare_dispatcher)
 #undef __declare_dispatcher
       default:
           // TOOD: unknown message class.
@@ -148,13 +148,18 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         case MsiAgentLineState::S: {
           // Transaction requires line promotion to M before operation may complete.
           //
-          GetMCoherencyMessageBuilder b = getm_.builder();
-          b.set_addr(m->addr());
-          b.set_tid(tid);
+          std::size_t tid;
+          if (ids_.get_id(tid)) {
+            GetMCoherencyMessageBuilder b = getm_.builder();
+            b.set_addr(m->addr());
+            b.set_tid(tid);
           
-          a.resp = ResponseType::Stall;
-          a.msg = b.msg();
-          cache_.update(m->addr(), MsiAgentLineState::SM_AD);
+            a.resp = ResponseType::Stall;
+            a.msg = b.msg();
+            cache_.update(m->addr(), MsiAgentLineState::SM_AD);
+          } else {
+            a.resp = ResponseType::Blocked;
+          }
         } break;
 
         case MsiAgentLineState::M:
@@ -180,43 +185,11 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       }
     }
   }
-  
-  void handle__Replacement(ReplacementCoherencyMessage * m, CoherentAgentAction & a) {
-                           
-  }
-  
+
   void handle__FwdGetS(FwdGetSCoherencyMessage * m, CoherentAgentAction & a) {
-                       
   }
 
-  // Never Handled
-  void handle__GetS(GetSCoherencyMessage * m, CoherentAgentAction & a) {
-  }
-  void handle__GetM(GetMCoherencyMessage * m, CoherentAgentAction & a) {
-  }
-  
   void handle__FwdGetM(FwdGetMCoherencyMessage * m, CoherentAgentAction & a) {
-                       
-  }
-  
-  void handle__Inv(InvCoherencyMessage * m, CoherentAgentAction & a) {
-                   
-  }
-  
-  void handle__PutAck(PutAckCoherencyMessage * m, CoherentAgentAction & a) {
-                      
-  }
-  
-  void handle__DataDir(DataDirCoherencyMessage * m, CoherentAgentAction & a) {
-                       
-  }
-  
-  void handle__DataOwner(DataOwnerCoherencyMessage * m, CoherentAgentAction & a) {
-                         
-  }
-  
-  void handle__InvAck(InvAckCoherencyMessage * m, CoherentAgentAction & a) {
-                      
   }
 
   GenericCacheModel<MsiAgentLineState> cache_;
@@ -237,12 +210,28 @@ CoherentAgentAction MsiCoherentAgentModel::apply(CoherencyMessage * m) {
   return impl_->apply(m);
 }
 
+#define DIRECTORY_STATES(__func)                \
+  __func(I)                                     \
+  __func(S)                                     \
+  __func(M)                                     \
+  __func(S_D)
+
 enum class MsiDirectoryLineState {
-  I,
-  S,
-  M,
-  S_D
+#define __declare_state(__state)                \
+  __state,
+  DIRECTORY_STATES(__declare_state)
+#undef __declare_state
 };
+
+const char * to_string(MsiDirectoryLineState s) {
+  switch (s) {
+#define __declare_to_string(__e)                \
+    case MsiDirectoryLineState::__e: return #__e;
+    DIRECTORY_STATES(__declare_to_string)
+#undef __declare_to_string
+  }
+  return "<Invalid Directory State>";
+}
 
 struct MsiDirectoryModel::MsiDirectoryModelImpl {
   MsiDirectoryModelImpl(const DirectoryOptions & opts)
@@ -254,6 +243,8 @@ struct MsiDirectoryModel::MsiDirectoryModelImpl {
   }
   
   DirectoryOptions opts_;
+  FwdGetSCoherencyMessageDirector fwdgets_;
+  FwdGetMCoherencyMessageDirector fwdgetm_;
 };
 
 MsiDirectoryModel::MsiDirectoryModel(const DirectoryOptions & opts)
