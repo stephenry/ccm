@@ -40,6 +40,16 @@ const char * to_string(MessageType t) {
   return "<Unknown Message Type>";
 }
 
+const char * to_string(ResponseType r) {
+  switch (r) {
+#define __declare_to_string(e)                  \
+    case ResponseType::e: return #e;
+    RESPONSE_POLICIES(__declare_to_string)
+#undef __declare_to_string
+        }
+  return "<Unknown Response Type>";
+}
+
 const char * to_string(EvictionPolicy p) {
   switch (p) {
 #define __declare_to_string(e)                  \

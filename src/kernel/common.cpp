@@ -29,6 +29,39 @@
 
 namespace ccm {
 
-  void Poolable::release() { parent_->release(this); }
+IdPool::IdPool(std::size_t n, bool is_fixed)
+    : n_(n), is_fixed_(is_fixed) {
+  add_id(0, n);
+}
+
+//
+bool IdPool::has_id() const {
+  return (!is_fixed_ || (ids_.size() != 0));
+}
+
+bool IdPool::get_id(std::size_t & id) {
+  if (!has_id())
+    return false;
+
+  if (ids_.size() == 0)
+    add_id(n_);
+
+  id = ids_.back();
+  ids_.pop_back();
+
+  return true;
+}
+
+void IdPool::set_id(std::size_t id) {
+  ids_.push_back(id);
+}
+
+void IdPool::add_id(std::size_t base, std::size_t n) {
+  n_ += n;
+  while (n--)
+    ids_.push_back(base++);
+}
+
+void Poolable::release() { parent_->release(this); }
 
 } // namespace ccm

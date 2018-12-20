@@ -47,99 +47,86 @@
 
 namespace ccm {
 
-  class PoolBase;
-  class Poolable;
-  class Scheduler;
+class PoolBase;
+class Poolable;
+class Scheduler;
   
-  class Poolable {
-    friend class PoolBase;
-  public:
-    virtual void reset() = 0;
-    virtual void release();
-    virtual ~Poolable() {};
-    //  private:
-    void set_parent (PoolBase * parent) { parent_ = parent; }
-    PoolBase * parent_;
-  };
+class Poolable {
+  friend class PoolBase;
+ public:
+  virtual void reset() = 0;
+  virtual void release();
+  virtual ~Poolable() {};
+  //  private:
+  void set_parent (PoolBase * parent) { parent_ = parent; }
+  PoolBase * parent_;
+};
 
-  class PoolBase {
-    friend class Poolable;
-  public:
-    virtual void release(Poolable * p) = 0;
-  };
+class PoolBase {
+  friend class Poolable;
+ public:
+  virtual void release(Poolable * p) = 0;
+};
 
-  template<typename T>
-  class Pool : public PoolBase {
-  public:
-    Pool(std::size_t n = 1, std::size_t m = 16) : m_(m) {
-      construct_n(n);
+template<typename T>
+class Pool : public PoolBase {
+ public:
+  Pool(std::size_t n = 1, std::size_t m = 16) : m_(m) {
+    construct_n(n);
+  }
+  T * alloc() {
+    if (fl_.size() == 0)
+      construct_n(m_);
+    T * t = fl_.back();
+    fl_.pop_back();
+    return t;
+  }
+ private:
+  void construct_n(std::size_t n) {
+    while (n--) {
+      std::unique_ptr<T> t = std::make_unique<T>();
+      t->set_parent(this);
+      fl_.push_back(t.get());
+      ts_.push_back(std::move(t));
     }
-    T * alloc() {
-      if (fl_.size() == 0)
-        construct_n(m_);
-      T * t = fl_.back();
-      fl_.pop_back();
-      return t;
-    }
-  private:
-    void construct_n(std::size_t n) {
-      while (n--) {
-        std::unique_ptr<T> t = std::make_unique<T>();
-        t->set_parent(this);
-        fl_.push_back(t.get());
-        ts_.push_back(std::move(t));
-      }
-    }
-    void release(Poolable * p) override {
-      p->reset();
-      fl_.push_back(static_cast<T *>(p));
-    };
-    std::size_t m_;
-    std::vector<std::unique_ptr<T>> ts_;
-    std::vector<T *> fl_;
+  }
+  void release(Poolable * p) override {
+    p->reset();
+    fl_.push_back(static_cast<T *>(p));
   };
+  std::size_t m_;
+  std::vector<std::unique_ptr<T>> ts_;
+  std::vector<T *> fl_;
+};
 
-  template<typename T>
-  struct StaticResource {
-    StaticResource()
-      : is_initialized_(false) {
-      std::cerr << "Constructing\n";
-    }
-    ~StaticResource() {
-      if (is_initialized_)
-        delete t_;
-    }
-    T& operator*() {
-      if (!is_initialized_)
-        do_init();
-      return *t_;
-    }
-    T* operator->() {
-      if (!is_initialized_)
-        do_init();
-      return t_;
-    }
-  private:
-    void do_init() {
-      t_ = new T{};
-      is_initialized_ = true;
-    }
-    T * t_;
-    bool is_initialized_{false};
-  };
+struct IdPool {
+  IdPool(std::size_t n = 16, bool is_fixed = false);
 
-  class ReferenceCounted {
-  public:
-    ReferenceCounted()
+  //
+  bool has_id() const;
+  bool get_id(std::size_t & id);
+  void set_id(std::size_t id);
+
+ private:
+  void add_id(std::size_t base, std::size_t n = 16);
+  
+  std::size_t n_;
+  bool is_fixed_;
+  std::vector<std::size_t> ids_;
+};
+
+class ReferenceCounted {
+ public:
+  ReferenceCounted()
       : cnt_(1) {}
-    void inc() { cnt_++; }
-    void dec() {
-      if (cnt_-- == 0)
-        delete this;
-    }
-  private:
-    std::size_t cnt_;
-  };
+  void inc() { cnt_++; }
+  void dec() {
+    if (cnt_-- == 0)
+      delete this;
+  }
+ private:
+  std::size_t cnt_;
+};
 
 } // namespace ccm
 

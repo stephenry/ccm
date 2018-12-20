@@ -64,12 +64,13 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       : opts_(opts), cache_(opts.cache_options)
   {}
   
-  void apply(CoherencyMessage * m) {
+  CoherentAgentAction apply(CoherencyMessage * m) {
+    CoherentAgentAction a;
     // Dispatch to handler
     switch (m->type()) {
 #define __declare_dispatcher(e)                                         \
       case MessageType::e:                                              \
-      return handle__ ## e(static_cast<e ## CoherencyMessage *>(m));
+        handle__ ## e(static_cast<e ## CoherencyMessage *>(m), a);
 
       MESSAGE_CLASSES(__declare_dispatcher)
 #undef __declare_dispatcher
@@ -79,40 +80,121 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
      }
     // Return transaction to owner pool.
     m->release();
+    return a;
   }
 
-  void handle__Load(LoadCoherencyMessage * m) {
+  void handle__Load(LoadCoherencyMessage * m, CoherentAgentAction & a) {
+    MsiAgentLineState s;
+    if (cache_.is_hit(m->addr(), s)) {
+      switch (s) {
+        case MsiAgentLineState::IS_D:
+          a.resp = ResponseType::
+          break;
+        case MsiAgentLineState::IM_AD:
+          break;
+        case MsiAgentLineState::IM_A:
+          break;
+
+        case MsiAgentLineState::S:;
+        case MsiAgentLineState::SM_AD:;
+        case MsiAgentLineState::SM_A:;
+        case MsiAgentLineState::M:;
+        case MsiAgentLineState::MI_A:;
+        case MsiAgentLineState::SI_A:;
+        case MsiAgentLineState::II_A:;
+
+        case MsiAgentLineState::I:; // TODO: Invalid state
+      }
+      
+      a.advance = true;
+    } else {
+      // Miss, emit GetS
+
+      std::size_t tid;
+      if (ids_.get_id(tid)) {
+        GetSCoherencyMessageBuilder b = gets_.builder();
+        b.set_addr(m->addr());
+        b.set_tid(tid);
+
+        a.resp = ResponseType::Miss;
+        a.msg = b.msg();
+      } else {
+        // TODO: When ID pool has been exhasuted, fill cannot be issued to
+        // interconnect.
+      }
+      
+      
+    }
   }
   
-  void handle__Store(StoreCoherencyMessage * m) {
+  void handle__Store(StoreCoherencyMessage * m, CoherentAgentAction & a) {
+    MsiAgentLineState s;
+    if (cache_.is_hit(m->addr(), s)) {
+      switch (s) {
+        case MsiAgentLineState::IS_D:;
+        case MsiAgentLineState::IM_AD:;
+        case MsiAgentLineState::IM_A:;
+        case MsiAgentLineState::S:;
+        case MsiAgentLineState::SM_AD:;
+        case MsiAgentLineState::SM_A:;
+        case MsiAgentLineState::M:;
+        case MsiAgentLineState::MI_A:;
+        case MsiAgentLineState::SI_A:;
+        case MsiAgentLineState::II_A:;
+
+        case MsiAgentLineState::I:; // TODO: Invalid state
+      }
+      a.advance = true;
+    } else {
+      GetMCoherencyMessageBuilder b = getm_.builder();
+      b.set_addr(m->addr());
+      a.msg = b.msg();
+    }
   }
   
-  void handle__Replacement(ReplacementCoherencyMessage * m) {
+  void handle__Replacement(ReplacementCoherencyMessage * m, CoherentAgentAction & a) {
+                           
   }
   
-  void handle__FwdGetS(FwdGetSCoherencyMessage * m) {
+  void handle__FwdGetS(FwdGetSCoherencyMessage * m, CoherentAgentAction & a) {
+                       
+  }
+
+  // Never Handled
+  void handle__GetS(GetSCoherencyMessage * m, CoherentAgentAction & a) {
+  }
+  void handle__GetM(GetMCoherencyMessage * m, CoherentAgentAction & a) {
   }
   
-  void handle__FwdGetM(FwdGetMCoherencyMessage * m) {
+  void handle__FwdGetM(FwdGetMCoherencyMessage * m, CoherentAgentAction & a) {
+                       
   }
   
-  void handle__Inv(InvCoherencyMessage * m) {
+  void handle__Inv(InvCoherencyMessage * m, CoherentAgentAction & a) {
+                   
   }
   
-  void handle__PutAck(PutAckCoherencyMessage * m) {
+  void handle__PutAck(PutAckCoherencyMessage * m, CoherentAgentAction & a) {
+                      
   }
   
-  void handle__DataDir(DataDirCoherencyMessage * m) {
+  void handle__DataDir(DataDirCoherencyMessage * m, CoherentAgentAction & a) {
+                       
   }
   
-  void handle__DataOwner(DataOwnerCoherencyMessage * m) {
+  void handle__DataOwner(DataOwnerCoherencyMessage * m, CoherentAgentAction & a) {
+                         
   }
   
-  void handle__InvAck(InvAckCoherencyMessage * m) {
+  void handle__InvAck(InvAckCoherencyMessage * m, CoherentAgentAction & a) {
+                      
   }
 
   GenericCacheModel<MsiAgentLineState> cache_;
   CoherentAgentOptions opts_;
+  GetSCoherencyMessageDirector gets_;
+  GetMCoherencyMessageDirector getm_;
+  IdPool ids_;
 };
 
 MsiCoherentAgentModel::MsiCoherentAgentModel(const CoherentAgentOptions & opts)
@@ -122,8 +204,8 @@ MsiCoherentAgentModel::MsiCoherentAgentModel(const CoherentAgentOptions & opts)
 
 MsiCoherentAgentModel::~MsiCoherentAgentModel() {};
 
-void MsiCoherentAgentModel::apply(CoherencyMessage * m) {
-  impl_->apply(m);
+CoherentAgentAction MsiCoherentAgentModel::apply(CoherencyMessage * m) {
+  return impl_->apply(m);
 }
 
 enum class MsiDirectoryLineState {
@@ -138,7 +220,8 @@ struct MsiDirectoryModel::MsiDirectoryModelImpl {
       : opts_(opts)
   {}
   
-  void apply(CoherencyMessage * m) {
+  DirectoryAction apply(CoherencyMessage * m) {
+    return {};
   }
   
   DirectoryOptions opts_;
@@ -150,8 +233,8 @@ MsiDirectoryModel::MsiDirectoryModel(const DirectoryOptions & opts)
 
 MsiDirectoryModel::~MsiDirectoryModel() {}
 
-void MsiDirectoryModel::apply(CoherencyMessage * m) {
-  impl_->apply(m);
+DirectoryAction MsiDirectoryModel::apply(CoherencyMessage * m) {
+  return impl_->apply(m);
 }
 
 } // namespace ccm

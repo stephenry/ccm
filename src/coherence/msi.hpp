@@ -42,7 +42,7 @@ class MsiCoherentAgentModel : public CoherentAgentModel {
   Protocol protocol() const override { return Protocol::MSI; }
 
   //
-  void apply(CoherencyMessage * m) override;
+  CoherentAgentAction apply(CoherencyMessage * m) override;
 
  private:
   struct MsiCoherentAgentModelImpl;
@@ -59,7 +59,7 @@ class MsiDirectoryModel : public DirectoryModel {
   Protocol protocol() const override { return Protocol::MSI; }
 
   //
-  void apply(CoherencyMessage * m) override;
+  DirectoryAction apply(CoherencyMessage * m) override;
 
  private:
   struct MsiDirectoryModelImpl;

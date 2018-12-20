@@ -41,6 +41,8 @@ enum class Protocol {
 #define MESSAGE_CLASSES(__func)                 \
   __func(Load)                                  \
   __func(Store)                                 \
+  __func(GetS)                                  \
+  __func(GetM)                                  \
   __func(Replacement)                           \
   __func(FwdGetS)                               \
   __func(FwdGetM)                               \
@@ -60,6 +62,7 @@ const char * to_string(MessageType t);
 struct Addr {
   using type = uint64_t;
 
+  Addr() : d_(0) {}
   Addr(type d) : d_(d) {}
 
   //
@@ -76,24 +79,104 @@ struct Addr {
 };
 
 class CoherencyMessage : public kernel::Transaction {
+  friend class CoherencyMessageBuilder;
+  friend class GetSCoherencyMessageBuilder;
+  friend class GetMCoherencyMessageBuilder;
+  
  public:
   MessageType type() const { return type_; }
+  std::size_t tid() const { return tid_; }
  private:
   MessageType type_;
+  std::size_t tid_;
+};
+
+class CoherencyMessageBuilder {
+ public:
+  void set_tid(std::size_t id) { msg_->tid_ = id; }
+ private:
+  CoherencyMessage * msg_;
 };
 
 class LoadCoherencyMessage : public CoherencyMessage {
+  friend class LoadCoherencyMessageBuilder;
  public:
-  Addr adder() const { return addr_; }
+  Addr addr() const { return addr_; }
  private:
   Addr addr_;
 };
 
 class StoreCoherencyMessage : public CoherencyMessage {
  public:
-  Addr adder() const { return addr_; }
+  Addr addr() const { return addr_; }
  private:
   Addr addr_;
+};
+
+class GetSCoherencyMessage : public CoherencyMessage {
+  friend class GetSCoherencyMessageBuilder;
+ public:
+  Addr addr() const { return addr_; }
+  void reset() override {}
+ private:
+  Addr addr_;
+};
+
+class GetSCoherencyMessageBuilder : public CoherencyMessageBuilder {
+  friend class GetSCoherencyMessageDirector;
+
+  GetSCoherencyMessageBuilder(GetSCoherencyMessage * msg)
+      : msg_(msg)
+  {}
+ public:
+  GetSCoherencyMessage * msg() { return msg_; }
+  
+  void set_addr(Addr a) { msg_->addr_ = a; }
+ private:
+  GetSCoherencyMessage * msg_;
+};
+
+class GetSCoherencyMessageDirector {
+ public:
+  GetSCoherencyMessageBuilder builder() {
+    return GetSCoherencyMessageBuilder{pool_.alloc()};
+  }
+
+ private:
+  ccm::Pool<GetSCoherencyMessage> pool_;
+};
+
+class GetMCoherencyMessage : public CoherencyMessage {
+  friend class GetMCoherencyMessageBuilder;
+ public:
+  Addr addr() const { return addr_; }
+  void reset() override {}
+ private:
+  Addr addr_;
+};
+
+class GetMCoherencyMessageBuilder {
+  friend class GetMCoherencyMessageDirector;
+
+  GetMCoherencyMessageBuilder(GetMCoherencyMessage * msg)
+      : msg_(msg)
+  {}
+ public:
+  GetMCoherencyMessage * msg() { return msg_; }
+  
+  void set_addr(Addr a) { msg_->addr_ = a; }
+ private:
+  GetMCoherencyMessage * msg_;
+};
+
+class GetMCoherencyMessageDirector {
+ public:
+  GetMCoherencyMessageBuilder builder() {
+    return GetMCoherencyMessageBuilder{pool_.alloc()};
+  }
+
+ private:
+  ccm::Pool<GetMCoherencyMessage> pool_;
 };
 
 class ReplacementCoherencyMessage : public CoherencyMessage {
@@ -154,10 +237,12 @@ class GenericCacheModel {
   }
   
   //
-  bool is_hit(Addr a) const {
+  bool is_hit(Addr a, momento_type & m) {
     for (std::size_t i = line_set_base(a); i < line_set_base(a) + opts_.ways_n; i++) {
-      if (ts_[i].is_valid && (ts_[i].tag == a.tag(opts_.line_bytes_n, opts_.ways_n)))
+      if (ts_[i].is_valid && (ts_[i].tag == a.tag(opts_.line_bytes_n, opts_.ways_n))) {
+        m = ts_[i].momento;
         return true;
+      }
     }
     return false;
   }
@@ -228,11 +313,33 @@ struct CoherentAgentOptions {
   GenericCacheModelOptions cache_options;
 };
 
+struct CoherentAgentContext {
+  ccm::kernel::Event wake_event;
+};
+
+#define RESPONSE_CLASSES(__func)                \
+  __func(Hit)                                   \
+  __func(Miss)                                  \
+  __func(NotifyOnRequestReissue)
+
+enum class ResponseType {
+#define __declare_enum(e) e,
+  RESPONSE_CLASSES(__declare_enum)
+#undef __declare_enum
+};
+const char * to_string(ResponseType t);
+
+struct CoherentAgentAction {
+  ResponseType resp;
+  CoherencyMessage * msg{nullptr};
+};
+
 class CoherentAgentModel {
  public:
   CoherentAgentModel(const CoherentAgentOptions & opts);
+  
   virtual Protocol protocol() const = 0;
-  virtual void apply(CoherencyMessage * m) = 0;
+  virtual CoherentAgentAction apply(CoherencyMessage * m) = 0;
 };
 
 std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
@@ -243,11 +350,15 @@ struct DirectoryOptions {
   GenericCacheModelOptions cache_options;
 };
 
+struct DirectoryAction {
+};
+
 class DirectoryModel {
  public:
   DirectoryModel(const DirectoryOptions & opts);
+  
   virtual Protocol protocol() const = 0;
-  virtual void apply(CoherencyMessage * m) = 0;
+  virtual DirectoryAction apply(CoherencyMessage * m) = 0;
 };
 
 std::unique_ptr<DirectoryModel> directory_factory(
