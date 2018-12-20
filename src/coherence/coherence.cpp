@@ -25,38 +25,49 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include <sstream>
-#include <cmath>
+#include "coherence.hpp"
+#include "msi.hpp"
 
-namespace ccm::kernel {
+namespace ccm {
 
-namespace detail {
-
-template<typename ARG>
-std::ostream & join_helper(std::ostream & os, ARG && arg) {
-  return (os << arg);
+const char * to_string(MessageType t) {
+  switch (t) {
+#define __declare_to_string(e)                  \
+    case MessageType::e: return #e;
+    MESSAGE_CLASSES(__declare_to_string)
+#undef __declare_to_string
+  }
+  return "<Unknown Message Type>";
 }
 
-template<typename ARG, typename ... REST>
-std::ostream & join_helper(std::ostream & os, ARG && arg, REST && ... rest) {
-  return join_helper(os << arg, std::forward<REST>(rest)...);
+const char * to_string(EvictionPolicy p) {
+  switch (p) {
+#define __declare_to_string(e)                  \
+    case EvictionPolicy::e: return #e;
+    EVICTION_POLICIES(__declare_to_string)
+#undef __declare_to_string
+  }
+  return "<Unknown Policy Type>";
 }
 
-} // namespace detail
-
-template<typename ...ARGS>
-std::string join(ARGS && ... args) {
-  std::stringstream ss;
-  detail::join_helper(ss, std::forward<ARGS>(args)...);
-  return ss.str();
+std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
+    const CoherentAgentOptions & opts) {
+  switch (opts.protocol) {
+    case Protocol::MSI:
+      return std::make_unique<MsiCoherentAgentModel>(opts);
+      break;
+  }
 }
 
-template<typename T>
-T log2ceil(T t) {
-  return static_cast<T>(std::ceil(std::log2(t)));
+std::unique_ptr<DirectoryModel> directory_factory(
+    const DirectoryOptions & opts) {
+  switch (opts.protocol) {
+    case Protocol::MSI:
+      return std::make_unique<MsiDirectoryModel>(opts);
+      break;
+  }
 }
 
-template<typename T, typename = std::is_integral<T> >
-T mask(T t) { return (1 << t) - 1; }
 
-} // namespace ccm::kernel
+} // namespace ccm
+

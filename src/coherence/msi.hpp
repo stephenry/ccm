@@ -25,38 +25,49 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include <sstream>
-#include <cmath>
+#ifndef __MSI_HPP__
+#define __MSI_HPP__
 
-namespace ccm::kernel {
+#include "coherence.hpp"
+#include <memory>
 
-namespace detail {
+namespace ccm {
 
-template<typename ARG>
-std::ostream & join_helper(std::ostream & os, ARG && arg) {
-  return (os << arg);
-}
+class MsiCoherentAgentModel : public CoherentAgentModel {
+ public:
+  MsiCoherentAgentModel(const CoherentAgentOptions & opts);
+  virtual ~MsiCoherentAgentModel();
 
-template<typename ARG, typename ... REST>
-std::ostream & join_helper(std::ostream & os, ARG && arg, REST && ... rest) {
-  return join_helper(os << arg, std::forward<REST>(rest)...);
-}
+  //
+  Protocol protocol() const override { return Protocol::MSI; }
 
-} // namespace detail
+  //
+  void apply(CoherencyMessage * m) override;
 
-template<typename ...ARGS>
-std::string join(ARGS && ... args) {
-  std::stringstream ss;
-  detail::join_helper(ss, std::forward<ARGS>(args)...);
-  return ss.str();
-}
+ private:
+  struct MsiCoherentAgentModelImpl;
 
-template<typename T>
-T log2ceil(T t) {
-  return static_cast<T>(std::ceil(std::log2(t)));
-}
+  std::unique_ptr<MsiCoherentAgentModelImpl> impl_;
+};
 
-template<typename T, typename = std::is_integral<T> >
-T mask(T t) { return (1 << t) - 1; }
+class MsiDirectoryModel : public DirectoryModel {
+ public:
+  MsiDirectoryModel(const DirectoryOptions & opts);
+  virtual ~MsiDirectoryModel();
 
-} // namespace ccm::kernel
+  //
+  Protocol protocol() const override { return Protocol::MSI; }
+
+  //
+  void apply(CoherencyMessage * m) override;
+
+ private:
+  struct MsiDirectoryModelImpl;
+
+  std::unique_ptr<MsiDirectoryModelImpl> impl_;
+};
+
+
+} // namespace ccm
+
+#endif

@@ -40,5 +40,6 @@
 #include "transaction.hpp"
 #include "log.hpp"
 #include "random.hpp"
+#include "utility.hpp"
 
 #endif

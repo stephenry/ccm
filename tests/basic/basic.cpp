@@ -92,17 +92,28 @@ struct Producer : agt::BasicSourceAgent {
 
 struct Consumer : agt::BasicSinkAgent {
   CCM_BUILDABLE_COMMON(Consumer);
-
   struct Arguments : krn::BuildableArguments {
     Arguments(std::size_t id, const std::string & instance_name)
         : BuildableArguments(id, instance_name)
     {}
   };
+  struct {
+    std::size_t received_count_{0};
+    bool is_valid() const {
+      if (received_count_ == 0)
+        return false;
+
+      return true;
+    }
+  } validate_;
+  
   Consumer(const krn::Context & ctxt, const Arguments & args)
       : BasicSinkAgent(ctxt), args_(args)
   {}
   void set_state(State * state) { state_ = state; }
   void sink_transaction (krn::Transaction * t) override {
+    validate_.received_count_++;
+    
     BasicTransaction * bt = static_cast<BasicTransaction *>(t);
     EXPECT_TRUE(bt->is_valid());
     EXPECT_EQ(bt->portid_dst, args_.id_);
@@ -114,6 +125,9 @@ struct Consumer : agt::BasicSinkAgent {
     state_->sent.pop_front();
     bt->release();
   }
+  ~Consumer() {
+    EXPECT_TRUE(validate_.is_valid());
+  }
  private:
   State * state_;
   Arguments args_;
@@ -121,8 +135,8 @@ struct Consumer : agt::BasicSinkAgent {
 
 class Top : public krn::TopModule {
  public:
-  Top(ccm::kernel::Scheduler & sch,
-      const std::string & instance_name = "top")
+  Top(const std::string & instance_name,
+      ccm::kernel::Scheduler & sch)
       : ccm::kernel::TopModule(std::addressof(sch), instance_name) {
       
     ccm::interconnects::register_interconnects(breg_);
@@ -147,7 +161,6 @@ class Top : public krn::TopModule {
     fixed_latency_->outs_[0] = consumer_->in_;
   }
  private:
-    
   krn::BuildableRegistry breg_;
   State state_;
   Producer * producer_;
@@ -159,7 +172,13 @@ class Top : public krn::TopModule {
 
 TEST(Basic, t0) {
   krn::Scheduler sch;
-  sch.set_top(new Top(sch));
+  std::unique_ptr<krn::Module> top =
+      krn::TopModule::construct<Top>("top", sch);
+  std::unique_ptr<krn::Logger> logger = std::make_unique<krn::Logger>();
+  top->set_logger(logger.get());
+  sch.set_top(top.get());
+  sch.set_logger(logger.get());
+  const krn::RunOptions opts(100000);
   sch.run();
 }
 
