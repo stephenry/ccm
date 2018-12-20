@@ -44,7 +44,8 @@ enum class Protocol {
   __func(Load)                                  \
   __func(Store)                                 \
   __func(FwdGetS)                               \
-  __func(FwdGetM)
+  __func(FwdGetM)                               \
+  __func(PutAck)
 
 #define DIRECTORY_MESSAGE_CLASSES(__func)       \
   __func(GetS)                                  \
@@ -62,15 +63,17 @@ const char * to_string(MessageType t);
 
 class CoherencyMessage : public kernel::Transaction {
   friend class CoherencyMessageBuilder;
-  
   friend class GetSCoherencyMessageBuilder;
   friend class GetMCoherencyMessageBuilder;
   friend class PutSCoherencyMessageBuilder;
   friend class PutMCoherencyMessageBuilder;
   friend class FwdGetSCoherencyMessageBuilder;
   friend class FwdGetMCoherencyMessageBuilder;
+  friend class PutAckCoherencyMessageBuilder;
   
  public:
+  virtual ~CoherencyMessage() {}
+  
   MessageType type() const { return type_; }
   std::size_t tid() const { return tid_; }
  private:
@@ -320,6 +323,43 @@ class FwdGetMCoherencyMessageDirector {
 
  private:
   ccm::Pool<FwdGetMCoherencyMessage> pool_;
+};
+
+class PutAckCoherencyMessage : public CoherencyMessage {
+  friend class PutAckCoherencyMessageBuilder;
+ public:
+  Addr addr() const { return addr_; }
+  void reset() override {}
+ private:
+  Addr addr_;
+};
+
+class PutAckCoherencyMessageBuilder : public CoherencyMessageBuilder {
+  friend class PutAckCoherencyMessageDirector;
+
+  PutAckCoherencyMessageBuilder(PutAckCoherencyMessage * msg)
+      : msg_(msg) {}
+ public:
+  ~PutAckCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
+  PutAckCoherencyMessage * msg() {
+    PutAckCoherencyMessage * m{nullptr};
+    std::swap(m, msg_);
+    return msg_;
+  }
+  
+  void set_addr(Addr a) { msg_->addr_ = a; }
+ private:
+  PutAckCoherencyMessage * msg_;
+};
+
+class PutAckCoherencyMessageDirector {
+ public:
+  PutAckCoherencyMessageBuilder builder() {
+    return PutAckCoherencyMessageBuilder{pool_.alloc()};
+  }
+
+ private:
+  ccm::Pool<PutAckCoherencyMessage> pool_;
 };
 
 struct CoherentAgentOptions {

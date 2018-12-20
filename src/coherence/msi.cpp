@@ -192,6 +192,9 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
   void handle__FwdGetM(FwdGetMCoherencyMessage * m, CoherentAgentAction & a) {
   }
 
+  void handle__PutAck(PutAckCoherencyMessage * m, CoherentAgentAction & a) {
+  }
+
   GenericCacheModel<MsiAgentLineState> cache_;
   CoherentAgentOptions opts_;
   GetSCoherencyMessageDirector gets_;
