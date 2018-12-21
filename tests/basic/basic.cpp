@@ -76,8 +76,8 @@ struct Producer : agt::BasicSourceAgent {
 
     BasicTransaction * bt = p_.alloc();
     EXPECT_EQ(args_.id_, state_->sender_id);
-    bt->portid_src = args_.id_;
-    bt->portid_dst = state_->consumer_id;
+    bt->mid = args_.id_;
+    bt->sid = state_->consumer_id;
     EXPECT_TRUE(!bt->is_valid());
     bt->set(0);
     // TODO
@@ -116,9 +116,9 @@ struct Consumer : agt::BasicSinkAgent {
     
     BasicTransaction * bt = static_cast<BasicTransaction *>(t);
     EXPECT_TRUE(bt->is_valid());
-    EXPECT_EQ(bt->portid_dst, args_.id_);
-    EXPECT_EQ(bt->portid_src, state_->sender_id);
-    EXPECT_EQ(bt->portid_dst, state_->consumer_id);
+    EXPECT_EQ(bt->sid, args_.id_);
+    EXPECT_EQ(bt->mid, state_->sender_id);
+    EXPECT_EQ(bt->sid, state_->consumer_id);
     const std::size_t expected = state_->sent.front();
     const std::size_t actual = bt->value();
     EXPECT_EQ(expected, actual);

@@ -33,40 +33,37 @@
 
 namespace ccm::interconnects {
 
-  struct FixedLatencyTransaction : ccm::kernel::Transaction {
-    std::size_t portid_src;
-    std::size_t portid_dst;
-  };
+struct FixedLatencyTransaction : ccm::kernel::Transaction {};
 
-  class FixedLatency : public ::ccm::kernel::Buildable {
-    struct PushProcess;
-    struct PopProcess;
-  public:
-    CCM_BUILDABLE_COMMON(FixedLatency);
+class FixedLatency : public ::ccm::kernel::Buildable {
+  struct PushProcess;
+  struct PopProcess;
+ public:
+  CCM_BUILDABLE_COMMON(FixedLatency);
 
-    struct Arguments : ::ccm::kernel::BuildableArguments {
-      Arguments(std::size_t id, const std::string & instance_name)
+  struct Arguments : ::ccm::kernel::BuildableArguments {
+    Arguments(std::size_t id, const std::string & instance_name)
         : BuildableArguments(id, instance_name)
-      {}
-      std::size_t in_ports;
-      std::size_t out_ports;
-      std::size_t latency;
-    };
-    
-    FixedLatency(const ::ccm::kernel::Context & ctxt, const Arguments & arg);
-    virtual ~FixedLatency();
-    void push (::ccm::kernel::Transaction * t);
-    
-    std::vector<::ccm::kernel::TMailBox *> ins_;
-    std::vector<::ccm::kernel::TMailBoxIf *> outs_;
-  private:
-
-    std::vector<::ccm::kernel::TEventQueue *> eqs_;
-    Arguments args_;
-
-    std::vector<PushProcess *> p_push_;
-    std::vector<PopProcess *> p_pop_;
+    {}
+    std::size_t in_ports;
+    std::size_t out_ports;
+    std::size_t latency;
   };
+    
+  FixedLatency(const ::ccm::kernel::Context & ctxt, const Arguments & arg);
+  virtual ~FixedLatency();
+  void push (::ccm::kernel::Transaction * t);
+    
+  std::vector<::ccm::kernel::TMailBox *> ins_;
+  std::vector<::ccm::kernel::TMailBoxIf *> outs_;
+ private:
+
+  std::vector<::ccm::kernel::TEventQueue *> eqs_;
+  Arguments args_;
+
+  std::vector<PushProcess *> p_push_;
+  std::vector<PopProcess *> p_pop_;
+};
 
 } // namespace ccm::interconnects
 

@@ -33,13 +33,15 @@
 
 namespace ccm::kernel {
 
-  struct Transaction : public Poolable
-  {};
+struct Transaction : public Poolable {
+  std::size_t mid; // Master ID
+  std::size_t sid; // Slave ID
+};
 
-  using TMailBox = MailBox<Transaction *>;
-  using TMailBoxIf = MailBoxIf<Transaction *>;
+using TMailBox = MailBox<Transaction *>;
+using TMailBoxIf = MailBoxIf<Transaction *>;
   
-  using TEventQueue = EventQueue<Transaction *>;
+using TEventQueue = EventQueue<Transaction *>;
 
 } // namespace ccm::kernel
 
