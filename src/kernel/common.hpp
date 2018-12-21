@@ -104,6 +104,7 @@ struct IdPool {
 
   //
   bool has_id() const;
+  bool available(std::size_t count) const;
   bool get_id(std::size_t & id);
   void set_id(std::size_t id);
 

@@ -25,50 +25,14 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __MSI_HPP__
-#define __MSI_HPP__
+#ifndef __COHERENCE_COMMON_HPP__
+#define __COHERENCE_COMMON_HPP__
 
-#include "coherence.hpp"
-#include <memory>
+#include <cstdint>
 
 namespace ccm {
 
-class MsiCoherentAgentModel : public CoherentAgentModel {
- public:
-  MsiCoherentAgentModel(const CoherentAgentOptions & opts);
-  virtual ~MsiCoherentAgentModel();
-
-  //
-  Protocol protocol() const override { return Protocol::MSI; }
-
-  //
-  CoherentAgentAction apply(CoherentAgentContext & ctxt,
-                            CoherencyMessage * m) override;
-
- private:
-  struct MsiCoherentAgentModelImpl;
-
-  std::unique_ptr<MsiCoherentAgentModelImpl> impl_;
-};
-
-class MsiDirectoryModel : public DirectoryModel {
- public:
-  MsiDirectoryModel(const DirectoryOptions & opts);
-  virtual ~MsiDirectoryModel();
-
-  //
-  Protocol protocol() const override { return Protocol::MSI; }
-
-  //
-  DirectoryAction apply(CoherentAgentContext & ctxt,
-                        CoherencyMessage * m) override;
-
- private:
-  struct MsiDirectoryModelImpl;
-
-  std::unique_ptr<MsiDirectoryModelImpl> impl_;
-};
-
+using addr_t = uint64_t;
 
 } // namespace ccm
 

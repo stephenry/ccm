@@ -31,6 +31,7 @@
 #include "kernel/kernel.hpp"
 #include "cache_model.hpp"
 #include <memory>
+#include <optional>
 
 namespace ccm {
 
@@ -40,24 +41,23 @@ enum class Protocol {
   MOSI
 };
 
-#define AGENT_MESSAGE_CLASSES(__func)           \
+#define MESSAGE_CLASSES(__func)                 \
   __func(Load)                                  \
   __func(Store)                                 \
-  __func(FwdGetS)                               \
-  __func(FwdGetM)                               \
-  __func(PutAck)
-
-#define DIRECTORY_MESSAGE_CLASSES(__func)       \
   __func(GetS)                                  \
   __func(GetM)                                  \
   __func(PutS)                                  \
-  __func(PutM)
+  __func(PutM)                                  \
+  __func(FwdGetS)                               \
+  __func(FwdGetM)                               \
+  __func(Inv)                                   \
+  __func(Data)
 
 enum class MessageType {
 #define __declare_enum(e) e,
-  AGENT_MESSAGE_CLASSES(__declare_enum)
-  DIRECTORY_MESSAGE_CLASSES(__declare_enum)
+  MESSAGE_CLASSES(__declare_enum)
 #undef __declare_enum
+  Invalid
 };
 const char * to_string(MessageType t);
 
@@ -69,21 +69,28 @@ class CoherencyMessage : public kernel::Transaction {
   friend class PutMCoherencyMessageBuilder;
   friend class FwdGetSCoherencyMessageBuilder;
   friend class FwdGetMCoherencyMessageBuilder;
-  friend class PutAckCoherencyMessageBuilder;
+  friend class InvCoherencyMessageBuilder;
+  friend class DataCoherencyMessageBuilder;
   
  public:
   virtual ~CoherencyMessage() {}
   
   MessageType type() const { return type_; }
   std::size_t tid() const { return tid_; }
+  bool is_ack() const { return is_ack_; }
+  addr_t addr() const { return addr_; }
  private:
   MessageType type_;
   std::size_t tid_;
+  addr_t addr_;
+  bool is_ack_;
 };
 
 class CoherencyMessageBuilder {
  public:
   void set_tid(std::size_t id) { msg_->tid_ = id; }
+  void set_is_ack(bool is_ack = true) { msg_->is_ack_ = is_ack; }
+  void set_addr(addr_t a) { msg_->addr_ = a; }
  private:
   CoherencyMessage * msg_;
 };
@@ -91,32 +98,30 @@ class CoherencyMessageBuilder {
 class LoadCoherencyMessage : public CoherencyMessage {
   friend class LoadCoherencyMessageBuilder;
  public:
-  Addr addr() const { return addr_; }
+  void reset() override {}
  private:
-  Addr addr_;
 };
 
 class StoreCoherencyMessage : public CoherencyMessage {
  public:
-  Addr addr() const { return addr_; }
+  void reset() override {}
  private:
-  Addr addr_;
 };
 
 class GetSCoherencyMessage : public CoherencyMessage {
   friend class GetSCoherencyMessageBuilder;
  public:
-  Addr addr() const { return addr_; }
   void reset() override {}
  private:
-  Addr addr_;
 };
 
 class GetSCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class GetSCoherencyMessageDirector;
 
   GetSCoherencyMessageBuilder(GetSCoherencyMessage * msg)
-      : msg_(msg) {}
+      : msg_(msg) {
+    msg_->type_ = MessageType::GetS;
+  }
  public:
   ~GetSCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
   GetSCoherencyMessage * msg() {
@@ -125,7 +130,6 @@ class GetSCoherencyMessageBuilder : public CoherencyMessageBuilder {
     return msg_;
   }
   
-  void set_addr(Addr a) { msg_->addr_ = a; }
  private:
   GetSCoherencyMessage * msg_;
 };
@@ -143,17 +147,17 @@ class GetSCoherencyMessageDirector {
 class GetMCoherencyMessage : public CoherencyMessage {
   friend class GetMCoherencyMessageBuilder;
  public:
-  Addr addr() const { return addr_; }
   void reset() override {}
  private:
-  Addr addr_;
 };
 
 class GetMCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class GetMCoherencyMessageDirector;
 
   GetMCoherencyMessageBuilder(GetMCoherencyMessage * msg)
-      : msg_(msg) {}
+      : msg_(msg) {
+    msg_->type_ = MessageType::GetM;
+  }
  public:
   ~GetMCoherencyMessageBuilder() { if (msg_) msg_->release(); }
   GetMCoherencyMessage * msg() {
@@ -161,8 +165,6 @@ class GetMCoherencyMessageBuilder : public CoherencyMessageBuilder {
     std::swap(m, msg_);
     return m;
   }
-  
-  void set_addr(Addr a) { msg_->addr_ = a; }
  private:
   GetMCoherencyMessage * msg_;
 };
@@ -180,17 +182,17 @@ class GetMCoherencyMessageDirector {
 class PutSCoherencyMessage : public CoherencyMessage {
   friend class PutSCoherencyMessageBuilder;
  public:
-  Addr addr() const { return addr_; }
   void reset() override {}
  private:
-  Addr addr_;
 };
 
 class PutSCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class PutSCoherencyMessageDirector;
 
   PutSCoherencyMessageBuilder(PutSCoherencyMessage * msg)
-      : msg_(msg) {}
+      : msg_(msg) {
+    msg_->type_ = MessageType::PutS;
+  }
  public:
   ~PutSCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
   PutSCoherencyMessage * msg() {
@@ -199,7 +201,6 @@ class PutSCoherencyMessageBuilder : public CoherencyMessageBuilder {
     return msg_;
   }
   
-  void set_addr(Addr a) { msg_->addr_ = a; }
  private:
   PutSCoherencyMessage * msg_;
 };
@@ -217,17 +218,17 @@ class PutSCoherencyMessageDirector {
 class PutMCoherencyMessage : public CoherencyMessage {
   friend class PutMCoherencyMessageBuilder;
  public:
-  Addr addr() const { return addr_; }
   void reset() override {}
  private:
-  Addr addr_;
 };
 
 class PutMCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class PutMCoherencyMessageDirector;
 
   PutMCoherencyMessageBuilder(PutMCoherencyMessage * msg)
-      : msg_(msg) {}
+      : msg_(msg) {
+    msg_->type_ = MessageType::PutM;
+  }
  public:
   ~PutMCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
   PutMCoherencyMessage * msg() {
@@ -236,7 +237,6 @@ class PutMCoherencyMessageBuilder : public CoherencyMessageBuilder {
     return msg_;
   }
   
-  void set_addr(Addr a) { msg_->addr_ = a; }
  private:
   PutMCoherencyMessage * msg_;
 };
@@ -254,17 +254,17 @@ class PutMCoherencyMessageDirector {
 class FwdGetSCoherencyMessage : public CoherencyMessage {
   friend class FwdGetSCoherencyMessageBuilder;
  public:
-  Addr addr() const { return addr_; }
   void reset() override {}
  private:
-  Addr addr_;
 };
 
 class FwdGetSCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class FwdGetSCoherencyMessageDirector;
 
   FwdGetSCoherencyMessageBuilder(FwdGetSCoherencyMessage * msg)
-      : msg_(msg) {}
+      : msg_(msg) {
+    msg_->type_ = MessageType::FwdGetS;
+  }
  public:
   ~FwdGetSCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
   FwdGetSCoherencyMessage * msg() {
@@ -273,7 +273,6 @@ class FwdGetSCoherencyMessageBuilder : public CoherencyMessageBuilder {
     return msg_;
   }
   
-  void set_addr(Addr a) { msg_->addr_ = a; }
  private:
   FwdGetSCoherencyMessage * msg_;
 };
@@ -291,17 +290,17 @@ class FwdGetSCoherencyMessageDirector {
 class FwdGetMCoherencyMessage : public CoherencyMessage {
   friend class FwdGetMCoherencyMessageBuilder;
  public:
-  Addr addr() const { return addr_; }
   void reset() override {}
  private:
-  Addr addr_;
 };
 
 class FwdGetMCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class FwdGetMCoherencyMessageDirector;
 
   FwdGetMCoherencyMessageBuilder(FwdGetMCoherencyMessage * msg)
-      : msg_(msg) {}
+      : msg_(msg) {
+    msg_->type_ = MessageType::FwdGetM;
+  }
  public:
   ~FwdGetMCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
   FwdGetMCoherencyMessage * msg() {
@@ -310,7 +309,6 @@ class FwdGetMCoherencyMessageBuilder : public CoherencyMessageBuilder {
     return msg_;
   }
   
-  void set_addr(Addr a) { msg_->addr_ = a; }
  private:
   FwdGetMCoherencyMessage * msg_;
 };
@@ -325,46 +323,82 @@ class FwdGetMCoherencyMessageDirector {
   ccm::Pool<FwdGetMCoherencyMessage> pool_;
 };
 
-class PutAckCoherencyMessage : public CoherencyMessage {
-  friend class PutAckCoherencyMessageBuilder;
+class InvCoherencyMessage : public CoherencyMessage {
+  friend class InvCoherencyMessageBuilder;
  public:
-  Addr addr() const { return addr_; }
   void reset() override {}
  private:
-  Addr addr_;
 };
 
-class PutAckCoherencyMessageBuilder : public CoherencyMessageBuilder {
-  friend class PutAckCoherencyMessageDirector;
+class InvCoherencyMessageBuilder : public CoherencyMessageBuilder {
+  friend class InvCoherencyMessageDirector;
 
-  PutAckCoherencyMessageBuilder(PutAckCoherencyMessage * msg)
-      : msg_(msg) {}
+  InvCoherencyMessageBuilder(InvCoherencyMessage * msg)
+      : msg_(msg) {
+    msg_->type_ = MessageType::Inv;
+  }
  public:
-  ~PutAckCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
-  PutAckCoherencyMessage * msg() {
-    PutAckCoherencyMessage * m{nullptr};
+  ~InvCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
+  InvCoherencyMessage * msg() {
+    InvCoherencyMessage * m{nullptr};
     std::swap(m, msg_);
     return msg_;
   }
   
-  void set_addr(Addr a) { msg_->addr_ = a; }
  private:
-  PutAckCoherencyMessage * msg_;
+  InvCoherencyMessage * msg_;
 };
 
-class PutAckCoherencyMessageDirector {
+class InvCoherencyMessageDirector {
  public:
-  PutAckCoherencyMessageBuilder builder() {
-    return PutAckCoherencyMessageBuilder{pool_.alloc()};
+  InvCoherencyMessageBuilder builder() {
+    return InvCoherencyMessageBuilder{pool_.alloc()};
   }
 
  private:
-  ccm::Pool<PutAckCoherencyMessage> pool_;
+  ccm::Pool<InvCoherencyMessage> pool_;
+};
+
+class DataCoherencyMessage : public CoherencyMessage {
+  friend class DataCoherencyMessageBuilder;
+ public:
+  void reset() override {}
+ private:
+};
+
+class DataCoherencyMessageBuilder : public CoherencyMessageBuilder {
+  friend class DataCoherencyMessageDirector;
+
+  DataCoherencyMessageBuilder(DataCoherencyMessage * msg)
+      : msg_(msg) {
+    msg_->type_ = MessageType::Data;
+  }
+ public:
+  ~DataCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
+  DataCoherencyMessage * msg() {
+    DataCoherencyMessage * m{nullptr};
+    std::swap(m, msg_);
+    return msg_;
+  }
+  
+ private:
+  DataCoherencyMessage * msg_;
+};
+
+class DataCoherencyMessageDirector {
+ public:
+  DataCoherencyMessageBuilder builder() {
+    return DataCoherencyMessageBuilder{pool_.alloc()};
+  }
+
+ private:
+  ccm::Pool<DataCoherencyMessage> pool_;
 };
 
 struct CoherentAgentOptions {
   Protocol protocol;
-  GenericCacheModelOptions cache_options;
+  CacheOptions cache_options;
+  std::size_t max_in_flight_n{16};
 };
 
 struct CoherentAgentContext {
@@ -384,8 +418,9 @@ enum class ResponseType {
 const char * to_string(ResponseType t);
 
 struct CoherentAgentAction {
-  ResponseType resp;
-  CoherencyMessage * msg{nullptr};
+  ResponseType response;
+  std::vector<CoherencyMessage *> msgs{nullptr};
+  bool message_consumed{false};
 };
 
 class CoherentAgentModel {
@@ -393,7 +428,8 @@ class CoherentAgentModel {
   CoherentAgentModel(const CoherentAgentOptions & opts);
   
   virtual Protocol protocol() const = 0;
-  virtual CoherentAgentAction apply(CoherencyMessage * m) = 0;
+  virtual CoherentAgentAction apply(CoherentAgentContext & ctxt,
+                                    CoherencyMessage * m) = 0;
 };
 
 std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
@@ -401,7 +437,7 @@ std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
 
 struct DirectoryOptions {
   Protocol protocol;
-  GenericCacheModelOptions cache_options;
+  CacheOptions cache_options;
 };
 
 struct DirectoryAction {
@@ -412,7 +448,8 @@ class DirectoryModel {
   DirectoryModel(const DirectoryOptions & opts);
   
   virtual Protocol protocol() const = 0;
-  virtual DirectoryAction apply(CoherencyMessage * m) = 0;
+  virtual DirectoryAction apply(CoherentAgentContext & ctxt,
+                                CoherencyMessage * m) = 0;
 };
 
 std::unique_ptr<DirectoryModel> directory_factory(

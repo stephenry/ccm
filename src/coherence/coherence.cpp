@@ -34,11 +34,11 @@ const char * to_string(MessageType t) {
   switch (t) {
 #define __declare_to_string(e)                  \
     case MessageType::e: return #e;
-    AGENT_MESSAGE_CLASSES(__declare_to_string)
-    DIRECTORY_MESSAGE_CLASSES(__declare_to_string)
+    MESSAGE_CLASSES(__declare_to_string)
 #undef __declare_to_string
+    default:
+      return "<Unknown Message Type>";
   }
-  return "<Unknown Message Type>";
 }
 
 const char * to_string(ResponseType r) {
@@ -47,8 +47,9 @@ const char * to_string(ResponseType r) {
     case ResponseType::e: return #e;
     RESPONSE_CLASSES(__declare_to_string)
 #undef __declare_to_string
+    default:
+      return "<Unknown Response Type>";
   }
-  return "<Unknown Response Type>";
 }
 
 const char * to_string(EvictionPolicy p) {
@@ -57,8 +58,9 @@ const char * to_string(EvictionPolicy p) {
     case EvictionPolicy::e: return #e;
     EVICTION_POLICIES(__declare_to_string)
 #undef __declare_to_string
+    default:
+      return "<Unknown Policy Type>";
   }
-  return "<Unknown Policy Type>";
 }
 
 std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
@@ -69,6 +71,7 @@ std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
       break;
     case Protocol::MESI:
     case Protocol::MOSI:
+    default:
       // TODO: Not implemented
       return nullptr;
       break;
@@ -83,6 +86,7 @@ std::unique_ptr<DirectoryModel> directory_factory(
       break;
     case Protocol::MESI:
     case Protocol::MOSI:
+    default:
       // TODO: Not implemented
       return nullptr;
       break;

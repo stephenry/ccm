@@ -28,7 +28,10 @@
 #ifndef __CACHE_MODEL_HPP__
 #define __CACHE_MODEL_HPP__
 
+#include "common.hpp"
+#include <tuple>
 #include <vector>
+#include <algorithm>
 
 namespace ccm {
 
@@ -45,123 +48,135 @@ enum class EvictionPolicy {
 };
 const char * to_string(EvictionPolicy p);
 
-struct GenericCacheModelOptions {
-  bool is_valid() const { return true; }
-  
+struct CacheOptions {
   uint32_t sets_n{1 << 10};
   uint8_t ways_n{1};
-  uint8_t line_bytes_n{64};
+  uint8_t bytes_per_line{64};
   EvictionPolicy eviction_policy{EvictionPolicy::Fixed};
 };
 
-struct Addr {
-  using type = uint64_t;
+class CacheAddressFormat {
+ public:
+  CacheAddressFormat() {}
+  CacheAddressFormat(std::size_t bytes_per_line, std::size_t sets_n)
+      : bytes_per_line_(bytes_per_line), sets_n_(sets_n) {
+    
+    l2c_bytes_per_line_ = kernel::log2ceil(bytes_per_line_);
+    mask_bytes_per_line_ = kernel::mask(l2c_bytes_per_line_);
 
-  Addr() : d_(0) {}
-  Addr(type d) : d_(d) {}
+    l2c_sets_n_ = kernel::log2ceil(sets_n_);
+  }
+  
+  addr_t offset(addr_t a) const {
+    return (a & mask_bytes_per_line_);
+  }
 
-  //
-  operator type() { return d_; }
+  addr_t set(addr_t a) const {
+    return (a >> l2c_bytes_per_line_);
+  }
 
-  //
-  type line(type len) const {
-    return d_ >> kernel::log2ceil(len);
+  addr_t tag(addr_t a) const {
+    return set(a) >> l2c_sets_n_;
   }
-  type offset(type len) const {
-    return d_ & ((1 << kernel::log2ceil(len)) - 1);
-  }
-  type tag(type len, type ways_n) {
-    return line(len) >> kernel::log2ceil(ways_n);
-  }
+
  private:
-  type d_;
+  std::size_t bytes_per_line_, l2c_bytes_per_line_, mask_bytes_per_line_;
+  std::size_t sets_n_, l2c_sets_n_;
 };
 
 template<typename T>
-class GenericCacheModel {
+class CacheModel {
+
  public:
-  using momento_type = T;
-  
-  GenericCacheModel(const GenericCacheModelOptions & opts)
-      : opts_(opts) {
-    ts_.resize(opts_.sets_n * opts_.ways_n);
-    invalidate();
-  }
-  
-  //
-  bool is_hit(Addr a, momento_type & m) {
-    for (std::size_t i = line_set_base(a); i < line_set_base(a) + opts_.ways_n; i++) {
-      if (ts_[i].is_valid && (ts_[i].tag == a.tag(opts_.line_bytes_n, opts_.ways_n))) {
-        m = ts_[i].momento;
-        return true;
-      }
-    }
-    return false;
-  }
-
-  void update(Addr a, const T & t) {
-    // TODO
-  }
-  
-  bool requires_eviction(Addr a) const {
-    uint8_t valid = 0;
-    for (std::size_t i = line_set_base(a); i < line_set_base(a) + opts_.ways_n; i++)
-      if (ts_[i].is_valid)
-        valid++;
-    return (valid == opts_.ways_n);
-  }
 
   //
-  void install(Addr a, const momento_type & m) {
-    for (std::size_t i = line_set_base(a); i < line_set_base(a) + opts_.ways_n; i++) {
-      if (!ts_[i].is_valid) {
-        ts_[i].is_valid = true;
-        ts_[i].tag = a.tag(opts_.line_bytes_n, opts_.ways_n);
-        ts_[i].momento = m;
-      }
-    }
-  }
-  
-  void evict(Addr a, momento_type & m) {
-    switch (opts_.eviction_policy) {
-      case EvictionPolicy::Fixed: {
-        CacheEntry & e = ts_[line_set_base(a)];
-        m = e.momento;
-        e.is_valid = false;
-      } break;
-      case EvictionPolicy::Random: {
-      
-      } break;
-      case EvictionPolicy::PsuedoLru: {
-      
-      } break;
-      case EvictionPolicy::TrueLru: {
-      
-      } break;
-      default:
-        ;
-        // TODO
-    }
-  }
+  struct Entry {
+    uint64_t addr;
+    T t;
+  };
 
- private:
-  std::size_t line_set_base(Addr a) const {
-    return opts_.ways_n * a.line(opts_.line_bytes_n);
-  }
-  
-  void invalidate() {
-    for (CacheEntry & ce : ts_)
-      ce.is_valid = false;
-  }    
-  
-  struct CacheEntry {
-    T momento;
-    Addr::type tag;
-    bool is_valid;
+  //
+  struct Set {
+    using iterator = typename std::vector<Entry>::iterator;
+    
+    std::vector<Entry> lines;
   };
   
-  GenericCacheModelOptions opts_;
-  std::vector<CacheEntry> ts_;
+  CacheModel(const CacheOptions & opts)
+      : opts_(opts) {
+    fmt_ = CacheAddressFormat{opts_.bytes_per_line, opts_.sets_n};
+    sets_.resize(opts_.sets_n);
+  }
+
+  CacheAddressFormat address_format() const {
+    return fmt_;
+  }
+
+  bool is_hit(addr_t a) const {
+    const Set & s = sets_[fmt_.set(a)];
+    return s.lines.end() != std::find_if(
+        s.lines.begin(), s.lines.end(),
+        [=](const Entry & e) { return (e.addr == a); });
+  }
+
+  bool requires_eviction(addr_t a) const {
+    if (is_hit(a))
+      return false;
+    
+    return (set(a).lines.size() == opts_.ways_n);
+  }
+
+  void install(addr_t addr, T & t) {
+    Set & s = set(addr);
+    s.lines.push_back(Entry{addr, t});
+  }
+
+  template<typename CB>
+  std::tuple<bool, Entry> select_eviction(addr_t a, CB && cb) const {
+    std::vector<Entry> ves = set_evictables(a, cb);
+
+    switch (opts_.eviction_policy) {
+      case EvictionPolicy::Fixed:
+        return std::make_tuple(!ves.empty(), ves.back());
+        break;
+      case EvictionPolicy::Random:
+      case EvictionPolicy::PsuedoLru:
+      case EvictionPolicy::TrueLru:
+        // TODO
+        break;
+    }
+    return std::make_tuple(false, Entry{});
+  }
+
+  bool evict(addr_t a) const {
+    if (!is_hit(a))
+      return false;
+
+    const Set & s = set(a);
+    s.lines.erase(std::find_if(s.lines.begin(), s.lines.end(),
+                              [=](const Entry & e) { return (e.addr = a); }));
+    
+    return true;
+  }
+  
+ private:
+  const Set & set(addr_t a) const {
+    return sets_[fmt_.set(a)];
+  }
+
+  template<typename CB>
+  std::vector<Entry> set_evictables(addr_t a, CB && cb) const {
+    std::vector<Entry> es;
+    for (const Entry & e : set(a)) {
+      if (cb(e))
+        es.push_back(e);
+    }
+    return es;
+  }
+  
+  CacheAddressFormat fmt_;
+  CacheOptions opts_;
+  std::vector<Set> sets_;
 };
 
 } // namespace ccm

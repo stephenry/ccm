@@ -39,6 +39,10 @@ bool IdPool::has_id() const {
   return (!is_fixed_ || (ids_.size() != 0));
 }
 
+bool IdPool::available(std::size_t count) const {
+  return !is_fixed_|| (count <= ids_.size());
+}
+
 bool IdPool::get_id(std::size_t & id) {
   if (!has_id())
     return false;
