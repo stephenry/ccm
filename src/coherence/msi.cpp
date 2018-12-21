@@ -85,7 +85,7 @@ const char * to_string(MsiHandlerEmitType t) {
   }
 }
 
-struct MsiHandlerAction : public CoherentAgentAction {
+struct MsiAgentHandlerAction : public CoherentAgentAction {
   std::vector<MsiHandlerEmitType> handler_emit;
   std::optional<MsiAgentLineState> state_update;
 };
@@ -109,7 +109,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       //
       MsiAgentLineState l{MsiAgentLineState::I};
 
-      MsiHandlerAction h;
+      MsiAgentHandlerAction h;
       switch (m->type()) {
 
         case MessageType::Load:
@@ -175,8 +175,8 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return ret;
   }
 
-  MsiHandlerAction handle__Load(MsiAgentLineState l, LoadCoherencyMessage * m) {
-    MsiHandlerAction a;
+  MsiAgentHandlerAction handle__Load(MsiAgentLineState l, LoadCoherencyMessage * m) {
+    MsiAgentHandlerAction a;
     switch (l) {
       case MsiAgentLineState::I:
         a.handler_emit.push_back(MsiHandlerEmitType::EmitGetS);
@@ -200,8 +200,8 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return a;
   }
   
-  MsiHandlerAction handle__Store(MsiAgentLineState l, StoreCoherencyMessage * m) {
-    MsiHandlerAction a;
+  MsiAgentHandlerAction handle__Store(MsiAgentLineState l, StoreCoherencyMessage * m) {
+    MsiAgentHandlerAction a;
     switch (l) {
       case MsiAgentLineState::I:
         a.handler_emit.push_back(MsiHandlerEmitType::EmitGetM);
@@ -231,8 +231,8 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return a;
   }
 
-  MsiHandlerAction handle__FwdGetS(MsiAgentLineState l, FwdGetSCoherencyMessage * m) {
-    MsiHandlerAction a;
+  MsiAgentHandlerAction handle__FwdGetS(MsiAgentLineState l, FwdGetSCoherencyMessage * m) {
+    MsiAgentHandlerAction a;
     switch (l) {
       case MsiAgentLineState::IM_AD:
       case MsiAgentLineState::IM_A:
@@ -257,8 +257,8 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return a;
   }
 
-  MsiHandlerAction handle__FwdGetM(MsiAgentLineState l, FwdGetMCoherencyMessage * m) {
-    MsiHandlerAction a;
+  MsiAgentHandlerAction handle__FwdGetM(MsiAgentLineState l, FwdGetMCoherencyMessage * m) {
+    MsiAgentHandlerAction a;
     switch (l) {
       case MsiAgentLineState::IM_AD:
       case MsiAgentLineState::IM_A:
@@ -281,9 +281,9 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return a;
   }
 
-  MsiHandlerAction handle__Inv(MsiAgentLineState l, InvCoherencyMessage * m) {
+  MsiAgentHandlerAction handle__Inv(MsiAgentLineState l, InvCoherencyMessage * m) {
     
-    MsiHandlerAction a;
+    MsiAgentHandlerAction a;
 
     if (m->is_ack()) {
       // Line awaits invalidation acknowledgements from other agents
@@ -296,7 +296,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         switch (l) {
           case MsiAgentLineState::IM_A:
           case MsiAgentLineState::SM_A:
-            a.state_update = MsiAgentLintState::M;
+            a.state_update = MsiAgentLineState::M;
             break;
             
           default:
@@ -335,8 +335,8 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return a;
   }
 
-  MsiHandlerAction handle__PutAck(MsiAgentLineState l) {
-    MsiHandlerAction a;
+  MsiAgentHandlerAction handle__PutAck(MsiAgentLineState l) {
+    MsiAgentHandlerAction a;
     switch (l) {
       case MsiAgentLineState::MI_A:
       case MsiAgentLineState::SI_A:
@@ -349,8 +349,8 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return a;
   }
 
-  MsiHandlerAction handle__Data(MsiAgentLineState l) {
-    MsiHandlerAction a;
+  MsiAgentHandlerAction handle__Data(MsiAgentLineState l) {
+    MsiAgentHandlerAction a;
 
     // TODO: retain this on a line-by-line basis.
 
@@ -365,13 +365,13 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       // (M or S).
       //
       switch (l) {
-        case MsiHandlerEmitType::IS_D:
+        case MsiAgentLineState::IS_D:
           a.state_update = MsiAgentLineState::S;
           break;
-        case MsiHandlerEmitType::IM_AD:
+        case MsiAgentLineState::IM_AD:
           a.state_update = MsiAgentLineState::M;
           break;
-        case MsiHandlerEmitType::SM_AD:
+        case MsiAgentLineState::SM_AD:
           a.state_update = MsiAgentLineState::M;
           break;
       }
@@ -383,10 +383,10 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       // pending respons from other agents in the system.
       //
       switch (l) {
-        case MsiHandlerEmitType::IM_AD:
+        case MsiAgentLineState::IM_AD:
           a.state_update = MsiAgentLineState::IM_A;
           break;
-        case MsiHandlerEmitType::SM_AD:
+        case MsiAgentLineState::SM_AD:
           a.state_update = MsiAgentLineState::SM_A;
           break;
       }
@@ -396,7 +396,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return a;
   }
 
-  CoherentAgentAction construct_coherent_agent_action(MsiHandlerAction & h) {
+  CoherentAgentAction construct_coherent_agent_action(MsiAgentHandlerAction & h) {
     CoherentAgentAction ret;
     
     for (MsiHandlerEmitType emit : h.handler_emit) {
@@ -525,28 +525,204 @@ const char * to_string(MsiDirectoryLineState s) {
   return "<Invalid Directory State>";
 }
 
-struct MsiDirectoryModel::MsiDirectoryModelImpl {
-  MsiDirectoryModelImpl(const DirectoryOptions & opts)
+struct MsiDirectoryHandlerAction : SnoopFilterAction {
+  std::optional<MsiDirectoryLineState> state_update;
+};
+
+struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
+  
+  MsiSnoopFilterModelImpl(const SnoopFilterOptions & opts)
       : opts_(opts)
   {}
   
-  DirectoryAction apply(CoherentAgentContext & ctxt, CoherencyMessage * m) {
-    return {};
+  SnoopFilterAction apply(CoherentAgentContext & ctxt, CoherencyMessage * m) {
+    SnoopFilterAction ret;
+    if (message_requires_recall(m)) {
+
+    } else {
+
+      // TODO: Query cache.
+      MsiDirectoryLineState l{MsiDirectoryLineState::I};
+
+      MsiDirectoryHandlerAction a;
+      switch (m->type()) {
+        case MessageType::GetS:
+          a = handle__GetS(l);
+          break;
+        case MessageType::GetM:
+          a = handle__GetM(l);
+          break;
+        case MessageType::PutS:
+          a = handle__PutS(l);
+          break;
+        case MessageType::PutM:
+          a = handle__PutM(l);
+          break;
+        case MessageType::Data:
+          a = handle__Data(l);
+          break;
+      }
+
+      const bool do_commit = false;
+      if (do_commit)
+        ret = construct_directory_action(a);
+    }
+    return ret;
+  }
+
+  MsiDirectoryHandlerAction handle__GetS(MsiDirectoryLineState l) {
+    MsiDirectoryHandlerAction a;
+    switch (l) {
+      case MsiDirectoryLineState::I:
+        break;
+      case MsiDirectoryLineState::S:
+        break;
+      case MsiDirectoryLineState::M:
+        break;
+      case MsiDirectoryLineState::S_D:
+        break;
+    }
+    return a;
+  }
+
+  MsiDirectoryHandlerAction handle__GetM(MsiDirectoryLineState l) {
+    MsiDirectoryHandlerAction a;
+    switch (l) {
+      case MsiDirectoryLineState::I:
+        break;
+      case MsiDirectoryLineState::S:
+        break;
+      case MsiDirectoryLineState::M:
+        break;
+      case MsiDirectoryLineState::S_D:
+        break;
+    }
+    return a;
+  }
+
+  MsiDirectoryHandlerAction handle__PutS(MsiDirectoryLineState l) {
+    MsiDirectoryHandlerAction a;
+    switch (l) {
+      case MsiDirectoryLineState::I:
+        break;
+      case MsiDirectoryLineState::S:
+        break;
+      case MsiDirectoryLineState::M:
+        break;
+      case MsiDirectoryLineState::S_D:
+        break;
+    }
+    return a;
+  }
+
+  MsiDirectoryHandlerAction handle__PutM(MsiDirectoryLineState l) {
+    MsiDirectoryHandlerAction a;
+    switch (l) {
+      case MsiDirectoryLineState::I:
+        break;
+      case MsiDirectoryLineState::S:
+        break;
+      case MsiDirectoryLineState::M:
+        break;
+      case MsiDirectoryLineState::S_D:
+        break;
+    }
+    return a;
+  }
+
+  MsiDirectoryHandlerAction handle__Data(MsiDirectoryLineState l) {
+    MsiDirectoryHandlerAction a;
+    switch (l) {
+      case MsiDirectoryLineState::I:
+        break;
+      case MsiDirectoryLineState::S:
+        break;
+      case MsiDirectoryLineState::M:
+        break;
+      case MsiDirectoryLineState::S_D:
+        break;
+    }
+    return a;
+  }
+
+  bool message_requires_recall(CoherencyMessage * m) {
+    if (opts_.is_null_filter)
+      return false;
+
+    // TODO: Directory eviction code.
+    
+    return false;
+  }
+
+  SnoopFilterAction construct_directory_action(MsiDirectoryHandlerAction & a) {
+    SnoopFilterAction ret;
+    return ret;
+  }
+
+  FwdGetSCoherencyMessage * create_FwdGetS() {
+    FwdGetSCoherencyMessageBuilder b = fwdgets_.builder();
+    return b.msg();
+  }
+
+  FwdGetMCoherencyMessage * create_FwdGetM() {
+    FwdGetMCoherencyMessageBuilder b = fwdgetm_.builder();
+    return b.msg();
+  }
+
+  DataCoherencyMessage * create_Data() {
+    DataCoherencyMessageBuilder b = data_.builder();
+    return b.msg();
+  }
+
+  InvCoherencyMessage * create_Inv() {
+    InvCoherencyMessageBuilder b = inv_.builder();
+    return b.msg();
   }
   
-  DirectoryOptions opts_;
+  SnoopFilterOptions opts_;
   FwdGetSCoherencyMessageDirector fwdgets_;
   FwdGetMCoherencyMessageDirector fwdgetm_;
+  InvCoherencyMessageDirector inv_;
+  DataCoherencyMessageDirector data_;
 };
 
-MsiDirectoryModel::MsiDirectoryModel(const DirectoryOptions & opts)
-    : DirectoryModel(opts) {
+struct MsiSnoopFilterModel::MsiSnoopFilterModelNullFilterImpl
+    : MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
+
+  MsiSnoopFilterModelNullFilterImpl(const SnoopFilterOptions & opts)
+      : MsiSnoopFilterModelImpl(opts)
+  {}
+};
+
+struct MsiSnoopFilterModel::MsiSnoopFilterModelDirectoryImpl
+    : MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
+
+  struct DirState {
+    MsiDirectoryLineState state;
+    std::vector<std::size_t> sharers;
+    std::size_t owner;
+  };
+
+  MsiSnoopFilterModelDirectoryImpl(const SnoopFilterOptions & opts)
+      : MsiSnoopFilterModelImpl(opts), cache_(opts.cache_options)
+  {}
+  CacheModel<DirState> cache_;
+};
+
+MsiSnoopFilterModel::MsiSnoopFilterModel(const SnoopFilterOptions & opts)
+    : SnoopFilterModel(opts) {
+  if (opts.is_null_filter) {
+    // TODO: not presently supported by the protocol
+    impl_ = std::make_unique<MsiSnoopFilterModelNullFilterImpl>(opts);
+  } else {
+    impl_ = std::make_unique<MsiSnoopFilterModelDirectoryImpl>(opts);
+  }
 }
 
-MsiDirectoryModel::~MsiDirectoryModel() {}
+MsiSnoopFilterModel::~MsiSnoopFilterModel() {}
 
-DirectoryAction MsiDirectoryModel::apply(CoherentAgentContext & ctxt,
-                                         CoherencyMessage * m) {
+SnoopFilterAction MsiSnoopFilterModel::apply(CoherentAgentContext & ctxt,
+                                             CoherencyMessage * m) {
   return impl_->apply(ctxt, m);
 }
 

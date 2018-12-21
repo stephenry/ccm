@@ -435,25 +435,29 @@ class CoherentAgentModel {
 std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
     const CoherentAgentOptions & opts);
 
-struct DirectoryOptions {
+struct SnoopFilterOptions {
   Protocol protocol;
   CacheOptions cache_options;
+
+  // Canonical protocol needs to be modified to support null filter.
+  bool is_null_filter{false};
+  std::size_t num_agents{1};
 };
 
-struct DirectoryAction {
+struct SnoopFilterAction {
 };
 
-class DirectoryModel {
+class SnoopFilterModel {
  public:
-  DirectoryModel(const DirectoryOptions & opts);
+  SnoopFilterModel(const SnoopFilterOptions & opts);
   
   virtual Protocol protocol() const = 0;
-  virtual DirectoryAction apply(CoherentAgentContext & ctxt,
-                                CoherencyMessage * m) = 0;
+  virtual SnoopFilterAction apply(CoherentAgentContext & ctxt,
+                                  CoherencyMessage * m) = 0;
 };
 
-std::unique_ptr<DirectoryModel> directory_factory(
-    const DirectoryOptions & opts);
+std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
+    const SnoopFilterOptions & opts);
 
 } // namespace ccm
 

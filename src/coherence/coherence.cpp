@@ -78,11 +78,11 @@ std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
   }
 }
 
-std::unique_ptr<DirectoryModel> directory_factory(
-    const DirectoryOptions & opts) {
+std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
+    const SnoopFilterOptions & opts) {
   switch (opts.protocol) {
     case Protocol::MSI:
-      return std::make_unique<MsiDirectoryModel>(opts);
+      return std::make_unique<MsiSnoopFilterModel>(opts);
       break;
     case Protocol::MESI:
     case Protocol::MOSI:

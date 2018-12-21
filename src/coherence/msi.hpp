@@ -51,22 +51,24 @@ class MsiCoherentAgentModel : public CoherentAgentModel {
   std::unique_ptr<MsiCoherentAgentModelImpl> impl_;
 };
 
-class MsiDirectoryModel : public DirectoryModel {
+class MsiSnoopFilterModel : public SnoopFilterModel {
  public:
-  MsiDirectoryModel(const DirectoryOptions & opts);
-  virtual ~MsiDirectoryModel();
+  MsiSnoopFilterModel(const SnoopFilterOptions & opts);
+  virtual ~MsiSnoopFilterModel();
 
   //
   Protocol protocol() const override { return Protocol::MSI; }
 
   //
-  DirectoryAction apply(CoherentAgentContext & ctxt,
-                        CoherencyMessage * m) override;
+  SnoopFilterAction apply(CoherentAgentContext & ctxt,
+                          CoherencyMessage * m) override;
 
  private:
-  struct MsiDirectoryModelImpl;
+  struct MsiSnoopFilterModelImpl;
+  struct MsiSnoopFilterModelNullFilterImpl;
+  struct MsiSnoopFilterModelDirectoryImpl;
 
-  std::unique_ptr<MsiDirectoryModelImpl> impl_;
+  std::unique_ptr<MsiSnoopFilterModelImpl> impl_;
 };
 
 
