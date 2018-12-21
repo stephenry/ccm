@@ -362,8 +362,10 @@ class InvCoherencyMessageDirector {
 class DataCoherencyMessage : public CoherencyMessage {
   friend class DataCoherencyMessageBuilder;
  public:
+  std::size_t ack_count() const { return ack_count_; }
   void reset() override {}
  private:
+  std::size_t ack_count_;
 };
 
 class DataCoherencyMessageBuilder : public CoherencyMessageBuilder {
@@ -375,6 +377,7 @@ class DataCoherencyMessageBuilder : public CoherencyMessageBuilder {
   }
  public:
   ~DataCoherencyMessageBuilder() { if (msg_) { msg_->release(); } }
+  void set_ack_count(std::size_t ack_count) { msg_->ack_count_ = ack_count; }
   DataCoherencyMessage * msg() {
     DataCoherencyMessage * m{nullptr};
     std::swap(m, msg_);
