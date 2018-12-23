@@ -34,8 +34,13 @@
 namespace ccm::kernel {
 
 struct Transaction : public Poolable {
-  std::size_t mid; // Master ID
-  std::size_t sid; // Slave ID
+
+  std::size_t mid() const { return mid_; }
+  std::size_t sid() const { return sid_; }
+
+ private:
+  std::size_t mid_; // Master ID
+  std::size_t sid_; // Slave ID
 };
 
 using TMailBox = MailBox<Transaction *>;

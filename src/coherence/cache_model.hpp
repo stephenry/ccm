@@ -131,6 +131,20 @@ class CacheModel {
     s.lines.push_back(Entry{addr, t});
   }
 
+  bool install(addr_t a) {
+    return true;
+  }
+
+  const T & entry(addr_t a) const {
+    static T t;
+    return t;
+  }
+
+  T & entry(addr_t a) {
+    static T t;
+    return t;
+  }
+
   template<typename CB>
   std::tuple<bool, Entry> select_eviction(addr_t a, CB && cb) const {
     std::vector<Entry> ves = set_evictables(a, cb);

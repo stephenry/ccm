@@ -422,7 +422,7 @@ const char * to_string(ResponseType t);
 
 struct CoherentAgentAction {
   ResponseType response;
-  std::vector<CoherencyMessage *> msgs{nullptr};
+  std::vector<CoherencyMessage *> msgs;
   bool message_consumed{false};
 };
 
@@ -447,7 +447,28 @@ struct SnoopFilterOptions {
   std::size_t num_agents{1};
 };
 
+#define SNOOP_FILTER_ACTION_RESULT(__func)      \
+  __func(Advances)                              \
+  __func(BlockedOnProtocol)                     \
+  __func(TagsExhausted)
+
+enum class SnoopFilterActionResult {
+#define __declare_enum(e) e,
+  SNOOP_FILTER_ACTION_RESULT(__declare_enum)
+#undef __declare_enum
+};
+
 struct SnoopFilterAction {
+  SnoopFilterAction()
+  {}
+
+  SnoopFilterActionResult get_result() const { return result_; }
+
+  void set_result(SnoopFilterActionResult r) { result_ = r; }
+  void add_msg(CoherencyMessage * m) { msgs.push_back(m); }
+
+  SnoopFilterActionResult result_;
+  std::vector<CoherencyMessage *> msgs;
 };
 
 class SnoopFilterModel {

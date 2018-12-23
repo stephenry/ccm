@@ -26,6 +26,7 @@
 //========================================================================== //
 
 #include "msi.hpp"
+#include <algorithm>
 
 namespace ccm {
 
@@ -66,7 +67,8 @@ const char * to_string(MsiAgentLineState s) {
   __func(EmitGetM)                              \
   __func(EmitInvAck)                            \
   __func(EmitDataReq)                           \
-  __func(EmitDataDir)
+  __func(EmitDataDir)                           \
+  __func(EmitFwdGetSToOwner)
 
 enum class MsiHandlerEmitType {
 #define __declare_enum(e) e,
@@ -374,13 +376,16 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         case MsiAgentLineState::SM_AD:
           a.state_update = MsiAgentLineState::M;
           break;
+        default:
+          // TODO: Invalid state
+          ;
       }
 
 
     } else {
 
-      // Data has been received, but we are currenlt awaiting
-      // pending respons from other agents in the system.
+      // Data has been received, but we are currently awaiting
+      // pending responses from other agents in the system.
       //
       switch (l) {
         case MsiAgentLineState::IM_AD:
@@ -389,6 +394,9 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         case MsiAgentLineState::SM_AD:
           a.state_update = MsiAgentLineState::SM_A;
           break;
+        default:
+          // TODO: Invalid state
+          ;
       }
 
     }
@@ -525,14 +533,99 @@ const char * to_string(MsiDirectoryLineState s) {
   return "<Invalid Directory State>";
 }
 
+#define SNOOP_FILTER_ACTION_STATES(__func)      \
+  __func(UpdateState)                           \
+  __func(SetOwnerToReq)                         \
+  __func(SendDataToReq)                         \
+  __func(SendInvToSharers)                      \
+  __func(ClearSharers)                          \
+  __func(AddReqToSharers)                       \
+  __func(DelReqFromSharers)                     \
+  __func(DelOwner)                              \
+  __func(AddOwnerToSharers)                     \
+  __func(CpyDataToMemory)                       \
+  __func(SendPutSAckToReq)                      \
+  __func(SendPutMAckToReq)                      \
+  __func(SendFwdGetSToOwner)
+
+
+enum class MsiSnoopFilterHandlerAction {
+#define __declare_state(__state)                \
+  __state,
+  SNOOP_FILTER_ACTION_STATES(__declare_state)
+#undef __declare_state
+};
+
 struct MsiDirectoryHandlerAction : SnoopFilterAction {
-  std::optional<MsiDirectoryLineState> state_update;
+
+  bool has_state_update() const { return next_state.has_value(); }
+  MsiDirectoryLineState get_next_state() const { return next_state.value(); }
+  void set_next_state(MsiDirectoryLineState state) { next_state = state; }
+
+  std::size_t message_count() const { return msgs_n_; }
+  
+  void add_action(const MsiSnoopFilterHandlerAction & a) {
+    actions.push_back(a);
+  }
+  void set_stall(bool stall = true) { stall = stall; }
+  
+  bool stall;
+  std::optional<MsiDirectoryLineState> next_state;
+  std::vector<MsiSnoopFilterHandlerAction> actions;
+  std::size_t msgs_n_{0};
+};
+
+struct MsiDirectoryHandlerContext {
+
+  //
+  MsiDirectoryHandlerContext(MsiDirectoryLineState state)
+      : state_(state)
+  {}
+
+  //
+  MsiDirectoryLineState state() const { return state_; }
+  bool is_last() const { return false; }
+  std::size_t req_id() const { return 0; }
+  bool is_data_from_owner() const { return false; }
+
+ private:
+  MsiDirectoryLineState state_;
+};
+
+struct DirEntry {
+
+  DirEntry() : state(MsiDirectoryLineState::I) {}
+
+  //
+  MsiDirectoryLineState get_state() const { return state; }
+  void set_state(MsiDirectoryLineState state) { state = state; }
+    
+  //
+  std::size_t get_owner() const { return owner.value(); }
+  void set_owner(std::size_t owner) { owner = owner; }
+  void clear_owner() { owner.reset(); }
+
+  //
+  void add_sharer(std::size_t id) { sharers.push_back(id); }
+  void remove_sharer(std::size_t id) {
+    sharers.erase(std::find(sharers.begin(), sharers.end(), id), sharers.end());
+  }
+  void remove_all_sharers() { sharers.clear(); }
+
+  // Current state of the line
+  MsiDirectoryLineState state;
+
+  // Current set of sharing agents
+  std::vector<std::size_t> sharers;
+
+  // Current owner agent
+  std::optional<std::size_t> owner;
 };
 
 struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   
   MsiSnoopFilterModelImpl(const SnoopFilterOptions & opts)
-      : opts_(opts)
+      : opts_(opts), cache_(opts.cache_options)
   {}
   
   SnoopFilterAction apply(CoherentAgentContext & ctxt, CoherencyMessage * m) {
@@ -541,108 +634,209 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
 
     } else {
 
-      // TODO: Query cache.
-      MsiDirectoryLineState l{MsiDirectoryLineState::I};
+      CCM_ASSERT(cache_.is_hit(m->addr()));
 
-      MsiDirectoryHandlerAction a;
+      bool advances = false;
+      const DirEntry & dir_entry = cache_.entry(m->addr());
+      MsiDirectoryHandlerAction actions;
+      
       switch (m->type()) {
         case MessageType::GetS:
-          a = handle__GetS(l);
+          advances = handle__GetS(
+              static_cast<GetSCoherencyMessage *>(m), dir_entry, actions);
           break;
+          
         case MessageType::GetM:
-          a = handle__GetM(l);
+          advances = handle__GetM(
+              static_cast<GetMCoherencyMessage *>(m), dir_entry, actions);
           break;
+          
         case MessageType::PutS:
-          a = handle__PutS(l);
+          advances = handle__PutS(
+              static_cast<PutSCoherencyMessage *>(m), dir_entry, actions);
           break;
+          
         case MessageType::PutM:
-          a = handle__PutM(l);
+          advances = handle__PutM(
+              static_cast<PutMCoherencyMessage *>(m), dir_entry, actions);
           break;
+          
         case MessageType::Data:
-          a = handle__Data(l);
+          advances = handle__Data(
+              static_cast<DataCoherencyMessage *>(m), dir_entry, actions);
           break;
+          
+        default:
+          // TODO: Unknown message type
+          advances = false;
       }
 
-      const bool do_commit = false;
-      if (do_commit)
-        ret = construct_directory_action(a);
+      if (!advances) {
+        ret.set_result(SnoopFilterActionResult::BlockedOnProtocol);
+        return ret;
+      }
+
+      if (!idpool_.available(actions.message_count())) {
+        ret.set_result(SnoopFilterActionResult::TagsExhausted);
+        return ret;
+      }
+
+      commit_actions(m, actions, dir_entry, ret);
+      ret.set_result(SnoopFilterActionResult::Advances);
     }
     return ret;
   }
 
-  MsiDirectoryHandlerAction handle__GetS(MsiDirectoryLineState l) {
-    MsiDirectoryHandlerAction a;
-    switch (l) {
+  bool handle__GetS(GetSCoherencyMessage * m,
+                    const DirEntry & dir_entry,
+                    MsiDirectoryHandlerAction & act) {
+    bool advances = true;
+    switch (dir_entry.get_state()) {
       case MsiDirectoryLineState::I:
+        act.add_action(MsiSnoopFilterHandlerAction::SendDataToReq);
+        act.add_action(MsiSnoopFilterHandlerAction::AddReqToSharers);
+        act.add_action(MsiSnoopFilterHandlerAction::UpdateState);
+        act.set_next_state(MsiDirectoryLineState::S);
         break;
       case MsiDirectoryLineState::S:
+        act.add_action(MsiSnoopFilterHandlerAction::SendDataToReq);
+        act.add_action(MsiSnoopFilterHandlerAction::AddReqToSharers);
         break;
       case MsiDirectoryLineState::M:
+        act.add_action(MsiSnoopFilterHandlerAction::SendFwdGetSToOwner);
+        act.add_action(MsiSnoopFilterHandlerAction::AddReqToSharers);
+        act.add_action(MsiSnoopFilterHandlerAction::AddOwnerToSharers);
+        act.add_action(MsiSnoopFilterHandlerAction::UpdateState);
+        act.set_next_state(MsiDirectoryLineState::S);
         break;
       case MsiDirectoryLineState::S_D:
+        advances = false;
         break;
+      default:
+        // NOP
+        ;
     }
-    return a;
+    return true;
   }
 
-  MsiDirectoryHandlerAction handle__GetM(MsiDirectoryLineState l) {
-    MsiDirectoryHandlerAction a;
-    switch (l) {
+  bool handle__GetM(GetMCoherencyMessage * m,
+                    const DirEntry & dir_entry,
+                    MsiDirectoryHandlerAction & act) {
+    bool advances = true;
+    switch (dir_entry.get_state()) {
       case MsiDirectoryLineState::I:
+        act.add_action(MsiSnoopFilterHandlerAction::SendDataToReq);
+        act.add_action(MsiSnoopFilterHandlerAction::SetOwnerToReq);
+        act.add_action(MsiSnoopFilterHandlerAction::UpdateState);
+        act.set_next_state(MsiDirectoryLineState::M);
         break;
       case MsiDirectoryLineState::S:
+        act.add_action(MsiSnoopFilterHandlerAction::SendDataToReq);
+        act.add_action(MsiSnoopFilterHandlerAction::SendInvToSharers);
+        act.add_action(MsiSnoopFilterHandlerAction::ClearSharers);
+        act.add_action(MsiSnoopFilterHandlerAction::SetOwnerToReq);
+        act.add_action(MsiSnoopFilterHandlerAction::UpdateState);
+        act.set_next_state(MsiDirectoryLineState::M);
         break;
       case MsiDirectoryLineState::M:
         break;
       case MsiDirectoryLineState::S_D:
+        advances = false;
         break;
+      default:
+        // NOP
+        ;
     }
-    return a;
+    return advances;
   }
 
-  MsiDirectoryHandlerAction handle__PutS(MsiDirectoryLineState l) {
-    MsiDirectoryHandlerAction a;
-    switch (l) {
+  bool handle__PutS(PutSCoherencyMessage * m,
+                    const DirEntry & dir_entry,
+                    MsiDirectoryHandlerAction & act) {
+    const bool is_last = false; // TODO
+    bool advances = true;
+    switch (dir_entry.get_state()) {
       case MsiDirectoryLineState::I:
+        act.add_action(MsiSnoopFilterHandlerAction::SendPutSAckToReq);
         break;
       case MsiDirectoryLineState::S:
+        act.add_action(MsiSnoopFilterHandlerAction::DelReqFromSharers);
+        act.add_action(MsiSnoopFilterHandlerAction::SendPutSAckToReq);
+        if (is_last) {
+          act.add_action(MsiSnoopFilterHandlerAction::UpdateState);
+          act.set_next_state(MsiDirectoryLineState::I);
+        }
         break;
       case MsiDirectoryLineState::M:
+        act.add_action(MsiSnoopFilterHandlerAction::DelReqFromSharers);
+        act.add_action(MsiSnoopFilterHandlerAction::SendPutSAckToReq);
         break;
       case MsiDirectoryLineState::S_D:
+        act.add_action(MsiSnoopFilterHandlerAction::DelReqFromSharers);
+        act.add_action(MsiSnoopFilterHandlerAction::SendPutSAckToReq);
         break;
+      default:
+        // NOP
+        ;
     }
-    return a;
+    return advances;
   }
 
-  MsiDirectoryHandlerAction handle__PutM(MsiDirectoryLineState l) {
-    MsiDirectoryHandlerAction a;
-    switch (l) {
+  bool handle__PutM(PutMCoherencyMessage * m,
+                    const DirEntry & dir_entry, 
+                    MsiDirectoryHandlerAction & act) {
+    bool advances = true;
+
+    const bool is_data_from_owner = (m->mid() == dir_entry.owner.value());
+    switch (dir_entry.get_state()) {
       case MsiDirectoryLineState::I:
+        if (!is_data_from_owner) {
+          act.add_action(MsiSnoopFilterHandlerAction::SendPutMAckToReq);
+        }
         break;
       case MsiDirectoryLineState::S:
+        if (!is_data_from_owner) {
+          act.add_action(MsiSnoopFilterHandlerAction::DelReqFromSharers);
+          act.add_action(MsiSnoopFilterHandlerAction::SendPutMAckToReq);
+        }
         break;
       case MsiDirectoryLineState::M:
+        act.add_action(MsiSnoopFilterHandlerAction::SendPutMAckToReq);
+        if (is_data_from_owner) {
+          act.add_action(MsiSnoopFilterHandlerAction::DelOwner);
+          act.add_action(MsiSnoopFilterHandlerAction::CpyDataToMemory);
+          act.add_action(MsiSnoopFilterHandlerAction::UpdateState);
+          act.set_next_state(MsiDirectoryLineState::I);
+        }
         break;
       case MsiDirectoryLineState::S_D:
+        if (!is_data_from_owner) {
+          act.add_action(MsiSnoopFilterHandlerAction::DelReqFromSharers);
+          act.add_action(MsiSnoopFilterHandlerAction::SendPutMAckToReq);
+        }
         break;
+      default:
+        // NOP
+        ;
     }
-    return a;
+    return advances;
   }
 
-  MsiDirectoryHandlerAction handle__Data(MsiDirectoryLineState l) {
-    MsiDirectoryHandlerAction a;
-    switch (l) {
-      case MsiDirectoryLineState::I:
-        break;
-      case MsiDirectoryLineState::S:
-        break;
-      case MsiDirectoryLineState::M:
-        break;
+  bool handle__Data(DataCoherencyMessage * m,
+                    const DirEntry & dir_entry,
+                    MsiDirectoryHandlerAction & act) {
+    bool advances = true;
+    switch (dir_entry.get_state()) {
       case MsiDirectoryLineState::S_D:
+        act.add_action(MsiSnoopFilterHandlerAction::CpyDataToMemory);
+        act.add_action(MsiSnoopFilterHandlerAction::UpdateState);
+        act.set_next_state(MsiDirectoryLineState::S);
         break;
+      default:
+        // NOP
+        ;
     }
-    return a;
+    return advances;
   }
 
   bool message_requires_recall(CoherencyMessage * m) {
@@ -654,36 +848,115 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
     return false;
   }
 
-  SnoopFilterAction construct_directory_action(MsiDirectoryHandlerAction & a) {
-    SnoopFilterAction ret;
-    return ret;
+  void commit_actions(const CoherencyMessage * m,
+                      const MsiDirectoryHandlerAction & a,
+                      DirEntry & dir_entry,
+                      SnoopFilterAction & ret) {
+    const std::size_t mid = m->mid();
+    for (MsiSnoopFilterHandlerAction action : a.actions) {
+      
+      switch (action) {
+        case MsiSnoopFilterHandlerAction::UpdateState:
+          CCM_ASSERT(a.has_state_update());
+          
+          dir_entry.set_state(a.get_next_state());
+          break;
+          
+        case MsiSnoopFilterHandlerAction::SetOwnerToReq:
+          dir_entry.set_owner(mid);
+          break;
+          
+        case MsiSnoopFilterHandlerAction::SendDataToReq:
+          ret.add_msg(construct_Data(mid));
+          break;
+          
+        case MsiSnoopFilterHandlerAction::SendInvToSharers:
+          for (std::size_t sharer_id : dir_entry.sharers)
+            ret.add_msg(construct_Inv(sharer_id));
+          break;
+          
+        case MsiSnoopFilterHandlerAction::ClearSharers:
+          dir_entry.remove_all_sharers();
+          break;
+          
+        case MsiSnoopFilterHandlerAction::AddReqToSharers:
+          dir_entry.add_sharer(mid);
+          break;
+          
+        case MsiSnoopFilterHandlerAction::DelReqFromSharers:
+          dir_entry.remove_sharer(mid);
+          break;
+          
+        case MsiSnoopFilterHandlerAction::DelOwner:
+          dir_entry.clear_owner();
+          break;
+          
+        case MsiSnoopFilterHandlerAction::AddOwnerToSharers:
+          dir_entry.add_sharer(dir_entry.get_owner());
+          break;
+          
+        case MsiSnoopFilterHandlerAction::CpyDataToMemory:
+          // TODO
+          break;
+          
+        case MsiSnoopFilterHandlerAction::SendPutSAckToReq:
+          ret.add_msg(construct_PutSAck(mid));
+          break;
+          
+        case MsiSnoopFilterHandlerAction::SendPutMAckToReq:
+          ret.add_msg(construct_PutMAck(mid));
+          break;
+          
+        case MsiSnoopFilterHandlerAction::SendFwdGetSToOwner:
+          ret.add_msg(construct_FwdGetS(dir_entry.get_owner()));
+          break;
+      }
+    }
   }
 
-  FwdGetSCoherencyMessage * create_FwdGetS() {
+  FwdGetSCoherencyMessage * construct_FwdGetS(std::size_t dest_id) {
     FwdGetSCoherencyMessageBuilder b = fwdgets_.builder();
     return b.msg();
   }
 
-  FwdGetMCoherencyMessage * create_FwdGetM() {
+  FwdGetMCoherencyMessage * construct_FwdGetM(std::size_t dest_id) {
     FwdGetMCoherencyMessageBuilder b = fwdgetm_.builder();
     return b.msg();
   }
 
-  DataCoherencyMessage * create_Data() {
+  PutSCoherencyMessage * construct_PutSAck(std::size_t dest_id) {
+    PutSCoherencyMessageBuilder b = puts_.builder();
+    return b.msg();
+  }
+
+  PutMCoherencyMessage * construct_PutMAck(std::size_t dest_id) {
+    PutMCoherencyMessageBuilder b = putm_.builder();
+    return b.msg();
+  }
+
+  DataCoherencyMessage * construct_Data(std::size_t dest_id) {
     DataCoherencyMessageBuilder b = data_.builder();
     return b.msg();
   }
 
-  InvCoherencyMessage * create_Inv() {
+  InvCoherencyMessage * construct_Inv(std::size_t dest_id) {
     InvCoherencyMessageBuilder b = inv_.builder();
     return b.msg();
+  }
+
+  bool transaction_must_hit(MessageType t) {
+    return true;
   }
   
   SnoopFilterOptions opts_;
   FwdGetSCoherencyMessageDirector fwdgets_;
   FwdGetMCoherencyMessageDirector fwdgetm_;
+  PutSCoherencyMessageDirector puts_;
+  PutMCoherencyMessageDirector putm_;
   InvCoherencyMessageDirector inv_;
   DataCoherencyMessageDirector data_;
+  IdPool idpool_;
+  CacheModel<DirEntry> cache_;
 };
 
 struct MsiSnoopFilterModel::MsiSnoopFilterModelNullFilterImpl
@@ -697,16 +970,9 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelNullFilterImpl
 struct MsiSnoopFilterModel::MsiSnoopFilterModelDirectoryImpl
     : MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
 
-  struct DirState {
-    MsiDirectoryLineState state;
-    std::vector<std::size_t> sharers;
-    std::size_t owner;
-  };
-
   MsiSnoopFilterModelDirectoryImpl(const SnoopFilterOptions & opts)
       : MsiSnoopFilterModelImpl(opts), cache_(opts.cache_options)
   {}
-  CacheModel<DirState> cache_;
 };
 
 MsiSnoopFilterModel::MsiSnoopFilterModel(const SnoopFilterOptions & opts)
