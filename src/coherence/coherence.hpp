@@ -421,6 +421,7 @@ enum class ResponseType {
 const char * to_string(ResponseType t);
 
 struct CoherentAgentAction {
+  void add_msg(CoherencyMessage * m) { msgs.push_back(m); }
   ResponseType response;
   std::vector<CoherencyMessage *> msgs;
   bool message_consumed{false};

@@ -121,7 +121,44 @@ struct MsiAgentHandlerAction : public CoherentAgentAction {
   std::optional<MsiAgentLineState> state_update;
 };
 
+#define AGENT_ACTION_STATES(__func)             \
+  __func(UpdateState)                           \
+  __func(EmitGetS)                              \
+  __func(EmitGetM)                              \
+  __func(EmitDataToReq)                         \
+  __func(EmitDataToDir)                         \
+  __func(EmitInvAck)
+
+enum class MsiCoherentAgentAction {
+#define __declare_state(__state)                \
+  __state,
+  AGENT_ACTION_STATES(__declare_state)
+#undef __declare_state
+};
+
+const char * to_string(MsiCoherentAgentAction t) {
+  switch (t) {
+#define __declare_to_string(__e)                \
+    case MsiCoherentAgentAction::__e: return #__e;
+    AGENT_ACTION_STATES(__declare_to_string)
+#undef __declare_to_string
+    default:
+        return "<Invalid Line State>";
+  }
+}
+
 struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
+  using ActionType = MsiHandlerAction<MsiCoherentAgentAction, MsiAgentLineState>;
+
+  struct LineEntry {
+    LineEntry() : state_(MsiAgentLineState::I) {}
+    
+    MsiAgentLineState state() const { return state_; }
+    void set_state(MsiAgentLineState state) { state_ = state; }
+   private:
+    MsiAgentLineState state_;
+  };
+  
   MsiCoherentAgentModelImpl(const CoherentAgentOptions & opts)
       : opts_(opts), cache_(opts.cache_options)
   {}
@@ -135,60 +172,46 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     } else {
       // Dispatch to handler
 
-      // TODO: need to look up the cache here (at the point ensured to
-      // either hit in the cache, or space is available.
-      //
-      MsiAgentLineState l{MsiAgentLineState::I};
 
-      MsiAgentHandlerAction h;
+      ActionType actions;
+      LineEntry line_entry;
       switch (m->type()) {
 
         case MessageType::Load:
-          h = handle__Load(l, static_cast<LoadCoherencyMessage *>(m));
+          handle__Load(static_cast<LoadCoherencyMessage *>(m), line_entry, actions);
           break;
 
         case MessageType::Store:
-          h = handle__Store(l, static_cast<StoreCoherencyMessage *>(m));
+          handle__Store(static_cast<StoreCoherencyMessage *>(m), line_entry, actions);
           break;
 
         case MessageType::FwdGetS:
-          h = handle__FwdGetS(l, static_cast<FwdGetSCoherencyMessage * >(m));
+          handle__FwdGetS(static_cast<FwdGetSCoherencyMessage * >(m), line_entry, actions);
           break;
 
         case MessageType::FwdGetM:
-          h = handle__FwdGetM(l, static_cast<FwdGetMCoherencyMessage * >(m));
+          handle__FwdGetM(static_cast<FwdGetMCoherencyMessage * >(m), line_entry, actions);
           break;
 
         case MessageType::Inv:
-          h = handle__Inv(l, static_cast<InvCoherencyMessage * >(m));
+          handle__Inv(static_cast<InvCoherencyMessage * >(m), line_entry, actions);
           break;
 
         case MessageType::PutS:
         case MessageType::PutM:
-          h = handle__PutAck(l);
+          handle__PutAck(line_entry, actions);
           break;
 
         case MessageType::Data:
-          h = handle__Data(l);
+          handle__Data(static_cast<DataCoherencyMessage *>(m), line_entry, actions);
           break;
 
         default:
-            // TOOD: invalid message class.
-            ;
+          actions.set_error();
       }
 
-      // Commit condition: After the state update table has been
-      // consulted, commit result only if sufficient credits are
-      // available in the transaction-pool to emit all of the resultant
-      // transaction to other agents/directory.
-      //
-      const bool do_commit = idpool_.available(h.handler_emit.size());
-      if (do_commit)
-        ret = construct_coherent_agent_action(h);
+      commit_actions(m, actions, line_entry, ret);
     }
-
-    if (ret.message_consumed)
-      m->release();
     
     return ret;
   }
@@ -206,37 +229,43 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return ret;
   }
 
-  MsiAgentHandlerAction handle__Load(MsiAgentLineState l, LoadCoherencyMessage * m) {
-    MsiAgentHandlerAction a;
-    switch (l) {
+  void handle__Load(const LoadCoherencyMessage * m, const LineEntry & line_entry,
+                    ActionType & a) {
+
+    switch (line_entry.state()) {
       case MsiAgentLineState::I:
-        a.handler_emit.push_back(MsiHandlerEmitType::EmitGetS);
-        a.state_update = MsiAgentLineState::IS_D;
+        a.add_action(MsiCoherentAgentAction::EmitGetS);
+        a.set_next_state(MsiAgentLineState::IS_D);
+        
+        // Fallthrough
       case MsiAgentLineState::IS_D:
       case MsiAgentLineState::IM_AD:
       case MsiAgentLineState::IM_A:
       case MsiAgentLineState::MI_A:
       case MsiAgentLineState::SI_A:
       case MsiAgentLineState::II_A:
-        a.response = ResponseType::Stall;
+        a.set_stall();
         break;
 
       case MsiAgentLineState::S:
       case MsiAgentLineState::SM_AD:
       case MsiAgentLineState::SM_A:
       case MsiAgentLineState::M:
-        a.response = ResponseType::Hit;
+        //        a.response = ResponseType::Hit;
         break;
+        
+      default:
+        a.set_error();
     }
-    return a;
   }
   
-  MsiAgentHandlerAction handle__Store(MsiAgentLineState l, StoreCoherencyMessage * m) {
-    MsiAgentHandlerAction a;
-    switch (l) {
+  void handle__Store(const StoreCoherencyMessage * m, const LineEntry & line_entry,
+                     ActionType & a) {
+    switch (line_entry.state()) {
       case MsiAgentLineState::I:
-        a.handler_emit.push_back(MsiHandlerEmitType::EmitGetM);
-        a.state_update = MsiAgentLineState::IM_AD;
+        a.add_action(MsiCoherentAgentAction::EmitGetM);
+        a.set_next_state(MsiAgentLineState::IM_AD);
+
       case MsiAgentLineState::IS_D:
       case MsiAgentLineState::IM_AD:
       case MsiAgentLineState::IM_A:
@@ -245,77 +274,78 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       case MsiAgentLineState::MI_A:
       case MsiAgentLineState::SI_A:
       case MsiAgentLineState::II_A:
-        a.response = ResponseType::Stall;
+        a.set_stall();
         break;
+        
       case MsiAgentLineState::S:
-        a.handler_emit.push_back(MsiHandlerEmitType::EmitGetM);
-        a.state_update = MsiAgentLineState::SM_AD;
-        a.response = ResponseType::Stall;
+        a.add_action(MsiCoherentAgentAction::EmitGetM);
+        a.set_next_state(MsiAgentLineState::SM_AD);
+        a.set_stall();
         break;
+                     
       case MsiAgentLineState::M:
-        a.response = ResponseType::Hit;
         break;
+        
       default:
-        // TOOD: invalid message received.
-        ;
+        a.set_error();
     }
-    return a;
   }
 
-  MsiAgentHandlerAction handle__FwdGetS(MsiAgentLineState l, FwdGetSCoherencyMessage * m) {
-    MsiAgentHandlerAction a;
-    switch (l) {
+  void handle__FwdGetS(const FwdGetSCoherencyMessage * m, const LineEntry & line_entry,
+                       ActionType & a) {
+    switch (line_entry.state()) {
       case MsiAgentLineState::IM_AD:
       case MsiAgentLineState::IM_A:
       case MsiAgentLineState::SM_AD:
       case MsiAgentLineState::SM_A:
-        a.response = ResponseType::Stall;
+        a.set_stall();
         break;
+        
       case MsiAgentLineState::M:
-        a.handler_emit.push_back(MsiHandlerEmitType::EmitDataReq);
-        a.handler_emit.push_back(MsiHandlerEmitType::EmitDataDir);
-        a.state_update = MsiAgentLineState::S;
+        a.add_action(MsiCoherentAgentAction::EmitDataToReq);
+        a.add_action(MsiCoherentAgentAction::EmitDataToDir);
+        a.set_next_state(MsiAgentLineState::S);
         break;
+        
       case MsiAgentLineState::MI_A:
-        a.handler_emit.push_back(MsiHandlerEmitType::EmitDataReq);
-        a.handler_emit.push_back(MsiHandlerEmitType::EmitDataDir);
-        a.state_update = MsiAgentLineState::SI_A;
+        a.add_action(MsiCoherentAgentAction::EmitDataToReq);
+        a.add_action(MsiCoherentAgentAction::EmitDataToDir);
+        a.set_next_state(MsiAgentLineState::SI_A);
         break;
+        
       default:
-        // TOOD: invalid message received.
-        ;
+        a.set_error();
     }
-    return a;
   }
 
-  MsiAgentHandlerAction handle__FwdGetM(MsiAgentLineState l, FwdGetMCoherencyMessage * m) {
-    MsiAgentHandlerAction a;
-    switch (l) {
+  void handle__FwdGetM(const FwdGetMCoherencyMessage * m, const LineEntry & line_entry,
+                       ActionType & a) {
+    switch (line_entry.state()) {
       case MsiAgentLineState::IM_AD:
       case MsiAgentLineState::IM_A:
       case MsiAgentLineState::SM_AD:
       case MsiAgentLineState::SM_A:
-        a.response = ResponseType::Stall;
+        a.set_stall();
         break;
+        
       case MsiAgentLineState::M:
-        a.handler_emit.push_back(MsiHandlerEmitType::EmitDataReq);
-        a.state_update = MsiAgentLineState::S;
+        a.add_action(MsiCoherentAgentAction::EmitDataToReq);
+        a.set_next_state(MsiAgentLineState::S);
         break;
+        
       case MsiAgentLineState::MI_A:
-        a.handler_emit.push_back(MsiHandlerEmitType::EmitDataReq);
-        a.state_update = MsiAgentLineState::SI_A;
+        a.add_action(MsiCoherentAgentAction::EmitDataToReq);
+        a.set_next_state(MsiAgentLineState::SI_A);
         break;
+        
       default:
-        // TOOD: invalid message received.
-        ;
+        a.set_error();
     }
-    return a;
   }
 
-  MsiAgentHandlerAction handle__Inv(MsiAgentLineState l, InvCoherencyMessage * m) {
+  void handle__Inv(const InvCoherencyMessage *m, const LineEntry & line_entry,
+                   ActionType & a) {
     
-    MsiAgentHandlerAction a;
-
     if (m->is_ack()) {
       // Line awaits invalidation acknowledgements from other agents
       // before upgrade to modified state.
@@ -324,64 +354,60 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       const bool is_last_ack = false;
 
       if (is_last_ack) {
-        switch (l) {
+        switch (line_entry.state()) {
           case MsiAgentLineState::IM_A:
           case MsiAgentLineState::SM_A:
-            a.state_update = MsiAgentLineState::M;
+            a.set_next_state(MsiAgentLineState::M);
             break;
             
           default:
-            ;
+            a.set_error();
         }
       }
-
-      // Inv-Ack are always sunk.
-      a.message_consumed = true;
       
     } else {
       // Inbound invalidation request from the home directory. Update
       // line state accordingly.
       //
-      switch (l) {
+      switch (line_entry.state()) {
         case MsiAgentLineState::IS_D:
-          a.response = ResponseType::Stall;
+          a.set_stall();
           break;
+          
         case MsiAgentLineState::S:
-          a.handler_emit.push_back(MsiHandlerEmitType::EmitInvAck);
-          a.state_update = MsiAgentLineState::I;
+          a.add_action(MsiCoherentAgentAction::EmitInvAck);
+          a.set_next_state(MsiAgentLineState::I);
           break;
+          
         case MsiAgentLineState::SM_AD:
-          a.handler_emit.push_back(MsiHandlerEmitType::EmitInvAck);
-          a.state_update = MsiAgentLineState::IM_AD;
+          a.add_action(MsiCoherentAgentAction::EmitInvAck);
+          a.set_next_state(MsiAgentLineState::IM_AD);
           break;
+          
         case MsiAgentLineState::SI_A:
-          a.handler_emit.push_back(MsiHandlerEmitType::EmitInvAck);
-          a.state_update = MsiAgentLineState::II_A;
+          a.add_action(MsiCoherentAgentAction::EmitInvAck);
+          a.set_next_state(MsiAgentLineState::II_A);
           break;
+          
         default:
-          // TOOD: invalid message received.
-          ;
+          a.set_error();
       }
     }
-    return a;
   }
 
-  MsiAgentHandlerAction handle__PutAck(MsiAgentLineState l) {
-    MsiAgentHandlerAction a;
-    switch (l) {
+  void handle__PutAck(const LineEntry & line_entry, ActionType & a) {
+    switch (line_entry.state()) {
       case MsiAgentLineState::MI_A:
       case MsiAgentLineState::SI_A:
       case MsiAgentLineState::II_A:
-        a.state_update = MsiAgentLineState::I;
+        a.set_next_state(MsiAgentLineState::I);
+        break;
       default:
-        // TOOD: invalid message received.
-        ;
+        a.set_error();
     }
-    return a;
   }
 
-  MsiAgentHandlerAction handle__Data(MsiAgentLineState l) {
-    MsiAgentHandlerAction a;
+  void handle__Data(const DataCoherencyMessage * m, const LineEntry & line_entry, ActionType & a) {
 
     // TODO: retain this on a line-by-line basis.
 
@@ -395,79 +421,76 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       // from the awaiting-ack state to the target stable state
       // (M or S).
       //
-      switch (l) {
+      switch (line_entry.state()) {
         case MsiAgentLineState::IS_D:
-          a.state_update = MsiAgentLineState::S;
+          a.set_next_state(MsiAgentLineState::S);
           break;
+          
         case MsiAgentLineState::IM_AD:
-          a.state_update = MsiAgentLineState::M;
+          a.set_next_state(MsiAgentLineState::M);
           break;
+          
         case MsiAgentLineState::SM_AD:
-          a.state_update = MsiAgentLineState::M;
+          a.set_next_state(MsiAgentLineState::M);
           break;
+          
         default:
-          // TODO: Invalid state
-          ;
+          a.set_error();
       }
-
-
     } else {
 
       // Data has been received, but we are currently awaiting
       // pending responses from other agents in the system.
       //
-      switch (l) {
+      switch (line_entry.state()) {
         case MsiAgentLineState::IM_AD:
-          a.state_update = MsiAgentLineState::IM_A;
+          a.set_next_state(MsiAgentLineState::IM_A);
           break;
+          
         case MsiAgentLineState::SM_AD:
-          a.state_update = MsiAgentLineState::SM_A;
+          a.set_next_state(MsiAgentLineState::SM_A);
           break;
+          
         default:
-          // TODO: Invalid state
-          ;
-      }
-
-    }
-    
-    return a;
-  }
-
-  CoherentAgentAction construct_coherent_agent_action(MsiAgentHandlerAction & h) {
-    CoherentAgentAction ret;
-    
-    for (MsiHandlerEmitType emit : h.handler_emit) {
-      switch (emit) {
-        case MsiHandlerEmitType::EmitGetS:
-          ret.msgs.push_back(create_gets());
-          break;
-
-        case MsiHandlerEmitType::EmitGetM:
-          ret.msgs.push_back(create_getm());
-          break;
-
-        case MsiHandlerEmitType::EmitInvAck:
-          ret.msgs.push_back(create_invack());
-          break;
-
-        case MsiHandlerEmitType::EmitDataReq:
-          ret.msgs.push_back(create_datareq());
-          break;
-
-        case MsiHandlerEmitType::EmitDataDir:
-          ret.msgs.push_back(create_datadir());
-          break;
-
-        default:
-          // TODO: invalid emit request command
-          ;
+          a.set_error();
       }
     }
-    ret.message_consumed = true;
-    return ret;
   }
 
-  GetSCoherencyMessage * create_gets() {
+  void commit_actions(const CoherencyMessage * m, const ActionType & a, LineEntry & line_entry,
+                      CoherentAgentAction & ret) {
+
+    for (const MsiCoherentAgentAction action : a.actions()) {
+      switch (action) {
+        case MsiCoherentAgentAction::UpdateState:
+          CCM_ASSERT(a.has_state_update());
+          line_entry.set_state(a.next_state());
+          break;
+            
+        case MsiCoherentAgentAction::EmitGetS:
+          ret.add_msg(construct_gets());
+          break;
+            
+        case MsiCoherentAgentAction::EmitGetM:
+          ret.add_msg(construct_getm());
+          break;
+            
+        case MsiCoherentAgentAction::EmitDataToReq:
+          ret.add_msg(construct_datareq());
+          break;
+            
+        case MsiCoherentAgentAction::EmitDataToDir:
+          ret.add_msg(construct_datadir());
+          break;
+            
+        case MsiCoherentAgentAction::EmitInvAck:
+          ret.add_msg(construct_invack());
+          break;
+      }
+    }
+  }
+
+  GetSCoherencyMessage * construct_gets() {
     std::size_t tid;
     CCM_ASSERT(idpool_.get_id(tid));
       
@@ -477,7 +500,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return b.msg();
   }
 
-  GetMCoherencyMessage * create_getm() {
+  GetMCoherencyMessage * construct_getm() {
     std::size_t tid;
     CCM_ASSERT(idpool_.get_id(tid));
     
@@ -487,7 +510,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return b.msg();
   }
 
-  InvCoherencyMessage * create_invack() {
+  InvCoherencyMessage * construct_invack() {
     std::size_t tid;
     CCM_ASSERT(idpool_.get_id(tid));
     
@@ -498,7 +521,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return b.msg();
   }
 
-  DataCoherencyMessage * create_datareq() {
+  DataCoherencyMessage * construct_datareq() {
     std::size_t tid;
     CCM_ASSERT(idpool_.get_id(tid));
     
@@ -508,7 +531,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return b.msg();
   }
 
-  DataCoherencyMessage * create_datadir() {
+  DataCoherencyMessage * construct_datadir() {
     std::size_t tid;
     CCM_ASSERT(idpool_.get_id(tid));
     
