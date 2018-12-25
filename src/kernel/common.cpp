@@ -66,6 +66,6 @@ void IdPool::add_id(std::size_t base, std::size_t n) {
     ids_.push_back(base++);
 }
 
-void Poolable::release() { parent_->release(this); }
+void Poolable::release() const { parent_->release(this); }
 
 } // namespace ccm

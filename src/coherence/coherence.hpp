@@ -28,8 +28,8 @@
 #ifndef __COHERENCE_HPP__
 #define __COHERENCE_HPP__
 
-#include "kernel/kernel.hpp"
 #include "cache_model.hpp"
+#include "kernel/kernel.hpp"
 #include <memory>
 #include <optional>
 
@@ -41,9 +41,39 @@ enum class Protocol {
   MOSI
 };
 
+#define TRANSACTION_CLASSES(__func)              \
+  __func(Load)                                   \
+  __func(Store)
+
+enum class TransactionType {
+#define __declare_enum(e) e,
+  TRANSACTION_CLASSES(__declare_enum)
+#undef __declare_enum
+  Invalid
+};
+const char * to_string(TransactionType t);
+
+struct Transaction {
+ public:
+  static Transaction make_load(addr_t a) {
+    return Transaction{TransactionType::Load, a};
+  }
+  static Transaction make_store(addr_t a) {
+    return Transaction{TransactionType::Store, a};
+  }
+
+  Transaction(TransactionType type, addr_t addr)
+      : type_(type), addr_(addr)
+  {}
+  
+  TransactionType type() const { return type_; }
+  addr_t addr() const { return addr_; }
+ private:
+  TransactionType type_;
+  addr_t addr_;
+};
+
 #define MESSAGE_CLASSES(__func)                 \
-  __func(Load)                                  \
-  __func(Store)                                 \
   __func(GetS)                                  \
   __func(GetM)                                  \
   __func(PutS)                                  \
@@ -63,6 +93,8 @@ const char * to_string(MessageType t);
 
 class CoherencyMessage : public kernel::Transaction {
   friend class CoherencyMessageBuilder;
+  friend class LoadCoherencyMessageBuilder;
+  friend class StoreCoherencyMessageBuilder;
   friend class GetSCoherencyMessageBuilder;
   friend class GetMCoherencyMessageBuilder;
   friend class PutSCoherencyMessageBuilder;
@@ -80,32 +112,24 @@ class CoherencyMessage : public kernel::Transaction {
   bool is_ack() const { return is_ack_; }
   addr_t addr() const { return addr_; }
  private:
+  void set_tid(std::size_t tid) { tid_ = tid; }
+  
   MessageType type_;
   std::size_t tid_;
   addr_t addr_;
   bool is_ack_;
 };
 
-class CoherencyMessageBuilder {
+class CoherencyMessageBuilder : public kernel::TransactionBuilder {
  public:
-  void set_tid(std::size_t id) { msg_->tid_ = id; }
+  CoherencyMessageBuilder(CoherencyMessage * msg)
+      : msg_(msg), TransactionBuilder(msg)
+  {}
   void set_is_ack(bool is_ack = true) { msg_->is_ack_ = is_ack; }
   void set_addr(addr_t a) { msg_->addr_ = a; }
+  void set_tid(std::size_t tid) { msg_->set_tid(tid); }
  private:
   CoherencyMessage * msg_;
-};
-
-class LoadCoherencyMessage : public CoherencyMessage {
-  friend class LoadCoherencyMessageBuilder;
- public:
-  void reset() override {}
- private:
-};
-
-class StoreCoherencyMessage : public CoherencyMessage {
- public:
-  void reset() override {}
- private:
 };
 
 class GetSCoherencyMessage : public CoherencyMessage {
@@ -119,7 +143,7 @@ class GetSCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class GetSCoherencyMessageDirector;
 
   GetSCoherencyMessageBuilder(GetSCoherencyMessage * msg)
-      : msg_(msg) {
+      : msg_(msg), CoherencyMessageBuilder(msg) {
     msg_->type_ = MessageType::GetS;
   }
  public:
@@ -127,7 +151,7 @@ class GetSCoherencyMessageBuilder : public CoherencyMessageBuilder {
   GetSCoherencyMessage * msg() {
     GetSCoherencyMessage * m{nullptr};
     std::swap(m, msg_);
-    return msg_;
+    return m;
   }
   
  private:
@@ -155,7 +179,7 @@ class GetMCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class GetMCoherencyMessageDirector;
 
   GetMCoherencyMessageBuilder(GetMCoherencyMessage * msg)
-      : msg_(msg) {
+      : msg_(msg), CoherencyMessageBuilder(msg) {
     msg_->type_ = MessageType::GetM;
   }
  public:
@@ -190,7 +214,7 @@ class PutSCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class PutSCoherencyMessageDirector;
 
   PutSCoherencyMessageBuilder(PutSCoherencyMessage * msg)
-      : msg_(msg) {
+      : msg_(msg), CoherencyMessageBuilder(msg) {
     msg_->type_ = MessageType::PutS;
   }
  public:
@@ -198,7 +222,7 @@ class PutSCoherencyMessageBuilder : public CoherencyMessageBuilder {
   PutSCoherencyMessage * msg() {
     PutSCoherencyMessage * m{nullptr};
     std::swap(m, msg_);
-    return msg_;
+    return m;
   }
   
  private:
@@ -226,7 +250,7 @@ class PutMCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class PutMCoherencyMessageDirector;
 
   PutMCoherencyMessageBuilder(PutMCoherencyMessage * msg)
-      : msg_(msg) {
+      : msg_(msg), CoherencyMessageBuilder(msg) {
     msg_->type_ = MessageType::PutM;
   }
  public:
@@ -234,7 +258,7 @@ class PutMCoherencyMessageBuilder : public CoherencyMessageBuilder {
   PutMCoherencyMessage * msg() {
     PutMCoherencyMessage * m{nullptr};
     std::swap(m, msg_);
-    return msg_;
+    return m;
   }
   
  private:
@@ -262,7 +286,7 @@ class FwdGetSCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class FwdGetSCoherencyMessageDirector;
 
   FwdGetSCoherencyMessageBuilder(FwdGetSCoherencyMessage * msg)
-      : msg_(msg) {
+      : msg_(msg), CoherencyMessageBuilder(msg) {
     msg_->type_ = MessageType::FwdGetS;
   }
  public:
@@ -270,7 +294,7 @@ class FwdGetSCoherencyMessageBuilder : public CoherencyMessageBuilder {
   FwdGetSCoherencyMessage * msg() {
     FwdGetSCoherencyMessage * m{nullptr};
     std::swap(m, msg_);
-    return msg_;
+    return m;
   }
   
  private:
@@ -298,7 +322,7 @@ class FwdGetMCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class FwdGetMCoherencyMessageDirector;
 
   FwdGetMCoherencyMessageBuilder(FwdGetMCoherencyMessage * msg)
-      : msg_(msg) {
+      : msg_(msg), CoherencyMessageBuilder(msg) {
     msg_->type_ = MessageType::FwdGetM;
   }
  public:
@@ -306,7 +330,7 @@ class FwdGetMCoherencyMessageBuilder : public CoherencyMessageBuilder {
   FwdGetMCoherencyMessage * msg() {
     FwdGetMCoherencyMessage * m{nullptr};
     std::swap(m, msg_);
-    return msg_;
+    return m;
   }
   
  private:
@@ -334,7 +358,7 @@ class InvCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class InvCoherencyMessageDirector;
 
   InvCoherencyMessageBuilder(InvCoherencyMessage * msg)
-      : msg_(msg) {
+      : msg_(msg), CoherencyMessageBuilder(msg) {
     msg_->type_ = MessageType::Inv;
   }
  public:
@@ -342,7 +366,7 @@ class InvCoherencyMessageBuilder : public CoherencyMessageBuilder {
   InvCoherencyMessage * msg() {
     InvCoherencyMessage * m{nullptr};
     std::swap(m, msg_);
-    return msg_;
+    return m;
   }
   
  private:
@@ -372,7 +396,7 @@ class DataCoherencyMessageBuilder : public CoherencyMessageBuilder {
   friend class DataCoherencyMessageDirector;
 
   DataCoherencyMessageBuilder(DataCoherencyMessage * msg)
-      : msg_(msg) {
+      : msg_(msg), CoherencyMessageBuilder(msg) {
     msg_->type_ = MessageType::Data;
   }
  public:
@@ -381,7 +405,7 @@ class DataCoherencyMessageBuilder : public CoherencyMessageBuilder {
   DataCoherencyMessage * msg() {
     DataCoherencyMessage * m{nullptr};
     std::swap(m, msg_);
-    return msg_;
+    return m;
   }
   
  private:
@@ -399,89 +423,84 @@ class DataCoherencyMessageDirector {
 };
 
 struct CoherentAgentOptions {
-  Protocol protocol;
+  CoherentAgentOptions(std::size_t id)
+      : id_(id)
+  {}
+
+  std::size_t id() const { return id_; }
+  
   CacheOptions cache_options;
+
+  std::size_t id_;
+  
   std::size_t max_in_flight_n{16};
 };
 
-struct CoherentAgentContext {
-  ccm::kernel::Event wake_event;
-};
-
-#define RESPONSE_CLASSES(__func)                \
-  __func(Hit)                                   \
-  __func(Stall)                                 \
-  __func(Blocked)
-
-enum class ResponseType {
-#define __declare_enum(e) e,
-  RESPONSE_CLASSES(__declare_enum)
-#undef __declare_enum
-};
-const char * to_string(ResponseType t);
-
-struct CoherentAgentAction {
-  void add_msg(CoherencyMessage * m) { msgs.push_back(m); }
-  ResponseType response;
-  std::vector<CoherencyMessage *> msgs;
-  bool message_consumed{false};
-};
-
-class CoherentAgentModel {
- public:
-  CoherentAgentModel(const CoherentAgentOptions & opts);
-  
-  virtual Protocol protocol() const = 0;
-  virtual CoherentAgentAction apply(CoherentAgentContext & ctxt,
-                                    CoherencyMessage * m) = 0;
-};
-
-std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
-    const CoherentAgentOptions & opts);
-
-struct SnoopFilterOptions {
-  Protocol protocol;
-  CacheOptions cache_options;
-
-  // Canonical protocol needs to be modified to support null filter.
-  bool is_null_filter{false};
-  std::size_t num_agents{1};
-};
-
-#define SNOOP_FILTER_ACTION_RESULT(__func)      \
+#define COHERENT_ACTOR_RESULT(__func)      \
   __func(Advances)                              \
   __func(BlockedOnProtocol)                     \
   __func(TagsExhausted)
 
-enum class SnoopFilterActionResult {
+enum class CoherentActorResultStatus {
 #define __declare_enum(e) e,
-  SNOOP_FILTER_ACTION_RESULT(__declare_enum)
+  COHERENT_ACTOR_RESULT(__declare_enum)
 #undef __declare_enum
 };
 
-struct SnoopFilterAction {
-  SnoopFilterAction()
+struct CoherentActorResult {
+  CoherentActorResult()
   {}
 
-  SnoopFilterActionResult get_result() const { return result_; }
+  CoherentActorResultStatus status() const { return status_; }
 
-  void set_result(SnoopFilterActionResult r) { result_ = r; }
-  void add_msg(CoherencyMessage * m) { msgs.push_back(m); }
+  void set_status(CoherentActorResultStatus status) { status_ = status; }
+  void add_msg(CoherencyMessage * m) { msgs_.push_back(m); }
 
-  SnoopFilterActionResult result_;
-  std::vector<CoherencyMessage *> msgs;
+  std::vector<CoherencyMessage *> msgs() const { return msgs_; }
+
+ private:
+  CoherentActorResultStatus status_;
+  std::vector<CoherencyMessage *> msgs_;
 };
 
-class SnoopFilterModel {
+class CoherentActorBase {
+ public:
+  virtual Protocol protocol() const = 0;
+  virtual CoherentActorResult apply(const CoherencyMessage * m) = 0;
+  virtual ~CoherentActorBase() {}
+};
+
+class CoherentAgentModel : public CoherentActorBase {
+ public:
+  CoherentAgentModel(const CoherentAgentOptions & opts);
+  virtual CoherentActorResult apply(const Transaction * t) = 0;
+};
+
+std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
+    Protocol protocol, 
+    const CoherentAgentOptions & opts);
+
+struct SnoopFilterOptions {
+  SnoopFilterOptions(std::size_t id)
+      : id_(id)
+  {}
+
+  std::size_t id() const { return id_; }
+  
+  CacheOptions cache_options;
+
+  std::size_t id_;
+
+  std::size_t num_agents{1};
+};
+
+class SnoopFilterModel : public CoherentActorBase {
  public:
   SnoopFilterModel(const SnoopFilterOptions & opts);
-  
-  virtual Protocol protocol() const = 0;
-  virtual SnoopFilterAction apply(CoherentAgentContext & ctxt,
-                                  CoherencyMessage * m) = 0;
 };
 
 std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
+    Protocol protocol, 
     const SnoopFilterOptions & opts);
 
 } // namespace ccm

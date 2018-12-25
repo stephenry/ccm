@@ -25,12 +25,4 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-macro (create_test fn)
-  add_executable(${fn} ${fn}.cpp)
-  target_link_libraries(${fn} ccm gtest_main gtest pthread)
-  target_include_directories(${fn} PUBLIC ${CMAKE_SOURCE_DIR}/src)
-  add_test(NAME ${fn} COMMAND ${fn})
-endmacro ()
-
-add_subdirectory(kernel)
-add_subdirectory(coherence)
+create_test(msi2)

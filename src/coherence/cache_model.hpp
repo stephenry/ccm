@@ -29,6 +29,7 @@
 #define __CACHE_MODEL_HPP__
 
 #include "common.hpp"
+#include "kernel/kernel.hpp"
 #include <tuple>
 #include <vector>
 #include <algorithm>

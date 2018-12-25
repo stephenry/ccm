@@ -41,17 +41,6 @@ const char * to_string(MessageType t) {
   }
 }
 
-const char * to_string(ResponseType r) {
-  switch (r) {
-#define __declare_to_string(e)                  \
-    case ResponseType::e: return #e;
-    RESPONSE_CLASSES(__declare_to_string)
-#undef __declare_to_string
-    default:
-      return "<Unknown Response Type>";
-  }
-}
-
 const char * to_string(EvictionPolicy p) {
   switch (p) {
 #define __declare_to_string(e)                  \
@@ -64,8 +53,9 @@ const char * to_string(EvictionPolicy p) {
 }
 
 std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
-    const CoherentAgentOptions & opts) {
-  switch (opts.protocol) {
+    Protocol protocol, const CoherentAgentOptions & opts) {
+
+  switch (protocol) {
     case Protocol::MSI:
       return std::make_unique<MsiCoherentAgentModel>(opts);
       break;
@@ -78,9 +68,13 @@ std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
   }
 }
 
+CoherentAgentModel::CoherentAgentModel(const CoherentAgentOptions & opts) {}
+SnoopFilterModel::SnoopFilterModel(const SnoopFilterOptions & opts) {}
+
 std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
-    const SnoopFilterOptions & opts) {
-  switch (opts.protocol) {
+    Protocol protocol, const SnoopFilterOptions & opts) {
+
+  switch (protocol) {
     case Protocol::MSI:
       return std::make_unique<MsiSnoopFilterModel>(opts);
       break;

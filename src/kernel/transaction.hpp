@@ -34,13 +34,28 @@
 namespace ccm::kernel {
 
 struct Transaction : public Poolable {
-
+  friend class TransactionBuilder;
+  
   std::size_t mid() const { return mid_; }
   std::size_t sid() const { return sid_; }
 
  private:
+  void set_mid(std::size_t mid) { mid_ = mid; }
+  void set_sid(std::size_t sid) { sid_ = sid; }
+
   std::size_t mid_; // Master ID
   std::size_t sid_; // Slave ID
+};
+
+class TransactionBuilder {
+ public:
+  TransactionBuilder (Transaction * msg)
+      : msg_(msg)
+  {}
+  void set_mid(std::size_t mid) { msg_->set_mid(mid); }
+  void set_sid(std::size_t sid) { msg_->set_sid(sid); }
+ private:
+  Transaction * msg_{nullptr};
 };
 
 using TMailBox = MailBox<Transaction *>;

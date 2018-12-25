@@ -55,7 +55,7 @@ class Poolable {
   friend class PoolBase;
  public:
   virtual void reset() = 0;
-  virtual void release();
+  virtual void release() const;
   virtual ~Poolable() {};
   //  private:
   void set_parent (PoolBase * parent) { parent_ = parent; }
@@ -65,7 +65,7 @@ class Poolable {
 class PoolBase {
   friend class Poolable;
  public:
-  virtual void release(Poolable * p) = 0;
+  virtual void release(const Poolable * p) = 0;
 };
 
 template<typename T>
@@ -90,9 +90,11 @@ class Pool : public PoolBase {
       ts_.push_back(std::move(t));
     }
   }
-  void release(Poolable * p) override {
-    p->reset();
-    fl_.push_back(static_cast<T *>(p));
+  void release(const Poolable * p) override {
+    Poolable * nc_p = const_cast<Poolable *>(p);
+    
+    nc_p->reset();
+    fl_.push_back(static_cast<T *>(nc_p));
   };
   std::size_t m_;
   std::vector<std::unique_ptr<T>> ts_;

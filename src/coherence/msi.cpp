@@ -88,7 +88,7 @@ const char * to_string(MsiHandlerEmitType t) {
 }
 
 template<typename ACTION, typename STATE>
-struct MsiHandlerAction : SnoopFilterAction {
+struct MsiHandlerAction {
 
   bool has_state_update() const { return next_state_.has_value(); }
   STATE next_state() const { return next_state_.value(); }
@@ -104,7 +104,7 @@ struct MsiHandlerAction : SnoopFilterAction {
 
   std::size_t message_count() const { return msgs_n_; }
 
-  auto actions() const { return actions_; }
+  const std::vector<ACTION> & actions() const { return actions_; }
   void add_action(const ACTION & a) {
     actions_.push_back(a);
   }
@@ -114,11 +114,6 @@ struct MsiHandlerAction : SnoopFilterAction {
   std::optional<STATE> next_state_;
   std::vector<ACTION> actions_;
   std::size_t msgs_n_{0};
-};
-
-struct MsiAgentHandlerAction : public CoherentAgentAction {
-  std::vector<MsiHandlerEmitType> handler_emit;
-  std::optional<MsiAgentLineState> state_update;
 };
 
 #define AGENT_ACTION_STATES(__func)             \
@@ -163,12 +158,11 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       : opts_(opts), cache_(opts.cache_options)
   {}
   
-  CoherentAgentAction apply(CoherentAgentContext & ctxt, CoherencyMessage * m) {
-    CoherentAgentAction ret;
+  CoherentActorResult apply(const CoherencyMessage * m) {
+    CoherentActorResult ret;
 
     if (message_requires_eviction(m)) {
-      // TODO: require eviction mechanism
-      ret.response = ResponseType::Stall;
+      //
     } else {
       // Dispatch to handler
 
@@ -177,24 +171,24 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       LineEntry line_entry;
       switch (m->type()) {
 
-        case MessageType::Load:
-          handle__Load(static_cast<LoadCoherencyMessage *>(m), line_entry, actions);
-          break;
+        // case MessageType::Load:
+        //   handle__Load(static_cast<LoadCoherencyMessage *>(m), line_entry, actions);
+        //   break;
 
-        case MessageType::Store:
-          handle__Store(static_cast<StoreCoherencyMessage *>(m), line_entry, actions);
-          break;
+        // case MessageType::Store:
+        //   handle__Store(static_cast<StoreCoherencyMessage *>(m), line_entry, actions);
+        //   break;
 
         case MessageType::FwdGetS:
-          handle__FwdGetS(static_cast<FwdGetSCoherencyMessage * >(m), line_entry, actions);
+          handle__FwdGetS(static_cast<const FwdGetSCoherencyMessage * >(m), line_entry, actions);
           break;
 
         case MessageType::FwdGetM:
-          handle__FwdGetM(static_cast<FwdGetMCoherencyMessage * >(m), line_entry, actions);
+          handle__FwdGetM(static_cast<const FwdGetMCoherencyMessage * >(m), line_entry, actions);
           break;
 
         case MessageType::Inv:
-          handle__Inv(static_cast<InvCoherencyMessage * >(m), line_entry, actions);
+          handle__Inv(static_cast<const InvCoherencyMessage * >(m), line_entry, actions);
           break;
 
         case MessageType::PutS:
@@ -203,7 +197,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
           break;
 
         case MessageType::Data:
-          handle__Data(static_cast<DataCoherencyMessage *>(m), line_entry, actions);
+          handle__Data(static_cast<const DataCoherencyMessage *>(m), line_entry, actions);
           break;
 
         default:
@@ -216,19 +210,11 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return ret;
   }
 
-  bool message_requires_eviction(CoherencyMessage * m) {
-    bool ret = false;
-    switch (m->type()) {
-      case MessageType::Load:
-      case MessageType::Store:
-        ret = cache_.requires_eviction(m->addr());
-        break;
-      default:
-        ret = false;
-    }
-    return ret;
+  bool message_requires_eviction(const CoherencyMessage * m) {
+    return false;
   }
 
+  /*
   void handle__Load(const LoadCoherencyMessage * m, const LineEntry & line_entry,
                     ActionType & a) {
 
@@ -290,6 +276,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         a.set_error();
     }
   }
+  */
 
   void handle__FwdGetS(const FwdGetSCoherencyMessage * m, const LineEntry & line_entry,
                        ActionType & a) {
@@ -458,7 +445,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
   }
 
   void commit_actions(const CoherencyMessage * m, const ActionType & a, LineEntry & line_entry,
-                      CoherentAgentAction & ret) {
+                      CoherentActorResult & ret) {
 
     for (const MsiCoherentAgentAction action : a.actions()) {
       switch (action) {
@@ -557,9 +544,8 @@ MsiCoherentAgentModel::MsiCoherentAgentModel(const CoherentAgentOptions & opts)
 
 MsiCoherentAgentModel::~MsiCoherentAgentModel() {};
 
-CoherentAgentAction MsiCoherentAgentModel::apply(CoherentAgentContext & ctxt,
-                                                 CoherencyMessage * m) {
-  return impl_->apply(ctxt, m);
+CoherentActorResult MsiCoherentAgentModel::apply(const CoherencyMessage * m) {
+  return impl_->apply(m);
 }
 
 #define DIRECTORY_STATES(__func)                \
@@ -625,7 +611,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
     void clear_owner() { owner_.reset(); }
 
     //
-    auto sharers() const { return sharers_; }
+    const std::vector<std::size_t> & sharers() const { return sharers_; }
     void add_sharer(std::size_t id) { sharers_.push_back(id); }
     void remove_sharer(std::size_t id) {
       sharers_.erase(std::find(sharers_.begin(), sharers_.end(), id), sharers_.end());
@@ -647,8 +633,8 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
       : opts_(opts), cache_(opts.cache_options)
   {}
   
-  SnoopFilterAction apply(CoherentAgentContext & ctxt, CoherencyMessage * m) {
-    SnoopFilterAction ret;
+  CoherentActorResult apply(const CoherencyMessage * m) {
+    CoherentActorResult ret;
     if (message_requires_recall(m)) {
 
     } else {
@@ -660,23 +646,23 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
       ActionType actions;
       switch (m->type()) {
         case MessageType::GetS:
-          handle__GetS(static_cast<GetSCoherencyMessage *>(m), dir_entry, actions);
+          handle__GetS(static_cast<const GetSCoherencyMessage *>(m), dir_entry, actions);
           break;
           
         case MessageType::GetM:
-          handle__GetM(static_cast<GetMCoherencyMessage *>(m), dir_entry, actions);
+          handle__GetM(static_cast<const GetMCoherencyMessage *>(m), dir_entry, actions);
           break;
           
         case MessageType::PutS:
-          handle__PutS(static_cast<PutSCoherencyMessage *>(m), dir_entry, actions);
+          handle__PutS(static_cast<const PutSCoherencyMessage *>(m), dir_entry, actions);
           break;
           
         case MessageType::PutM:
-          handle__PutM(static_cast<PutMCoherencyMessage *>(m), dir_entry, actions);
+          handle__PutM(static_cast<const PutMCoherencyMessage *>(m), dir_entry, actions);
           break;
           
         case MessageType::Data:
-          handle__Data(static_cast<DataCoherencyMessage *>(m), dir_entry, actions);
+          handle__Data(static_cast<const DataCoherencyMessage *>(m), dir_entry, actions);
           break;
           
         default:
@@ -685,17 +671,17 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
       CCM_ASSERT(!actions.error());
 
       if (!actions.stall()) {
-        ret.set_result(SnoopFilterActionResult::BlockedOnProtocol);
+        ret.set_status(CoherentActorResultStatus::BlockedOnProtocol);
         return ret;
       }
 
       if (!idpool_.available(actions.message_count())) {
-        ret.set_result(SnoopFilterActionResult::TagsExhausted);
+        ret.set_status(CoherentActorResultStatus::TagsExhausted);
         return ret;
       }
 
       commit_actions(m, actions, dir_entry, ret);
-      ret.set_result(SnoopFilterActionResult::Advances);
+      ret.set_status(CoherentActorResultStatus::Advances);
     }
     return ret;
   }
@@ -832,17 +818,12 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
     }
   }
 
-  bool message_requires_recall(CoherencyMessage * m) {
-    if (opts_.is_null_filter)
-      return false;
-
-    // TODO: Directory eviction code.
-    
+  bool message_requires_recall(const CoherencyMessage * m) {
     return false;
   }
 
   void commit_actions(const CoherencyMessage * m, const ActionType & a,
-                      DirEntry & dir_entry, SnoopFilterAction & ret) {
+                      DirEntry & dir_entry, CoherentActorResult & ret) {
     for (MsiSnoopFilterHandlerAction action : a.actions()) {
       
       switch (action) {
@@ -991,19 +972,13 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelDirectoryImpl
 
 MsiSnoopFilterModel::MsiSnoopFilterModel(const SnoopFilterOptions & opts)
     : SnoopFilterModel(opts) {
-  if (opts.is_null_filter) {
-    // TODO: not presently supported by the protocol
-    impl_ = std::make_unique<MsiSnoopFilterModelNullFilterImpl>(opts);
-  } else {
-    impl_ = std::make_unique<MsiSnoopFilterModelDirectoryImpl>(opts);
-  }
+  impl_ = std::make_unique<MsiSnoopFilterModelDirectoryImpl>(opts);
 }
 
 MsiSnoopFilterModel::~MsiSnoopFilterModel() {}
 
-SnoopFilterAction MsiSnoopFilterModel::apply(CoherentAgentContext & ctxt,
-                                             CoherencyMessage * m) {
-  return impl_->apply(ctxt, m);
+CoherentActorResult MsiSnoopFilterModel::apply(const CoherencyMessage * m) {
+  return impl_->apply(m);
 }
 
 } // namespace ccm
