@@ -25,28 +25,18 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "ccm.hpp"
-#include <gtest/gtest.h>
+#include "message.hpp"
+#include "actors.hpp"
 
-TEST(MSI, Load) {
-  ccm::Sim s;
+namespace ccm {
 
-  std::vector<ccm::Agent *> agents_;
-  for (std::size_t i = 0; i < 4; i++) {
-    const ccm::AgentOptions opts(i, ccm::Protocol::MSI);
-    agents_.push_back(new ccm::Agent(opts));
-    s.add_actor(agents_.back());
-  }
-
-  ccm::Transaction * t = new ccm::Transaction{0};
-  agents_[0]->add_transaction(10, t);
-
-  const ccm::SnoopFilterActorOptions opts(4, ccm::Protocol::MSI);
-  s.add_actor(new ccm::SnoopFilter(opts));
-  s.run();
+MessageDirector::MessageDirector(const ActorOptions & opts) {
+  src_id_ = opts.id();
 }
 
-int main(int argc, char ** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+MessageBuilder MessageDirector::builder() {
+  return MessageBuilder{pool_.alloc(), src_id_};
 }
+
+} // namespace ccm
+

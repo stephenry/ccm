@@ -32,4 +32,5 @@ add_library(ccm STATIC
   actors.cpp
   utility.cpp
   interconnect.cpp
+  message.cpp
   )

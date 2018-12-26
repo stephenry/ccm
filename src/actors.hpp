@@ -31,18 +31,22 @@
 #include "log.hpp"
 #include "transaction.hpp"
 #include "message.hpp"
+#include "coherence.hpp"
+#include "cache_model.hpp"
 
 namespace ccm {
 
 class Frontier;
 
 struct ActorOptions {
-  ActorOptions(std::size_t id)
-      : id_(id)
+  ActorOptions(std::size_t id, Protocol protocol)
+      : id_(id), protocol_(protocol)
   {}
   std::size_t id() const { return id_; }
+  Protocol protocol() const { return protocol_; }
  private:
   std::size_t id_;
+  Protocol protocol_;
 };
 
 struct CoherentActor {
@@ -66,15 +70,19 @@ struct CoherentActor {
 };
 
 struct AgentOptions : ActorOptions {
-  AgentOptions(std::size_t id)
-      : ActorOptions(id)
+  AgentOptions(std::size_t id, Protocol protocol)
+      : ActorOptions(id, protocol)
   {}
+  CacheOptions cache_options() const { return cache_options_; }
+ private:
+  CacheOptions cache_options_;
 };
 
 struct Agent : CoherentActor {
   Agent(const AgentOptions & opts)
-      : CoherentActor(opts), opts_(opts), msgd_(opts.id())
-  {}
+      : CoherentActor(opts), opts_(opts), invoker_(opts) {
+    cc_model_ = coherent_agent_factory(opts);
+  }
 
   void add_transaction(std::size_t time, Transaction * t);
 
@@ -101,18 +109,19 @@ struct Agent : CoherentActor {
   TransactionTable tt_;
   Heap<TimeStamped<Transaction *> > pending_transactions_;
   std::vector<const Message *> pending_messages_;
-  MessageDirector msgd_;
+  std::unique_ptr<CoherentAgentModel> cc_model_;
+  CoherentAgentCommandInvoker invoker_;
 };
 
 struct SnoopFilterActorOptions : ActorOptions {
-  SnoopFilterActorOptions(std::size_t id)
-      : ActorOptions(id)
+  SnoopFilterActorOptions(std::size_t id, Protocol protocol)
+      : ActorOptions(id, protocol)
   {}
 };
 
 struct SnoopFilter : CoherentActor {
   SnoopFilter(const SnoopFilterActorOptions & opts)
-      : CoherentActor(opts), opts_(opts), msgd_(opts.id())
+      : CoherentActor(opts), opts_(opts)
   {}
 
   void apply(std::size_t t, const Message * m) override;
@@ -125,7 +134,6 @@ struct SnoopFilter : CoherentActor {
  private:
   const SnoopFilterActorOptions & opts_;
   Heap<TimeStamped<const Message *> > pending_messages_;
-  MessageDirector msgd_;
 };
 
 } // namespace ccm

@@ -26,9 +26,105 @@
 //========================================================================== //
 
 #include "coherence.hpp"
+#include "actors.hpp"
+#include "sim.hpp"
 #include "msi.hpp"
 
 namespace ccm {
+
+const char * to_string(CoherentAgentCommand command) {
+  switch (command) {
+#define __declare_to_string(__e)                        \
+    case CoherentAgentCommand::__e: return #__e;
+    AGENT_COMMANDS(__declare_to_string)
+#undef __declare_to_string
+    default: return "<Invalid Line State>";
+  }
+}
+CoherentAgentCommandInvoker::CoherentAgentCommandInvoker(
+    const AgentOptions & opts) : msgd_(opts) {
+  id_ = opts.id();
+}
+
+void CoherentAgentCommandInvoker::invoke(
+    Frontier & f, const CoherentActorActions & actions) {
+
+  for (const uint8_t cmd : actions.actions()) {
+
+    switch (static_cast<CoherentAgentCommand>(cmd)) {
+      
+      case CoherentAgentCommand::UpdateState:
+        invoke_update_state(f);
+        break;
+
+      case CoherentAgentCommand::EmitGetS:
+        invoke_emit_gets(f);
+        break;
+      
+      case CoherentAgentCommand::EmitGetM:
+        invoke_emit_getm(f);
+        break;
+      
+      case CoherentAgentCommand::EmitDataToReq:
+        invoke_emit_data_to_req(f);
+        break;
+      
+      case CoherentAgentCommand::EmitDataToDir:
+        invoke_emit_data_to_dir(f);
+        break;
+      
+      case CoherentAgentCommand::EmitInvAck:
+        invoke_emit_inv_ack(f);
+        break;
+    }
+  }
+}
+
+void CoherentAgentCommandInvoker::invoke_update_state(Frontier & f) {
+}
+
+void CoherentAgentCommandInvoker::invoke_emit_gets(Frontier & f) {
+  MessageBuilder b = msgd_.builder();
+  b.set_type(MessageType::GetS);
+  b.set_dst_id(4);
+  b.set_tid(1);
+  f.add_to_frontier(1 + time(), b.msg());
+}
+
+void CoherentAgentCommandInvoker::invoke_emit_getm(Frontier & f) {
+  MessageBuilder b = msgd_.builder();
+  b.set_type(MessageType::GetM);
+  b.set_dst_id(4);
+  b.set_tid(1);
+  f.add_to_frontier(1 + time(), b.msg());
+}
+
+void CoherentAgentCommandInvoker::invoke_emit_data_to_req(Frontier & f) {
+  MessageBuilder b = msgd_.builder();
+  b.set_type(MessageType::Data);
+}
+
+void CoherentAgentCommandInvoker::invoke_emit_data_to_dir(Frontier & f) {
+  MessageBuilder b = msgd_.builder();
+  b.set_type(MessageType::Data);
+}
+
+void CoherentAgentCommandInvoker::invoke_emit_inv_ack(Frontier & f) {
+  MessageBuilder b = msgd_.builder();
+  b.set_type(MessageType::Inv);
+  b.set_is_ack(true);
+}
+
+
+const char * to_string(SnoopFilterCommand command) {
+  switch (command) {
+#define __declare_to_string(__e)                \
+    case SnoopFilterCommand::__e: return #__e;
+    SNOOP_FILTER_COMMANDS(__declare_to_string)
+#undef __declare_to_string
+    default: return "<Invalid Line State>";
+  }
+}
 
 const char * to_string(EvictionPolicy p) {
   switch (p) {
@@ -42,9 +138,9 @@ const char * to_string(EvictionPolicy p) {
 }
 
 std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
-    Protocol protocol, const CoherentAgentOptions & opts) {
+    const AgentOptions & opts) {
 
-  switch (protocol) {
+  switch (opts.protocol()) {
     case Protocol::MSI:
       return std::make_unique<MsiCoherentAgentModel>(opts);
       break;
@@ -57,7 +153,7 @@ std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
   }
 }
 
-CoherentAgentModel::CoherentAgentModel(const CoherentAgentOptions & opts) {}
+CoherentAgentModel::CoherentAgentModel(const AgentOptions & opts) {}
 SnoopFilterModel::SnoopFilterModel(const SnoopFilterOptions & opts) {}
 
 std::unique_ptr<SnoopFilterModel> snoop_filter_factory(

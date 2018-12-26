@@ -29,6 +29,7 @@
 #define __SRC_COHERENCE_HPP__
 
 #include "cache_model.hpp"
+#include "message.hpp"
 #include <memory>
 #include <optional>
 
@@ -36,6 +37,9 @@ namespace ccm {
 
 class Message;
 class Transaction;
+class AgentOptions;
+class Frontier;
+class CoherentActorActions;
 
 enum class Protocol {
   MSI,
@@ -43,63 +47,124 @@ enum class Protocol {
   MOSI
 };
 
-struct CoherentAgentOptions {
-  CoherentAgentOptions(std::size_t id)
-      : id_(id)
-  {}
+#define AGENT_COMMANDS(__func)                  \
+  __func(UpdateState)                           \
+  __func(EmitGetS)                              \
+  __func(EmitGetM)                              \
+  __func(EmitDataToReq)                         \
+  __func(EmitDataToDir)                         \
+  __func(EmitInvAck)
 
-  std::size_t id() const { return id_; }
-  
-  CacheOptions cache_options;
-
-  std::size_t id_;
-  
-  std::size_t max_in_flight_n{16};
+enum class CoherentAgentCommand : uint8_t {
+#define __declare_state(__state)                \
+  __state,
+  AGENT_COMMANDS(__declare_state)
+#undef __declare_state
 };
 
-#define COHERENT_ACTOR_RESULT(__func)      \
+struct CoherentAgentCommandInvoker {
+  CoherentAgentCommandInvoker(const AgentOptions & opts);
+
+  std::size_t time() const { return time_; }
+  
+  void invoke(Frontier & f, const CoherentActorActions & actions);
+  void set_time(std::size_t time) { time_ = time; }
+ private:
+  void invoke_update_state(Frontier & f);
+  void invoke_emit_gets(Frontier & f);
+  void invoke_emit_getm(Frontier & f);
+  void invoke_emit_data_to_req(Frontier & f);
+  void invoke_emit_data_to_dir(Frontier & f);
+  void invoke_emit_inv_ack(Frontier & f);
+  
+  MessageDirector msgd_;
+  std::size_t id_;
+  std::size_t time_;
+};
+
+const char * to_string(CoherentAgentCommand command);
+
+#define SNOOP_FILTER_COMMANDS(__func)      \
+  __func(UpdateState)                           \
+  __func(SetOwnerToReq)                         \
+  __func(SendDataToReq)                         \
+  __func(SendInvToSharers)                      \
+  __func(ClearSharers)                          \
+  __func(AddReqToSharers)                       \
+  __func(DelReqFromSharers)                     \
+  __func(DelOwner)                              \
+  __func(AddOwnerToSharers)                     \
+  __func(CpyDataToMemory)                       \
+  __func(SendPutSAckToReq)                      \
+  __func(SendPutMAckToReq)                      \
+  __func(SendFwdGetSToOwner)
+
+enum class SnoopFilterCommand : uint8_t {
+#define __declare_state(__state)                \
+  __state,
+SNOOP_FILTER_COMMANDS(__declare_state)
+#undef __declare_state
+};
+
+const char * to_string(SnoopFilterCommand command);
+
+#define COHERENT_ACTOR_RESULT(__func)           \
   __func(Advances)                              \
   __func(BlockedOnProtocol)                     \
   __func(TagsExhausted)
 
-enum class CoherentActorResultStatus {
-#define __declare_enum(e) e,
-  COHERENT_ACTOR_RESULT(__declare_enum)
-#undef __declare_enum
-};
+struct CoherentActorActions {
 
-struct CoherentActorResult {
-  CoherentActorResult()
-  {}
+  bool has_state_update() const { return next_state_.has_value(); }
+  uint8_t next_state() const { return next_state_.value(); }
 
-  CoherentActorResultStatus status() const { return status_; }
+  template<typename T>
+  void set_next_state(T state) { next_state_ = static_cast<uint8_t>(state); }
 
-  void set_status(CoherentActorResultStatus status) { status_ = status; }
-  void add_msg(Message * m) { msgs_.push_back(m); }
+  //
+  bool error() const { return false; }
+  void set_error() {}
 
-  std::vector<Message *> msgs() const { return msgs_; }
+  //
+  bool stall() const { return stall_; }
+  void set_stall() { stall_ = true; }
+
+  std::size_t message_count() const { return msgs_n_; }
+
+  const std::vector<uint8_t> & actions() const { return actions_; }
+
+  template<typename T>
+  void add_action(T a) {
+    actions_.push_back(static_cast<uint8_t>(a));
+  }
 
  private:
-  CoherentActorResultStatus status_;
-  std::vector<Message *> msgs_;
+  bool stall_{false};
+  std::optional<uint8_t> next_state_;
+  std::vector<uint8_t> actions_;
+  std::size_t msgs_n_{0};
 };
 
 class CoherentActorBase {
  public:
-  virtual Protocol protocol() const = 0;
-  virtual CoherentActorResult apply(const Message * m) = 0;
+  CoherentActorBase() {}
   virtual ~CoherentActorBase() {}
+  
+  virtual Protocol protocol() const = 0;
+  virtual CoherentActorActions get_actions(const Message * m) = 0;
 };
 
 class CoherentAgentModel : public CoherentActorBase {
  public:
-  CoherentAgentModel(const CoherentAgentOptions & opts);
-  virtual CoherentActorResult apply(const Transaction * t) = 0;
+  CoherentAgentModel(const AgentOptions & opts);
+  virtual ~CoherentAgentModel() {}
+  
+  virtual CoherentActorActions get_actions(const Message * t) = 0;
+  virtual CoherentActorActions get_actions(const Transaction * t) = 0;
 };
 
 std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
-    Protocol protocol, 
-    const CoherentAgentOptions & opts);
+    const AgentOptions & opts);
 
 struct SnoopFilterOptions {
   SnoopFilterOptions(std::size_t id)

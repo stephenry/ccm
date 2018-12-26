@@ -35,17 +35,29 @@ void Agent::add_transaction(std::size_t time, Transaction * t) {
 }
 
 bool Agent::eval(Frontier & f) {
+  if (!pending_messages_.empty()) {
+
+    for (const Message * msg : pending_messages_) {
+      const CoherentActorActions actions = cc_model_->get_actions(msg);
+      const bool do_commit = false;
+      if (do_commit)
+        invoker_.invoke(f, actions);
+    }
+  }
   if (!pending_transactions_.empty()) {
 
     TimeStamped<Transaction *> head;
     while (pending_transactions_.pop(head)) {
       set_time(head.time());
-        
-      MessageBuilder b = msgd_.builder();
-      b.set_type(MessageType::GetS);
-      b.set_dst_id(4);
-      b.set_tid(1);
-      f.add_to_frontier(1 + head.time(), b.msg());
+
+      const CoherentActorActions actions = cc_model_->get_actions(head.t());
+      const bool do_commit = false;
+
+      if (do_commit) {
+        invoker_.set_time(time());
+        invoker_.invoke(f, actions);
+        set_time(invoker_.time());
+      }
         
       std::cout << time() << " SnoopActor: Sending something\n";
     }

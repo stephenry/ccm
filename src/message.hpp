@@ -32,6 +32,8 @@
 
 namespace ccm {
 
+class ActorOptions;
+
 #define MESSAGE_CLASSES(__func)                 \
   __func(GetS)                                  \
   __func(GetM)                                  \
@@ -96,6 +98,7 @@ class MessageBuilder {
   void set_type(MessageType type) { msg_->set_type(type); }
   void set_dst_id(std::size_t id) { msg_->set_dst_id(id); }
   void set_tid(std::size_t tid) { msg_->set_tid(tid); }
+  void set_is_ack(bool is_ack = true) { msg_->set_is_ack(is_ack); }
  private:
   void set_src_id() { msg_->set_src_id(src_id_); }
   std::size_t src_id_;
@@ -104,12 +107,8 @@ class MessageBuilder {
 
 class MessageDirector {
  public:
-  MessageDirector(std::size_t src_id) : src_id_(src_id)
-  {}
-      
-  MessageBuilder builder() {
-    return MessageBuilder{pool_.alloc(), src_id_};
-  }
+  MessageDirector(const ActorOptions & opts);
+  MessageBuilder builder();
  private:
   std::size_t src_id_;
   ccm::Pool<Message> pool_;

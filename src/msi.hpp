@@ -35,15 +35,15 @@ namespace ccm {
 
 class MsiCoherentAgentModel : public CoherentAgentModel {
  public:
-  MsiCoherentAgentModel(const CoherentAgentOptions & opts);
+  MsiCoherentAgentModel(const AgentOptions & opts);
   virtual ~MsiCoherentAgentModel();
 
   //
   Protocol protocol() const override { return Protocol::MSI; }
 
   //
-  CoherentActorResult apply(const Transaction * t) override;
-  CoherentActorResult apply(const Message * m) override;
+  CoherentActorActions get_actions(const Transaction * t) override;
+  CoherentActorActions get_actions(const Message * m) override;
 
  private:
   struct MsiCoherentAgentModelImpl;
@@ -60,7 +60,7 @@ class MsiSnoopFilterModel : public SnoopFilterModel {
   Protocol protocol() const override { return Protocol::MSI; }
 
   //
-  CoherentActorResult apply(const Message * m) override;
+  CoherentActorActions get_actions(const Message * m) override;
 
  private:
   struct MsiSnoopFilterModelImpl;
