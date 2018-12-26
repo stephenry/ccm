@@ -25,10 +25,57 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "utility.hpp"
-#include "log.hpp"
-#include "actors.hpp"
-#include "interconnect.hpp"
-#include "sim.hpp"
 #include "coherence.hpp"
 #include "msi.hpp"
+
+namespace ccm {
+
+const char * to_string(EvictionPolicy p) {
+  switch (p) {
+#define __declare_to_string(e)                  \
+    case EvictionPolicy::e: return #e;
+    EVICTION_POLICIES(__declare_to_string)
+#undef __declare_to_string
+    default:
+      return "<Unknown Policy Type>";
+  }
+}
+
+std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
+    Protocol protocol, const CoherentAgentOptions & opts) {
+
+  switch (protocol) {
+    case Protocol::MSI:
+      return std::make_unique<MsiCoherentAgentModel>(opts);
+      break;
+    case Protocol::MESI:
+    case Protocol::MOSI:
+    default:
+      // TODO: Not implemented
+      return nullptr;
+      break;
+  }
+}
+
+CoherentAgentModel::CoherentAgentModel(const CoherentAgentOptions & opts) {}
+SnoopFilterModel::SnoopFilterModel(const SnoopFilterOptions & opts) {}
+
+std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
+    Protocol protocol, const SnoopFilterOptions & opts) {
+
+  switch (protocol) {
+    case Protocol::MSI:
+      return std::make_unique<MsiSnoopFilterModel>(opts);
+      break;
+    case Protocol::MESI:
+    case Protocol::MOSI:
+    default:
+      // TODO: Not implemented
+      return nullptr;
+      break;
+  }
+}
+
+
+} // namespace ccm
+

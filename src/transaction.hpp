@@ -25,10 +25,68 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "utility.hpp"
-#include "log.hpp"
-#include "actors.hpp"
-#include "interconnect.hpp"
-#include "sim.hpp"
-#include "coherence.hpp"
-#include "msi.hpp"
+#ifndef __SRC_TRANSACTION_HPP__
+#define __SRC_TRANSACTION_HPP__
+
+#include <vector>
+
+namespace ccm {
+
+enum class TransactionType {
+  Load,
+  Store
+};
+
+class Transaction {
+ public:
+  Transaction(uint64_t addr, TransactionType type = TransactionType::Load)
+      : addr_(addr), type_(type)
+  {}
+
+  //
+  TransactionType type() const { return type_; }
+  uint64_t addr() const { return addr_; }
+  std::size_t tid() const { return tid_; }
+
+  //
+  void set_tid(std::size_t tid) { tid_ = tid; }
+
+ private:
+  TransactionType type_;
+  uint64_t addr_;
+  std::size_t tid_;
+};
+
+struct TransactionTable {
+
+  TransactionTable()
+      : is_fixed_(false)
+  {}
+
+  TransactionTable(std::size_t sz)
+      : sz_(sz), is_fixed_(true)
+  {}
+
+  bool is_empty() const { return !ts_.empty(); }
+
+  bool is_full() const {
+    return !is_fixed_ || (ts_.size() == sz_);
+  }
+
+  std::size_t allocate(Transaction * t) {
+    const std::size_t tid = ts_.size();
+    
+    t->set_tid(tid);
+    ts_.push_back(t);
+
+    return tid;
+  }
+ private:
+  bool is_fixed_;
+  std::size_t sz_;
+  std::vector<Transaction *> ts_;
+};
+
+} // namespace ccm
+
+#endif

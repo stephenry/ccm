@@ -25,10 +25,52 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "utility.hpp"
-#include "log.hpp"
-#include "actors.hpp"
-#include "interconnect.hpp"
-#include "sim.hpp"
+#ifndef __SRC_MSI_HPP__
+#define __SRC_MSI_HPP__
+
 #include "coherence.hpp"
-#include "msi.hpp"
+#include <memory>
+
+namespace ccm {
+
+class MsiCoherentAgentModel : public CoherentAgentModel {
+ public:
+  MsiCoherentAgentModel(const CoherentAgentOptions & opts);
+  virtual ~MsiCoherentAgentModel();
+
+  //
+  Protocol protocol() const override { return Protocol::MSI; }
+
+  //
+  CoherentActorResult apply(const Transaction * t) override;
+  CoherentActorResult apply(const Message * m) override;
+
+ private:
+  struct MsiCoherentAgentModelImpl;
+
+  std::unique_ptr<MsiCoherentAgentModelImpl> impl_;
+};
+
+class MsiSnoopFilterModel : public SnoopFilterModel {
+ public:
+  MsiSnoopFilterModel(const SnoopFilterOptions & opts);
+  virtual ~MsiSnoopFilterModel();
+
+  //
+  Protocol protocol() const override { return Protocol::MSI; }
+
+  //
+  CoherentActorResult apply(const Message * m) override;
+
+ private:
+  struct MsiSnoopFilterModelImpl;
+  struct MsiSnoopFilterModelNullFilterImpl;
+  struct MsiSnoopFilterModelDirectoryImpl;
+
+  std::unique_ptr<MsiSnoopFilterModelImpl> impl_;
+};
+
+
+} // namespace ccm
+
+#endif

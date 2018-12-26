@@ -32,5 +32,5 @@ macro (create_test fn)
   add_test(NAME ${fn} COMMAND ${fn})
 endmacro ()
 
-add_subdirectory(kernel)
-add_subdirectory(coherence)
+create_test(msi)
+

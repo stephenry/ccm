@@ -25,10 +25,20 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "utility.hpp"
-#include "log.hpp"
-#include "actors.hpp"
 #include "interconnect.hpp"
 #include "sim.hpp"
-#include "coherence.hpp"
-#include "msi.hpp"
+
+namespace ccm {
+
+void InterconnectModel::apply(Frontier & f) {
+  for (TimeStamped<const Message *> & ts : f.ts())
+    update_time(ts);
+  f.heapify();
+}
+
+void InterconnectModel::update_time(TimeStamped<const Message *> & ts) {
+  const Message * m = ts.t();
+  ts.set_time(ts.time() + cost(m->src_id(), m->dst_id()));
+}
+
+} // namespace ccm

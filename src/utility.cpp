@@ -26,9 +26,9 @@
 //========================================================================== //
 
 #include "utility.hpp"
-#include "log.hpp"
-#include "actors.hpp"
-#include "interconnect.hpp"
-#include "sim.hpp"
-#include "coherence.hpp"
-#include "msi.hpp"
+
+namespace ccm {
+
+void Poolable::release() const { parent_->release(this); }
+
+} // namespace ccma

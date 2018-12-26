@@ -25,10 +25,13 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "utility.hpp"
-#include "log.hpp"
-#include "actors.hpp"
-#include "interconnect.hpp"
-#include "sim.hpp"
-#include "coherence.hpp"
-#include "msi.hpp"
+#ifndef __SRC_LOG_HPP__
+#define __SRC_LOG_HPP__
+
+#include <iostream>
+
+namespace ccm {
+
+} // namespace ccm
+
+#endif

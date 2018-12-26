@@ -25,10 +25,38 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
+#ifndef __SRC_INTERCONNECT_HPP__
+#define __SRC_INTERCONNECT_HPP__
+
 #include "utility.hpp"
-#include "log.hpp"
-#include "actors.hpp"
-#include "interconnect.hpp"
-#include "sim.hpp"
-#include "coherence.hpp"
-#include "msi.hpp"
+
+namespace ccm {
+
+class Frontier;
+class Message;
+
+struct InterconnectModel {
+  InterconnectModel() {}
+  virtual ~InterconnectModel() {}
+  
+  void apply(Frontier & f);
+ private:
+  virtual std::size_t cost(std::size_t src_id, std::size_t dst_id) = 0;
+  void update_time(TimeStamped<const Message *> & ts);
+};
+
+struct FixedLatencyInterconnectModel : InterconnectModel {
+  FixedLatencyInterconnectModel(std::size_t latency)
+      : latency_(latency)
+  {}
+ private:
+  std::size_t cost(std::size_t src_id, std::size_t dst_id) override {
+    // Fixed latency between all ARCS.
+    return 10;
+  }
+  std::size_t latency_;
+};
+
+} // namespace ccm
+
+#endif

@@ -25,10 +25,28 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "utility.hpp"
-#include "log.hpp"
-#include "actors.hpp"
-#include "interconnect.hpp"
-#include "sim.hpp"
-#include "coherence.hpp"
-#include "msi.hpp"
+#ifndef __SRC_COMMON_HPP__
+#define __SRC_COMMON_HPP__
+
+#include <cstdint>
+#include <iostream>
+
+namespace ccm {
+
+#define CCM_MACRO_BEGIN do {
+#define CCM_MACRO_END   } while (false)
+
+#define CCM_ASSERT(__cond)                                      \
+  CCM_MACRO_BEGIN                                               \
+  if (!(__cond)) {                                              \
+    std::cout << __FILE__ << ":" << __LINE__                    \
+              << " assertion failed: " << #__cond << "\n";      \
+    std::exit(1);                                               \
+  }                                                             \
+  CCM_MACRO_END
+
+using addr_t = uint64_t;
+
+} // namespace ccm
+
+#endif

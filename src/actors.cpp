@@ -25,10 +25,49 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "utility.hpp"
-#include "log.hpp"
 #include "actors.hpp"
-#include "interconnect.hpp"
 #include "sim.hpp"
-#include "coherence.hpp"
-#include "msi.hpp"
+
+namespace ccm {
+
+void Agent::add_transaction(std::size_t time, Transaction * t) {
+  pending_transactions_.push(make_time_stamped(time, t));
+}
+
+bool Agent::eval(Frontier & f) {
+  if (!pending_transactions_.empty()) {
+
+    TimeStamped<Transaction *> head;
+    while (pending_transactions_.pop(head)) {
+      set_time(head.time());
+        
+      MessageBuilder b = msgd_.builder();
+      b.set_type(MessageType::GetS);
+      b.set_dst_id(4);
+      b.set_tid(1);
+      f.add_to_frontier(1 + head.time(), b.msg());
+        
+      std::cout << time() << " SnoopActor: Sending something\n";
+    }
+  }
+  return is_active();
+}
+
+void SnoopFilter::apply(std::size_t t, const Message * m) {
+  pending_messages_.push(make_time_stamped(t, m));
+}
+
+bool SnoopFilter::eval(Frontier & f) {
+  if (!pending_messages_.empty()) {
+
+    TimeStamped<const Message *> head;
+    while (pending_messages_.pop(head)) {
+      set_time(head.time());
+      
+      std::cout << time() << " SnoopFilter: Received something\n";
+    }
+  }
+  return is_active();
+}
+
+} // namespace ccm

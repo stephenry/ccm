@@ -25,12 +25,11 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
-
-add_subdirectory(kernel)
-add_subdirectory(interconnects)
-add_subdirectory(agents)
-add_subdirectory(coherence)
-
-add_library(ccm STATIC ccm.cpp)
-target_link_libraries(ccm PRIVATE kernel interconnects agents coherence)
+add_library(ccm STATIC
+  ccm.cpp
+  coherence.cpp
+  msi.cpp
+  actors.cpp
+  utility.cpp
+  interconnect.cpp
+  )

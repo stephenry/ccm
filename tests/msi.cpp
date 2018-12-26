@@ -25,10 +25,28 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "utility.hpp"
-#include "log.hpp"
-#include "actors.hpp"
-#include "interconnect.hpp"
-#include "sim.hpp"
-#include "coherence.hpp"
-#include "msi.hpp"
+#include "ccm.hpp"
+#include <gtest/gtest.h>
+
+TEST(MSI, Load) {
+  ccm::Sim s;
+
+  std::vector<ccm::Agent *> agents_;
+  for (std::size_t i = 0; i < 4; i++) {
+    const ccm::AgentOptions opts(i);
+    agents_.push_back(new ccm::Agent(opts));
+    s.add_actor(agents_.back());
+  }
+
+  ccm::Transaction * t = new ccm::Transaction{0};
+  agents_[0]->add_transaction(10, t);
+
+  const ccm::SnoopFilterActorOptions opts(4);
+  s.add_actor(new ccm::SnoopFilter(opts));
+  s.run();
+}
+
+int main(int argc, char ** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}
