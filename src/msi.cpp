@@ -394,38 +394,6 @@ const char * to_string(MsiDirectoryLineState s) {
 }
 
 struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
-
-  struct DirEntry {
-
-    DirEntry() : state_(MsiDirectoryLineState::I) {}
-
-    //
-    MsiDirectoryLineState state() const { return state_; }
-    void set_state(MsiDirectoryLineState state) { state_ = state; }
-    
-    //
-    std::size_t owner() const { return owner_.value(); }
-    void set_owner(std::size_t owner) { owner_ = owner; }
-    void clear_owner() { owner_.reset(); }
-
-    //
-    const std::vector<std::size_t> & sharers() const { return sharers_; }
-    void add_sharer(std::size_t id) { sharers_.push_back(id); }
-    void remove_sharer(std::size_t id) {
-      sharers_.erase(std::find(sharers_.begin(), sharers_.end(), id), sharers_.end());
-    }
-    void remove_all_sharers() { sharers_.clear(); }
-
-   private:
-    // Current state of the line
-    MsiDirectoryLineState state_;
-
-    // Current set of sharing agents
-    std::vector<std::size_t> sharers_;
-
-    // Current owner agent
-    std::optional<std::size_t> owner_;
-  };
   
   MsiSnoopFilterModelImpl(const SnoopFilterOptions & opts)
       : opts_(opts), cache_(opts.cache_options)
@@ -439,7 +407,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
 
       CCM_ASSERT(cache_.is_hit(m->addr()));
 
-      DirEntry & dir_entry = cache_.entry(m->addr());
+      DirectoryEntry & dir_entry = cache_.entry(m->addr());
 
       switch (m->type()) {
         case MessageType::GetS:
@@ -478,7 +446,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   }
  private:
   
-  void handle__GetS(const Message * m, const DirEntry & dir_entry, CoherentActorActions & a) const {
+  void handle__GetS(const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
     switch (dir_entry.state()) {
       case MsiDirectoryLineState::I:
         a.add_action(SnoopFilterCommand::SendDataToReq);
@@ -505,7 +473,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
     }
   }
 
-  void handle__GetM(const Message * m, const DirEntry & dir_entry, CoherentActorActions & a) const {
+  void handle__GetM(const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
     switch (dir_entry.state()) {
       case MsiDirectoryLineState::I:
         a.add_action(SnoopFilterCommand::SendDataToReq);
@@ -531,7 +499,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
     }
   }
 
-  void handle__PutS(const Message * m, const DirEntry & dir_entry, CoherentActorActions & a) const {
+  void handle__PutS(const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
     const bool is_last = false; // TODO
     switch (dir_entry.state()) {
       case MsiDirectoryLineState::I:
@@ -558,7 +526,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
     }
   }
 
-  void handle__PutM(const Message * m, const DirEntry & dir_entry, CoherentActorActions & a) const {
+  void handle__PutM(const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
     const bool is_data_from_owner = false;
     switch (dir_entry.state()) {
       case MsiDirectoryLineState::I:
@@ -592,7 +560,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
     }
   }
 
-  void handle__Data(const Message * m, const DirEntry & dir_entry, CoherentActorActions & a) const {
+  void handle__Data(const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
     switch (dir_entry.state()) {
       case MsiDirectoryLineState::S_D:
         a.add_action(SnoopFilterCommand::CpyDataToMemory);
@@ -613,7 +581,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   }
   
   SnoopFilterOptions opts_;
-  CacheModel<DirEntry> cache_;
+  CacheModel<DirectoryEntry> cache_;
 };
 
 struct MsiSnoopFilterModel::MsiSnoopFilterModelNullFilterImpl

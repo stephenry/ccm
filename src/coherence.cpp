@@ -126,6 +126,54 @@ const char * to_string(SnoopFilterCommand command) {
   }
 }
 
+void SnoopFilterCommandInvoker::invoke(
+    const CoherentActorActions & actions, Frontier & f, DirectoryEntry & d) {
+
+  for (const uint8_t cmd : actions.actions()) {
+
+    switch (static_cast<SnoopFilterCommand>(cmd)) {
+      case SnoopFilterCommand::UpdateState:
+        break;
+
+      case SnoopFilterCommand::SetOwnerToReq:
+        break;
+
+      case SnoopFilterCommand::SendDataToReq:
+        break;
+
+      case SnoopFilterCommand::SendInvToSharers:
+        break;
+
+      case SnoopFilterCommand::ClearSharers:
+        break;
+
+      case SnoopFilterCommand::AddReqToSharers:
+        break;
+
+      case SnoopFilterCommand::DelReqFromSharers:
+        break;
+
+      case SnoopFilterCommand::DelOwner:
+        break;
+
+      case SnoopFilterCommand::AddOwnerToSharers:
+        break;
+
+      case SnoopFilterCommand::CpyDataToMemory:
+        break;
+
+      case SnoopFilterCommand::SendPutSAckToReq:
+        break;
+
+      case SnoopFilterCommand::SendPutMAckToReq:
+        break;
+
+      case SnoopFilterCommand::SendFwdGetSToOwner:
+        break;
+    }
+  }
+}
+
 const char * to_string(EvictionPolicy p) {
   switch (p) {
 #define __declare_to_string(e)                  \

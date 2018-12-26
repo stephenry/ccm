@@ -47,6 +47,38 @@ enum class Protocol {
   MOSI
 };
 
+struct DirectoryEntry {
+
+  DirectoryEntry() {}
+
+  //
+  uint8_t state() const { return state_; }
+  void set_state(uint8_t state) { state_ = state; }
+    
+  //
+  std::size_t owner() const { return owner_.value(); }
+  void set_owner(std::size_t owner) { owner_ = owner; }
+  void clear_owner() { owner_.reset(); }
+
+  //
+  const std::vector<std::size_t> & sharers() const { return sharers_; }
+  void add_sharer(std::size_t id) { sharers_.push_back(id); }
+  void remove_sharer(std::size_t id) {
+    sharers_.erase(std::find(sharers_.begin(), sharers_.end(), id), sharers_.end());
+  }
+  void remove_all_sharers() { sharers_.clear(); }
+
+ private:
+  // Current state of the line
+  uint8_t state_;
+
+  // Current set of sharing agents
+  std::vector<std::size_t> sharers_;
+
+  // Current owner agent
+  std::optional<std::size_t> owner_;
+};
+
 #define AGENT_COMMANDS(__func)                  \
   __func(UpdateState)                           \
   __func(EmitGetS)                              \
@@ -108,6 +140,12 @@ SNOOP_FILTER_COMMANDS(__declare_state)
 
 const char * to_string(SnoopFilterCommand command);
 
+struct SnoopFilterCommandInvoker {
+  void invoke(const CoherentActorActions & actions,
+              Frontier & f, DirectoryEntry & d);
+ private:
+};
+
 #define COHERENT_ACTOR_RESULT(__func)           \
   __func(Advances)                              \
   __func(BlockedOnProtocol)                     \
@@ -144,6 +182,7 @@ struct CoherentActorActions {
   std::vector<uint8_t> actions_;
   std::size_t msgs_n_{0};
 };
+
 
 class CoherentActorBase {
  public:
