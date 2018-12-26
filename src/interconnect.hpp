@@ -51,8 +51,7 @@ struct FixedLatencyInterconnectModel : InterconnectModel {
   {}
  private:
   std::size_t cost(std::size_t src_id, std::size_t dst_id) override {
-    // Fixed latency between all ARCS.
-    return 10;
+    return latency_;
   }
   std::size_t latency_;
 };

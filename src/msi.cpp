@@ -27,6 +27,7 @@
 
 #include "msi.hpp"
 #include "message.hpp"
+#include "transaction.hpp"
 #include "common.hpp"
 #include <algorithm>
 
@@ -159,45 +160,51 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
   MsiCoherentAgentModelImpl(const CoherentAgentOptions & opts)
       : opts_(opts), cache_(opts.cache_options)
   {}
+
+  CoherentActorResult apply(const Transaction * t) {
+    ActionType action;
+    LineEntry line_entry;
+    switch (t->type()) {
+      case TransactionType::Load:
+        handle__Load(t, line_entry, action);
+        break;
+        
+      case TransactionType::Store:
+        handle__Store(t, line_entry, action);
+        break;
+    }
+    return {};
+  }
   
   CoherentActorResult apply(const Message * m) {
     CoherentActorResult ret;
+    ActionType actions;
+    LineEntry line_entry;
+    switch (m->type()) {
+      case MessageType::FwdGetS:
+        handle__FwdGetS(m, line_entry, actions);
+        break;
 
-    if (message_requires_eviction(m)) {
-      //
-    } else {
-      // Dispatch to handler
+      case MessageType::FwdGetM:
+        handle__FwdGetM(m, line_entry, actions);
+        break;
 
+      case MessageType::Inv:
+        handle__Inv(m, line_entry, actions);
+        break;
 
-      ActionType actions;
-      LineEntry line_entry;
-      switch (m->type()) {
-        case MessageType::FwdGetS:
-          handle__FwdGetS(m, line_entry, actions);
-          break;
+      case MessageType::PutS:
+      case MessageType::PutM:
+        handle__PutAck(m, line_entry, actions);
+        break;
 
-        case MessageType::FwdGetM:
-          handle__FwdGetM(m, line_entry, actions);
-          break;
+      case MessageType::Data:
+        handle__Data(m, line_entry, actions);
+        break;
 
-        case MessageType::Inv:
-          handle__Inv(m, line_entry, actions);
-          break;
-
-        case MessageType::PutS:
-        case MessageType::PutM:
-          handle__PutAck(m, line_entry, actions);
-          break;
-
-        case MessageType::Data:
-          handle__Data(m, line_entry, actions);
-          break;
-
-        default:
-          actions.set_error();
-      }
+      default:
+        actions.set_error();
     }
-    
     return ret;
   }
 
@@ -205,16 +212,13 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return false;
   }
 
-  /*
-  void handle__Load(const LoadCoherencyMessage * m, const LineEntry & line_entry,
-                    ActionType & a) {
-
+  void handle__Load(const Transaction * t, const LineEntry & line_entry, ActionType & a) {
     switch (line_entry.state()) {
       case MsiAgentLineState::I:
         a.add_action(MsiCoherentAgentAction::EmitGetS);
         a.set_next_state(MsiAgentLineState::IS_D);
+        [[fallthrough]];
         
-        // Fallthrough
       case MsiAgentLineState::IS_D:
       case MsiAgentLineState::IM_AD:
       case MsiAgentLineState::IM_A:
@@ -236,12 +240,12 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     }
   }
   
-  void handle__Store(const StoreCoherencyMessage * m, const LineEntry & line_entry,
-                     ActionType & a) {
+  void handle__Store(const Transaction * t, const LineEntry & line_entry, ActionType & a) {
     switch (line_entry.state()) {
       case MsiAgentLineState::I:
         a.add_action(MsiCoherentAgentAction::EmitGetM);
         a.set_next_state(MsiAgentLineState::IM_AD);
+        [[fallthrough]];
 
       case MsiAgentLineState::IS_D:
       case MsiAgentLineState::IM_AD:
@@ -267,7 +271,6 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         a.set_error();
     }
   }
-  */
 
   void handle__FwdGetS(const Message * m, const LineEntry & line_entry, ActionType & a) {
     switch (line_entry.state()) {
@@ -441,6 +444,10 @@ MsiCoherentAgentModel::MsiCoherentAgentModel(const CoherentAgentOptions & opts)
 }
 
 MsiCoherentAgentModel::~MsiCoherentAgentModel() {};
+
+CoherentActorResult MsiCoherentAgentModel::apply(const Transaction * t) {
+  return impl_->apply(t);
+}
 
 CoherentActorResult MsiCoherentAgentModel::apply(const Message * m) {
   return impl_->apply(m);
