@@ -226,7 +226,6 @@ class CoherentActorBase {
   virtual ~CoherentActorBase() {}
   
   virtual Protocol protocol() const = 0;
-  virtual CoherentActorActions get_actions(const Message * m) = 0;
 };
 
 class CoherentAgentModel : public CoherentActorBase {
@@ -244,6 +243,9 @@ std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
 class SnoopFilterModel : public CoherentActorBase {
  public:
   SnoopFilterModel(const SnoopFilterOptions & opts);
+
+  virtual CoherentActorActions get_actions(
+      const Message * t, const DirectoryEntry & dir_entry) = 0;
 };
 
 std::unique_ptr<SnoopFilterModel> snoop_filter_factory(

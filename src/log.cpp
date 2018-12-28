@@ -25,30 +25,55 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "ccm.hpp"
-#include <gtest/gtest.h>
+#include "log.hpp"
 
-TEST(MSI, Load) {
-  Logger l;
-  
-  ccm::Sim s;
+namespace ccm {
 
-  std::vector<ccm::Agent *> agents_;
-  for (std::size_t i = 0; i < 4; i++) {
-    const ccm::AgentOptions opts(i, ccm::Protocol::MSI);
-    agents_.push_back(new ccm::Agent(opts));
-    s.add_actor(agents_.back());
+const char * to_string(LogLevel ll) {
+  switch (ll) {
+#define __declare_to_string(__level)            \
+    case LogLevel::__level: return #__level; break;
+  LOGLEVELS(__declare_to_string)
+#undef __declare_to_string
+  default: return "Unknown";
   }
-
-  ccm::Transaction * t = new ccm::Transaction{0};
-  agents_[0]->add_transaction(10, t);
-
-  const ccm::SnoopFilterOptions opts(4, ccm::Protocol::MSI);
-  s.add_actor(new ccm::SnoopFilter(opts));
-  s.run();
 }
 
-int main(int argc, char ** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+const char LoggerScope::SEP = '.';
+
+Logger::Logger() {
 }
+
+Logger::~Logger() {
+  os_.flush();
+}
+
+LoggerScope * Logger::top() {
+  if (top_)
+    top_ = std::unique_ptr<LoggerScope>(new LoggerScope("t", this));
+
+  return top_.get();
+}
+
+LoggerScope::LoggerScope (const std::string & s, Logger * logger) {
+}
+  
+LoggerScope * LoggerScope::child_scope(const std::string & leaf) {
+  if (scopes_.find(leaf) == scopes_.end()) {
+    std::stringstream ss;
+    ss << path() << LoggerScope::SEP << leaf;
+    scopes_[leaf] = std::unique_ptr<LoggerScope>(
+        new LoggerScope(ss.str(), logger()));
+  }
+  return scopes_[leaf].get();
+}
+
+void Logger::log(const LogLevel ll, const std::string & s) {
+  os_ << s << "\n";
+}
+
+void Logger::log(const LogLevel ll, const char * s) {
+  os_ << s << "\n";
+}
+
+} // namespace ccm

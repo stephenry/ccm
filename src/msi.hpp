@@ -60,7 +60,8 @@ class MsiSnoopFilterModel : public SnoopFilterModel {
   Protocol protocol() const override { return Protocol::MSI; }
 
   //
-  CoherentActorActions get_actions(const Message * m) override;
+  CoherentActorActions get_actions(
+      const Message * m, const DirectoryEntry & dir_entry) override;
 
  private:
   struct MsiSnoopFilterModelImpl;

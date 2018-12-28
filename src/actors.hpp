@@ -51,7 +51,7 @@ struct ActorOptions {
   CacheOptions cache_options_;
 };
 
-struct CoherentActor {
+struct CoherentActor : Loggable {
   CoherentActor(const ActorOptions & opts)
       : opts_(opts), time_(0)
   {}

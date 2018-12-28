@@ -33,4 +33,5 @@ add_library(ccm STATIC
   utility.cpp
   interconnect.cpp
   message.cpp
+  log.cpp
   )

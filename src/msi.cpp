@@ -399,48 +399,32 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
       : opts_(opts), cache_(opts.cache_options())
   {}
   
-  CoherentActorActions get_actions(const Message * m) {
+  CoherentActorActions get_actions(
+      const Message * m, const DirectoryEntry & dir_entry) {
     CoherentActorActions actions;
-    if (message_requires_recall(m)) {
-
-    } else {
-
-      CCM_ASSERT(cache_.is_hit(m->addr()));
-
-      DirectoryEntry & dir_entry = cache_.entry(m->addr());
-
-      switch (m->type()) {
-        case MessageType::GetS:
-          handle__GetS(m, dir_entry, actions);
-          break;
+    switch (m->type()) {
+      case MessageType::GetS:
+        handle__GetS(m, dir_entry, actions);
+        break;
           
-        case MessageType::GetM:
-          handle__GetM(m, dir_entry, actions);
-          break;
+      case MessageType::GetM:
+        handle__GetM(m, dir_entry, actions);
+        break;
           
-        case MessageType::PutS:
-          handle__PutS(m, dir_entry, actions);
-          break;
+      case MessageType::PutS:
+        handle__PutS(m, dir_entry, actions);
+        break;
           
-        case MessageType::PutM:
-          handle__PutM(m, dir_entry, actions);
-          break;
+      case MessageType::PutM:
+        handle__PutM(m, dir_entry, actions);
+        break;
           
-        case MessageType::Data:
-          handle__Data(m, dir_entry, actions);
-          break;
+      case MessageType::Data:
+        handle__Data(m, dir_entry, actions);
+        break;
           
-        default:
-          actions.set_error();
-      }
-      CCM_ASSERT(!actions.error());
-
-      // if (!actions.stall()) {
-      //   ret.set_status(CoherentActorResultStatus::BlockedOnProtocol);
-      //   return ret;
-      // }
-
-      // ret.set_status(CoherentActorResultStatus::Advances);
+      default:
+        actions.set_error();
     }
     return actions;
   }
@@ -607,8 +591,9 @@ MsiSnoopFilterModel::MsiSnoopFilterModel(const SnoopFilterOptions & opts)
 
 MsiSnoopFilterModel::~MsiSnoopFilterModel() {}
 
-CoherentActorActions MsiSnoopFilterModel::get_actions(const Message * m) {
-  return impl_->get_actions(m);
+CoherentActorActions MsiSnoopFilterModel::get_actions(
+    const Message * m, const DirectoryEntry & dir_entry) {
+  return impl_->get_actions(m, dir_entry);
 }
 
 } // namespace ccm
