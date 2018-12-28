@@ -44,9 +44,11 @@ struct ActorOptions {
   {}
   std::size_t id() const { return id_; }
   Protocol protocol() const { return protocol_; }
+  CacheOptions cache_options() const { return cache_options_; }
  private:
   std::size_t id_;
   Protocol protocol_;
+  CacheOptions cache_options_;
 };
 
 struct CoherentActor {
@@ -73,16 +75,10 @@ struct AgentOptions : ActorOptions {
   AgentOptions(std::size_t id, Protocol protocol)
       : ActorOptions(id, protocol)
   {}
-  CacheOptions cache_options() const { return cache_options_; }
- private:
-  CacheOptions cache_options_;
 };
 
 struct Agent : CoherentActor {
-  Agent(const AgentOptions & opts)
-      : CoherentActor(opts), opts_(opts), invoker_(opts) {
-    cc_model_ = coherent_agent_factory(opts);
-  }
+  Agent(const AgentOptions & opts);
 
   void add_transaction(std::size_t time, Transaction * t);
 
@@ -113,27 +109,23 @@ struct Agent : CoherentActor {
   CoherentAgentCommandInvoker invoker_;
 };
 
-struct SnoopFilterActorOptions : ActorOptions {
-  SnoopFilterActorOptions(std::size_t id, Protocol protocol)
+struct SnoopFilterOptions : ActorOptions {
+  SnoopFilterOptions(std::size_t id, Protocol protocol)
       : ActorOptions(id, protocol)
   {}
 };
 
 struct SnoopFilter : CoherentActor {
-  SnoopFilter(const SnoopFilterActorOptions & opts)
-      : CoherentActor(opts), opts_(opts)
-  {}
-
+  SnoopFilter(const SnoopFilterOptions & opts);
+  
+  bool is_active() const override { return !pending_messages_.empty(); }
   void apply(std::size_t t, const Message * m) override;
-  
   bool eval(Frontier & f) override;
-  
-  bool is_active() const override {
-    return !pending_messages_.empty();
-  }
  private:
-  const SnoopFilterActorOptions & opts_;
   Heap<TimeStamped<const Message *> > pending_messages_;
+  std::unique_ptr<SnoopFilterModel> cc_model_;
+  SnoopFilterCommandInvoker invoker_;
+  const SnoopFilterOptions & opts_;
 };
 
 } // namespace ccm

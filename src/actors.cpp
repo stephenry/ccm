@@ -30,6 +30,11 @@
 
 namespace ccm {
 
+Agent::Agent(const AgentOptions & opts)
+    : CoherentActor(opts), opts_(opts), invoker_(opts) {
+  cc_model_ = coherent_agent_factory(opts);
+}
+
 void Agent::add_transaction(std::size_t time, Transaction * t) {
   pending_transactions_.push(make_time_stamped(time, t));
 }
@@ -51,7 +56,7 @@ bool Agent::eval(Frontier & f) {
       set_time(head.time());
 
       const CoherentActorActions actions = cc_model_->get_actions(head.t());
-      const bool do_commit = false;
+      const bool do_commit = true;
 
       if (do_commit) {
         invoker_.set_time(time());
@@ -65,6 +70,11 @@ bool Agent::eval(Frontier & f) {
   return is_active();
 }
 
+SnoopFilter::SnoopFilter(const SnoopFilterOptions & opts)
+    : CoherentActor(opts), opts_(opts), invoker_(opts) {
+  cc_model_ = snoop_filter_factory(opts);
+}
+
 void SnoopFilter::apply(std::size_t t, const Message * m) {
   pending_messages_.push(make_time_stamped(t, m));
 }
@@ -75,6 +85,14 @@ bool SnoopFilter::eval(Frontier & f) {
     TimeStamped<const Message *> head;
     while (pending_messages_.pop(head)) {
       set_time(head.time());
+
+      const CoherentActorActions actions = cc_model_->get_actions(head.t());
+      const bool do_commit = true;
+      if (do_commit) {
+        invoker_.set_time(time());
+        DirectoryEntry dir_entry; // TODO: cache lookup
+        invoker_.invoke(actions, head.t(), f, dir_entry);
+      }
       
       std::cout << time() << " SnoopFilter: Received something\n";
     }

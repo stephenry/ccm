@@ -38,6 +38,7 @@ namespace ccm {
 class Message;
 class Transaction;
 class AgentOptions;
+class SnoopFilterOptions;
 class Frontier;
 class CoherentActorActions;
 
@@ -66,7 +67,7 @@ struct DirectoryEntry {
   void remove_sharer(std::size_t id) {
     sharers_.erase(std::find(sharers_.begin(), sharers_.end(), id), sharers_.end());
   }
-  void remove_all_sharers() { sharers_.clear(); }
+  void clear_sharers() { sharers_.clear(); }
 
  private:
   // Current state of the line
@@ -141,9 +142,44 @@ SNOOP_FILTER_COMMANDS(__declare_state)
 const char * to_string(SnoopFilterCommand command);
 
 struct SnoopFilterCommandInvoker {
+  SnoopFilterCommandInvoker(const SnoopFilterOptions & opts);
+  
+  std::size_t time() const { return time_; }
+
   void invoke(const CoherentActorActions & actions,
-              Frontier & f, DirectoryEntry & d);
- private:
+              const Message * msg, Frontier & f, DirectoryEntry & d);
+  void set_time(std::size_t time) { time_ = time; }
+private:
+  void handle_update_state(
+      const Message * msg, const CoherentActorActions & a, Frontier & f, DirectoryEntry & d);
+  void handle_set_owner_to_req(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void handle_send_data_to_req(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void handle_send_inv_to_sharers(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void handle_clear_sharers(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void handle_add_req_to_sharers(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void handle_del_req_from_sharers(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void handle_del_owner(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void handle_add_owner_to_sharers(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void handle_cpy_data_to_memory(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void handle_send_put_sack_to_req(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void handle_send_put_mack_to_req(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void handle_send_fwd_gets_to_owner(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+
+  MessageDirector msgd_;
+  std::size_t id_;
+  std::size_t time_;
 };
 
 #define COHERENT_ACTOR_RESULT(__func)           \
@@ -205,27 +241,12 @@ class CoherentAgentModel : public CoherentActorBase {
 std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
     const AgentOptions & opts);
 
-struct SnoopFilterOptions {
-  SnoopFilterOptions(std::size_t id)
-      : id_(id)
-  {}
-
-  std::size_t id() const { return id_; }
-  
-  CacheOptions cache_options;
-
-  std::size_t id_;
-
-  std::size_t num_agents{1};
-};
-
 class SnoopFilterModel : public CoherentActorBase {
  public:
   SnoopFilterModel(const SnoopFilterOptions & opts);
 };
 
 std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
-    Protocol protocol, 
     const SnoopFilterOptions & opts);
 
 } // namespace ccm

@@ -396,7 +396,7 @@ const char * to_string(MsiDirectoryLineState s) {
 struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   
   MsiSnoopFilterModelImpl(const SnoopFilterOptions & opts)
-      : opts_(opts), cache_(opts.cache_options)
+      : opts_(opts), cache_(opts.cache_options())
   {}
   
   CoherentActorActions get_actions(const Message * m) {
@@ -447,7 +447,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
  private:
   
   void handle__GetS(const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
-    switch (dir_entry.state()) {
+    switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
       case MsiDirectoryLineState::I:
         a.add_action(SnoopFilterCommand::SendDataToReq);
         a.add_action(SnoopFilterCommand::AddReqToSharers);
@@ -474,7 +474,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   }
 
   void handle__GetM(const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
-    switch (dir_entry.state()) {
+    switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
       case MsiDirectoryLineState::I:
         a.add_action(SnoopFilterCommand::SendDataToReq);
         a.add_action(SnoopFilterCommand::SetOwnerToReq);
@@ -501,7 +501,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
 
   void handle__PutS(const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
     const bool is_last = false; // TODO
-    switch (dir_entry.state()) {
+    switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
       case MsiDirectoryLineState::I:
         a.add_action(SnoopFilterCommand::SendPutSAckToReq);
         break;
@@ -528,7 +528,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
 
   void handle__PutM(const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
     const bool is_data_from_owner = false;
-    switch (dir_entry.state()) {
+    switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
       case MsiDirectoryLineState::I:
         if (!is_data_from_owner) {
           a.add_action(SnoopFilterCommand::SendPutMAckToReq);
@@ -561,7 +561,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   }
 
   void handle__Data(const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
-    switch (dir_entry.state()) {
+    switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
       case MsiDirectoryLineState::S_D:
         a.add_action(SnoopFilterCommand::CpyDataToMemory);
         a.add_action(SnoopFilterCommand::UpdateState);

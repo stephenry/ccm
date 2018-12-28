@@ -26,6 +26,7 @@
 //========================================================================== //
 
 #include "coherence.hpp"
+#include "common.hpp"
 #include "actors.hpp"
 #include "sim.hpp"
 #include "msi.hpp"
@@ -41,6 +42,7 @@ const char * to_string(CoherentAgentCommand command) {
     default: return "<Invalid Line State>";
   }
 }
+
 CoherentAgentCommandInvoker::CoherentAgentCommandInvoker(
     const AgentOptions & opts) : msgd_(opts) {
   id_ = opts.id();
@@ -126,52 +128,164 @@ const char * to_string(SnoopFilterCommand command) {
   }
 }
 
+SnoopFilterCommandInvoker::SnoopFilterCommandInvoker(
+    const SnoopFilterOptions & opts) : msgd_(opts) {
+  id_ = opts.id();
+}
+
 void SnoopFilterCommandInvoker::invoke(
-    const CoherentActorActions & actions, Frontier & f, DirectoryEntry & d) {
+    const CoherentActorActions & actions,
+    const Message * msg, Frontier & f, DirectoryEntry & d) {
 
   for (const uint8_t cmd : actions.actions()) {
 
     switch (static_cast<SnoopFilterCommand>(cmd)) {
       case SnoopFilterCommand::UpdateState:
+        handle_update_state(msg, actions, f, d);
         break;
 
       case SnoopFilterCommand::SetOwnerToReq:
+        handle_set_owner_to_req(msg, f, d);
         break;
 
       case SnoopFilterCommand::SendDataToReq:
+        handle_send_data_to_req(msg, f, d);
         break;
 
       case SnoopFilterCommand::SendInvToSharers:
+        handle_send_inv_to_sharers(msg, f, d);
         break;
 
       case SnoopFilterCommand::ClearSharers:
+        handle_clear_sharers(msg, f, d);
         break;
 
       case SnoopFilterCommand::AddReqToSharers:
+        handle_add_req_to_sharers(msg, f, d);
         break;
 
       case SnoopFilterCommand::DelReqFromSharers:
+        handle_del_req_from_sharers(msg, f, d);
         break;
 
       case SnoopFilterCommand::DelOwner:
+        handle_del_owner(msg, f, d);
         break;
 
       case SnoopFilterCommand::AddOwnerToSharers:
+        handle_add_owner_to_sharers(msg, f, d);
         break;
 
       case SnoopFilterCommand::CpyDataToMemory:
+        handle_cpy_data_to_memory(msg, f, d);
         break;
 
       case SnoopFilterCommand::SendPutSAckToReq:
+        handle_send_put_sack_to_req(msg, f, d);
         break;
 
       case SnoopFilterCommand::SendPutMAckToReq:
+        handle_send_put_mack_to_req(msg, f, d);
         break;
 
       case SnoopFilterCommand::SendFwdGetSToOwner:
+        handle_send_fwd_gets_to_owner(msg, f, d);
         break;
     }
   }
+}
+
+void SnoopFilterCommandInvoker::handle_update_state(
+    const Message * msg, const CoherentActorActions & a,
+    Frontier & f, DirectoryEntry & d) {
+  CCM_ASSERT(a.has_state_update());
+  d.set_state(a.next_state());
+}
+
+void SnoopFilterCommandInvoker::handle_set_owner_to_req(
+    const Message * msg, Frontier & f, DirectoryEntry & d) {
+  d.set_owner(msg->src_id());
+}
+
+void SnoopFilterCommandInvoker::handle_send_data_to_req(
+    const Message * msg, Frontier & f, DirectoryEntry & d) {
+  MessageBuilder b = msgd_.builder();
+  b.set_type(MessageType::Data);
+  b.set_dst_id(msg->src_id());
+  b.set_tid(msg->tid());
+  f.add_to_frontier(1 + time(), b.msg());
+}
+
+void SnoopFilterCommandInvoker::handle_send_inv_to_sharers(
+    const Message * msg, Frontier & f, DirectoryEntry & d) {
+  std::size_t time_start = 1 + time();
+  MessageBuilder b = msgd_.builder();
+  for (std::size_t sharer : d.sharers()) {
+    b.set_type(MessageType::Inv);
+    b.set_dst_id(sharer);
+    b.set_tid(msg->tid());
+    f.add_to_frontier(time_start++, b.msg());
+  }
+}
+
+void SnoopFilterCommandInvoker::handle_clear_sharers(
+    const Message * msg, Frontier & f, DirectoryEntry & d) {
+  d.clear_sharers();
+}
+
+void SnoopFilterCommandInvoker::handle_add_req_to_sharers(
+    const Message * msg, Frontier & f, DirectoryEntry & d) {
+  d.add_sharer(msg->src_id());
+}
+
+void SnoopFilterCommandInvoker::handle_del_req_from_sharers(
+    const Message * msg, Frontier & f, DirectoryEntry & d) {
+  d.remove_sharer(msg->src_id());
+}
+
+void SnoopFilterCommandInvoker::handle_del_owner(
+    const Message * msg, Frontier & f, DirectoryEntry & d) {
+  d.clear_owner();
+}
+
+void SnoopFilterCommandInvoker::handle_add_owner_to_sharers(
+    const Message * msg, Frontier & f, DirectoryEntry & d) {
+  d.add_sharer(d.owner());
+}
+
+void SnoopFilterCommandInvoker::handle_cpy_data_to_memory(
+    const Message * msg, Frontier & f, DirectoryEntry & d) {
+  // NOP
+}
+
+void SnoopFilterCommandInvoker::handle_send_put_sack_to_req(
+    const Message * msg, Frontier & f, DirectoryEntry & d) {
+  MessageBuilder b = msgd_.builder();
+  b.set_type(MessageType::PutS);
+  b.set_dst_id(msg->src_id());
+  b.set_tid(msg->tid());
+  b.set_is_ack(true);
+  f.add_to_frontier(1 + time(), b.msg());
+}
+
+void SnoopFilterCommandInvoker::handle_send_put_mack_to_req(
+    const Message * msg, Frontier & f, DirectoryEntry & d) {
+  MessageBuilder b = msgd_.builder();
+  b.set_type(MessageType::PutM);
+  b.set_dst_id(msg->src_id());
+  b.set_tid(msg->tid());
+  b.set_is_ack(true);
+  f.add_to_frontier(1 + time(), b.msg());
+}
+
+void SnoopFilterCommandInvoker::handle_send_fwd_gets_to_owner(
+    const Message * msg, Frontier & f, DirectoryEntry & d) {
+  MessageBuilder b = msgd_.builder();
+  b.set_type(MessageType::FwdGetS);
+  b.set_dst_id(d.owner());
+  b.set_tid(msg->tid());
+  b.set_is_ack(true);
+  f.add_to_frontier(1 + time(), b.msg());
 }
 
 const char * to_string(EvictionPolicy p) {
@@ -205,9 +319,9 @@ CoherentAgentModel::CoherentAgentModel(const AgentOptions & opts) {}
 SnoopFilterModel::SnoopFilterModel(const SnoopFilterOptions & opts) {}
 
 std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
-    Protocol protocol, const SnoopFilterOptions & opts) {
+    const SnoopFilterOptions & opts) {
 
-  switch (protocol) {
+  switch (opts.protocol()) {
     case Protocol::MSI:
       return std::make_unique<MsiSnoopFilterModel>(opts);
       break;
@@ -222,4 +336,3 @@ std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
 
 
 } // namespace ccm
-

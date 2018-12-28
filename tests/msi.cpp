@@ -41,7 +41,7 @@ TEST(MSI, Load) {
   ccm::Transaction * t = new ccm::Transaction{0};
   agents_[0]->add_transaction(10, t);
 
-  const ccm::SnoopFilterActorOptions opts(4, ccm::Protocol::MSI);
+  const ccm::SnoopFilterOptions opts(4, ccm::Protocol::MSI);
   s.add_actor(new ccm::SnoopFilter(opts));
   s.run();
 }
