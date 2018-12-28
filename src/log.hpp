@@ -37,11 +37,11 @@
 namespace ccm {
 
 #define LOGLEVELS(__func)                       \
-  __func(Debug)                                 \
-  __func(Info)                                  \
-  __func(Warning)                               \
-  __func(Error)                                 \
-  __func(Fatal)
+  __func(debug)                                 \
+  __func(info)                                  \
+  __func(warning)                               \
+  __func(error)                                 \
+  __func(fatal)
 
 enum class LogLevel {
 #define __declare_level(__level) __level,
@@ -61,14 +61,15 @@ class Logger {
   ~Logger();
 
   LoggerScope * top();
+  void set_force_flush(bool force_flush = true) { force_flush_ = force_flush; }
 
  private:
   void log(const LogLevel ll, const std::string & s);
   void log(const LogLevel ll, const char * s);
 
   std::ostream & os_{std::cout};
-
-  std::unique_ptr<LoggerScope> top_;
+  std::unique_ptr<LoggerScope> top_{nullptr};
+  bool force_flush_;
 };
 
 class LoggerScope {
@@ -96,7 +97,7 @@ class LoggerScope {
 
 class Loggable {
  public:
-  void set_scope(LoggerScope * scope) { scope_ = scope; }
+  void set_logger_scope(LoggerScope * scope) { scope_ = scope; }
 
 #define __declare_handler(__level)                              \
   template<typename ... ARGS>                                   \
@@ -108,6 +109,16 @@ class Loggable {
 
  private:
 
+  template<typename ARG>
+  void log_helper(std::ostream & os, ARG arg) {
+    os << arg;
+  }
+
+  template<typename ARG, typename ... ARGS>
+  void log_helper(std::ostream & os, ARG arg, ARGS && ... args) {
+    log_helper(os << arg, std::forward<ARGS>(args)...);
+  }
+
   template<typename ... ARGS>
   void log(LogLevel ll, ARGS && ... args) {
     if (scope_) {
@@ -116,18 +127,8 @@ class Loggable {
       scope_->log(ll, ss.str());
     }
   }  
-
-  template<typename ARG, typename ... ARGS>
-  void log_helper(std::ostream & os, ARG && arg, ARGS && ...args) {
-    log_helper(os << arg, std::forward<ARGS>(args)...);
-  }
-
-  template<typename ARG, typename ARGS>
-  void log_helper(std::ostream & os, ARG && arg) {
-    os << arg;
-  }
   
-  LoggerScope * scope_;
+  LoggerScope * scope_{nullptr};
 };
 
 } // namespace ccm

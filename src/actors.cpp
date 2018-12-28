@@ -32,6 +32,7 @@ namespace ccm {
 
 Agent::Agent(const AgentOptions & opts)
     : CoherentActor(opts), opts_(opts), invoker_(opts) {
+  set_logger_scope(opts.logger_scope());
   cc_model_ = coherent_agent_factory(opts);
 }
 
@@ -63,8 +64,7 @@ bool Agent::eval(Frontier & f) {
         invoker_.invoke(f, actions);
         set_time(invoker_.time());
       }
-        
-      std::cout << time() << " SnoopActor: Sending something\n";
+      log_debug("SnoopActor: Sending something");
     }
   }
   return is_active();
@@ -72,6 +72,7 @@ bool Agent::eval(Frontier & f) {
 
 SnoopFilter::SnoopFilter(const SnoopFilterOptions & opts)
     : CoherentActor(opts), opts_(opts), invoker_(opts) {
+  set_logger_scope(opts.logger_scope());
   cc_model_ = snoop_filter_factory(opts);
 }
 
@@ -95,7 +96,7 @@ bool SnoopFilter::eval(Frontier & f) {
         invoker_.invoke(actions, head.t(), f, dir_entry);
       }
       
-      std::cout << time() << " SnoopFilter: Received something\n";
+      log_debug("SnoopFilter: Received something");
     }
   }
   return is_active();

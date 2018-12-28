@@ -49,31 +49,35 @@ Logger::~Logger() {
 }
 
 LoggerScope * Logger::top() {
-  if (top_)
+  if (!top_)
     top_ = std::unique_ptr<LoggerScope>(new LoggerScope("t", this));
 
   return top_.get();
 }
 
-LoggerScope::LoggerScope (const std::string & s, Logger * logger) {
-}
+LoggerScope::LoggerScope (const std::string & path, Logger * logger)
+    : path_(path), logger_(logger)
+{}
   
 LoggerScope * LoggerScope::child_scope(const std::string & leaf) {
   if (scopes_.find(leaf) == scopes_.end()) {
     std::stringstream ss;
     ss << path() << LoggerScope::SEP << leaf;
-    scopes_[leaf] = std::unique_ptr<LoggerScope>(
-        new LoggerScope(ss.str(), logger()));
+    scopes_[leaf] = std::unique_ptr<LoggerScope>(new LoggerScope(ss.str(), logger()));
   }
   return scopes_[leaf].get();
 }
 
 void Logger::log(const LogLevel ll, const std::string & s) {
   os_ << s << "\n";
+  if (force_flush_)
+    os_.flush();
 }
 
 void Logger::log(const LogLevel ll, const char * s) {
   os_ << s << "\n";
+  if (force_flush_)
+    os_.flush();
 }
 
 } // namespace ccm

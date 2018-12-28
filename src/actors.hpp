@@ -45,10 +45,16 @@ struct ActorOptions {
   std::size_t id() const { return id_; }
   Protocol protocol() const { return protocol_; }
   CacheOptions cache_options() const { return cache_options_; }
+  LoggerScope * logger_scope() const { return logger_scope_; }
+
+  void set_logger_scope(LoggerScope * logger_scope) {
+    logger_scope_ = logger_scope;
+  }
  private:
   std::size_t id_;
   Protocol protocol_;
   CacheOptions cache_options_;
+  LoggerScope * logger_scope_;
 };
 
 struct CoherentActor : Loggable {
@@ -67,8 +73,8 @@ struct CoherentActor : Loggable {
   void set_time(std::size_t time) { time_ = time; }
   
  private:
-  std::size_t time_;
   const ActorOptions & opts_;
+  std::size_t time_;
 };
 
 struct AgentOptions : ActorOptions {

@@ -29,13 +29,21 @@
 #include <gtest/gtest.h>
 
 TEST(MSI, Load) {
-  Logger l;
+  ccm::Logger l;
+  l.set_force_flush(true);
+
+  ccm::LoggerScope * top = l.top();
   
   ccm::Sim s;
 
   std::vector<ccm::Agent *> agents_;
   for (std::size_t i = 0; i < 4; i++) {
-    const ccm::AgentOptions opts(i, ccm::Protocol::MSI);
+    ccm::AgentOptions opts(i, ccm::Protocol::MSI);
+
+    std::stringstream ss;
+    ss << "Agent" << i;
+    opts.set_logger_scope(top->child_scope(ss.str()));
+    
     agents_.push_back(new ccm::Agent(opts));
     s.add_actor(agents_.back());
   }
@@ -43,7 +51,8 @@ TEST(MSI, Load) {
   ccm::Transaction * t = new ccm::Transaction{0};
   agents_[0]->add_transaction(10, t);
 
-  const ccm::SnoopFilterOptions opts(4, ccm::Protocol::MSI);
+  ccm::SnoopFilterOptions opts(4, ccm::Protocol::MSI);
+  opts.set_logger_scope(top->child_scope("SnoopFilter"));
   s.add_actor(new ccm::SnoopFilter(opts));
   s.run();
 }
