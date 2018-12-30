@@ -94,23 +94,27 @@ void CoherentAgentCommandInvoker::execute_update_state(
 }
 
 void CoherentAgentCommandInvoker::execute_emit_gets(Frontier & f) {
-  log_debug("Emit GetS.");
-  
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::GetS);
   b.set_dst_id(4);
   b.set_tid(1);
-  f.add_to_frontier(1 + time(), b.msg());
+
+  const Message * msg = b.msg();
+  f.add_to_frontier(1 + time(), msg);
+
+  log_debug("Emit GetS: ", to_string(*msg));
 }
 
 void CoherentAgentCommandInvoker::execute_emit_getm(Frontier & f) {
-  log_debug("Emit GetM.");
-
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::GetM);
   b.set_dst_id(4);
   b.set_tid(1);
-  f.add_to_frontier(1 + time(), b.msg());
+
+  const Message * msg = b.msg();
+  f.add_to_frontier(1 + time(), msg);
+
+  log_debug("Emit GetM: ", to_string(*msg));
 }
 
 void CoherentAgentCommandInvoker::execute_emit_data_to_req(Frontier & f) {
@@ -254,9 +258,11 @@ void SnoopFilterCommandInvoker::execute_send_data_to_req(
   b.set_type(MessageType::Data);
   b.set_dst_id(msg->src_id());
   b.set_tid(msg->tid());
+
   const Message * m = b.msg();
   f.add_to_frontier(1 + time(), m);
-  log_debug("Send Data to Requester: ", m->to_string());
+  
+  log_debug("Send Data to Requester: ", to_string(*m));
 }
 
 void SnoopFilterCommandInvoker::execute_send_inv_to_sharers(

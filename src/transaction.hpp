@@ -39,6 +39,9 @@ enum class TransactionType {
 
 class Transaction {
  public:
+  using tid_type = std::size_t;
+
+  
   Transaction(uint64_t addr, TransactionType type = TransactionType::Load)
       : addr_(addr), type_(type)
   {}
@@ -46,7 +49,7 @@ class Transaction {
   //
   TransactionType type() const { return type_; }
   uint64_t addr() const { return addr_; }
-  std::size_t tid() const { return tid_; }
+  tid_type tid() const { return tid_; }
 
   //
   void set_tid(std::size_t tid) { tid_ = tid; }
@@ -54,7 +57,7 @@ class Transaction {
  private:
   TransactionType type_;
   uint64_t addr_;
-  std::size_t tid_;
+  tid_type tid_;
 };
 
 struct TransactionTable {

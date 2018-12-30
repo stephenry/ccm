@@ -25,64 +25,50 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __SRC_SIM_HPP__
-#define __SRC_SIM_HPP__
-
-#include "utility.hpp"
-#include "message.hpp"
-#include "transaction.hpp"
-#include "actors.hpp"
-#include "interconnect.hpp"
-#include <vector>
-#include <map>
+#include "sim.hpp"
 
 namespace ccm {
 
-class Frontier {
- public:
+void Sim::add_actor(CoherentActor * a) {
+  actors_.insert(std::make_pair(a->id(), a));
+}
 
-  std::vector<TimeStamped<const Message *>> & ts() { return msgs_.ts(); }
+void Sim::run() {
+  FixedLatencyInterconnectModel interconnect_model{10};
 
-  void add_to_frontier(std::size_t t, const Message * msg) {
-    msgs_.push(make_time_stamped(t, msg));
+  Frontier f;
+  while (has_active_actors()) {
+
+    // Evaluate all actors in the platform
+    //
+    for (auto [t, actor] : actors_)
+      actor->eval(f);
+
+    // Forward all resultant transaction to target actors.
+    //
+    if (f.pending_transactions()) {
+      interconnect_model.apply(f);
+ 
+      TimeStamped<const Message *> head;
+      while (f.pop(head)) {
+        set_time(head.time());
+          
+        const Message * t = head.t();
+        actors_[t->dst_id()]->apply(time(), t);
+        t->release();
+      }
+      f.clear();
+    }
   }
+  // All actors are inactive
+}
 
-  bool pending_transactions() const {
-    return !msgs_.empty();
+bool Sim::has_active_actors() const {
+  for (auto [t, actor] : actors_) {
+    if (actor->is_active())
+      return true;
   }
-
-  bool pop(TimeStamped<const Message *> & msg) {
-    return msgs_.pop(msg);
-  }
-
-  void clear() { msgs_.clear(); }
-
-  void heapify() {
-    msgs_.heapify();
-  }
-
- private:
-  Heap<TimeStamped<const Message *> > msgs_;
-};
-
-struct Sim {
-
-  Sim() : time_(0) {}
-
-  void add_actor(CoherentActor * a);
-
-  void run();
-
- private:
-  void set_time(std::size_t time) { time_ = time; }
-  std::size_t time() const { return time_; }
-  
-  bool has_active_actors() const;
-
-  std::size_t time_;
-  std::map<std::size_t, CoherentActor *> actors_;
-};
+  return false;
+}
 
 } // namespace ccm
-
-#endif

@@ -198,34 +198,32 @@ std::string join(FwdIt begin, FwdIt end, const char * SEP = ", ") {
     ss << *begin; ++begin;
 
     while (begin != end) {
-      ss << *SEP << *begin; ++begin;
+      ss << SEP << *begin; ++begin;
     }
   }
   return ss.str();
 }
 
+const char * to_string(bool b);
+
 class StructRenderer {
  public:
   StructRenderer() {}
 
-  template<typename VALUE>
-  void add(const std::string & k, const VALUE & v) {
-  }
-
-  void add(const std::string & k, bool v) {
-    add(k, v ? "true" : "false");
-  }
-
-  void add(const char * k, const char * v) {
+  void add(const std::string & k, const std::string & v) {
     vs_.push_back(join(k, v));
   }
 
   std::string str() const {
     std::stringstream ss;
-    ss << "'{" << join(vs_.begin(), vs_.end()) << "}";
+    ss << "'{" << ::ccm::join(vs_.begin(), vs_.end()) << "}";
     return ss.str();
   }
  private:
+  std::string join(const std::string & k, const std::string & v) const {
+    return k + ":" + v;
+  }
+  
   std::vector<std::string> vs_;
 };
 

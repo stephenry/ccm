@@ -58,8 +58,6 @@ struct Message : ccm::Poolable {
 
   Message() : type_(MessageType::Invalid) {}
 
-  std::string to_string() const;
-
   MessageType type() const { return type_; }
   std::size_t src_id() const { return src_id_; }
   std::size_t dst_id() const { return dst_id_; }
@@ -84,6 +82,8 @@ struct Message : ccm::Poolable {
   uint64_t addr_;
   bool is_ack_;
 };
+
+std::string to_string(const Message & m);
 
 class MessageBuilder {
  public:

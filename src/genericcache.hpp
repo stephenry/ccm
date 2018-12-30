@@ -33,6 +33,7 @@
 #include <vector>
 #include <algorithm>
 #include <unordered_map>
+#include <stdexcept>
 
 namespace ccm {
 
@@ -108,10 +109,9 @@ class GenericCache {
 
   virtual bool is_hit(addr_t addr) const = 0;
 
-  virtual bool lookup(addr_t addr, T & t) = 0;
-  virtual bool lookup(addr_t addr, T t) const = 0;
+  virtual T & lookup(addr_t addr) = 0;
 
-  virtual bool install(addr_t addr, const T & t) = 0;
+  virtual void install(addr_t addr, const T & t) = 0;
   virtual bool evict(addr_t addr) = 0;
   
  private:
@@ -129,27 +129,15 @@ class FullyAssociativeCache : public GenericCache<T> {
     return (cache_.find(addr) != cache_.end());
   }
 
-  bool lookup(addr_t addr, T & t) override {
-    auto it = cache_.find(addr);
-    const bool found = (it != cache_.end());
-    if (found)
-      t = it->second;
-    return found;
-  }
-  
-  bool lookup(addr_t addr, T t) const override {
-    auto it = cache_.find(addr);
-    const bool found = (it != cache_.end());
-    if (found)
-      t = it->second;
-    return found;
+  T & lookup(addr_t addr) override {
+    if (!is_hit(addr))
+      throw std::domain_error("Address is not present in cache.");
+    
+    return cache_[addr];
   }
 
-  bool install(addr_t addr, const T & t) override {
-    const bool found = is_hit(addr);
-    if (found)
-      cache_.insert(std::make_pair(addr, t));
-    return found;
+  void install(addr_t addr, const T & t) override {
+    cache_[addr] = t;
   }
 
   bool evict(addr_t addr) override {

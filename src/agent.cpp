@@ -45,21 +45,30 @@ bool Agent::eval(Frontier & f) {
     for (const Message * msg : pending_messages_) {
       const CoherentActorActions actions = cc_model_->get_actions(msg);
 
+      log_debug("here");
       CacheLine cache_line;
       cc_model_->line_init(cache_line);
       execute(f, actions, cache_line);
     }
+    pending_messages_.clear();
   }
   if (!pending_transactions_.empty()) {
 
     TimeStamped<Transaction *> head;
     while (pending_transactions_.pop(head)) {
+      const Transaction * t = head.t();
+      
       set_time(head.time());
 
+      if (!cache_->is_hit(t->addr())) {
+        CacheLine cache_line;
+        cc_model_->line_init(cache_line);
+        cache_->install(t->addr(), cache_line);
+      }
+
+      CacheLine & cache_line = cache_->lookup(t->addr());
       const CoherentActorActions actions = cc_model_->get_actions(head.t());
 
-      CacheLine cache_line;
-      cc_model_->line_init(cache_line);
       execute(f, actions, cache_line);
     }
   }

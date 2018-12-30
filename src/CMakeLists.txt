@@ -37,4 +37,5 @@ add_library(ccm STATIC
   agent.cpp
   snoopfilter.cpp
   genericcache.cpp
+  sim.cpp
   )
