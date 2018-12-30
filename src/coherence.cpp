@@ -44,7 +44,7 @@ const char * to_string(CoherentAgentCommand command) {
 }
 
 CoherentAgentCommandInvoker::CoherentAgentCommandInvoker(
-    const AgentOptions & opts) : msgd_(opts) {
+    const ActorOptions & opts) : CoherentActor(opts), msgd_(opts) {
   id_ = opts.id();
 }
 
@@ -129,7 +129,7 @@ const char * to_string(SnoopFilterCommand command) {
 }
 
 SnoopFilterCommandInvoker::SnoopFilterCommandInvoker(
-    const SnoopFilterOptions & opts) : msgd_(opts) {
+    const ActorOptions & opts) : msgd_(opts), CoherentActor(opts) {
   id_ = opts.id();
 }
 
@@ -298,41 +298,5 @@ const char * to_string(EvictionPolicy p) {
       return "<Unknown Policy Type>";
   }
 }
-
-std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
-    const AgentOptions & opts) {
-
-  switch (opts.protocol()) {
-    case Protocol::MSI:
-      return std::make_unique<MsiCoherentAgentModel>(opts);
-      break;
-    case Protocol::MESI:
-    case Protocol::MOSI:
-    default:
-      // TODO: Not implemented
-      return nullptr;
-      break;
-  }
-}
-
-CoherentAgentModel::CoherentAgentModel(const AgentOptions & opts) {}
-SnoopFilterModel::SnoopFilterModel(const SnoopFilterOptions & opts) {}
-
-std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
-    const SnoopFilterOptions & opts) {
-
-  switch (opts.protocol()) {
-    case Protocol::MSI:
-      return std::make_unique<MsiSnoopFilterModel>(opts);
-      break;
-    case Protocol::MESI:
-    case Protocol::MOSI:
-    default:
-      // TODO: Not implemented
-      return nullptr;
-      break;
-  }
-}
-
 
 } // namespace ccm

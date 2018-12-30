@@ -42,8 +42,8 @@ class MsiCoherentAgentModel : public CoherentAgentModel {
   Protocol protocol() const override { return Protocol::MSI; }
 
   //
-  CoherentActorActions get_actions(const Transaction * t) override;
-  CoherentActorActions get_actions(const Message * m) override;
+  CoherentActorActions get_actions(const Transaction * t) const override;
+  CoherentActorActions get_actions(const Message * m) const override;
 
  private:
   struct MsiCoherentAgentModelImpl;
@@ -61,7 +61,7 @@ class MsiSnoopFilterModel : public SnoopFilterModel {
 
   //
   CoherentActorActions get_actions(
-      const Message * m, const DirectoryEntry & dir_entry) override;
+      const Message * m, const DirectoryEntry & dir_entry) const override;
 
  private:
   struct MsiSnoopFilterModelImpl;

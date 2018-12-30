@@ -25,18 +25,59 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "message.hpp"
+#include "snoopfilter.hpp"
+#include "msi.hpp"
 
 namespace ccm {
 
-MessageDirector::MessageDirector(const ActorOptions & opts)
-    : opts_(opts) {
-  src_id_ = opts.id();
+SnoopFilter::SnoopFilter(const SnoopFilterOptions & opts)
+    : CoherentActor(opts), opts_(opts) {
+  set_logger_scope(opts.logger_scope());
+  cc_model_ = snoop_filter_factory(opts);
 }
 
-MessageBuilder MessageDirector::builder() {
-  return MessageBuilder{pool_.alloc(), src_id_};
+void SnoopFilter::apply(std::size_t t, const Message * m) {
+  pending_messages_.push(make_time_stamped(t, m));
+}
+
+bool SnoopFilter::eval(Frontier & f) {
+  if (!pending_messages_.empty()) {
+
+    TimeStamped<const Message *> head;
+    while (pending_messages_.pop(head)) {
+      set_time(head.time());
+
+      DirectoryEntry dir_entry; // TODO: cache lookup
+      const CoherentActorActions actions =
+          cc_model_->get_actions(head.t(), dir_entry);
+      const bool do_commit = true;
+      if (do_commit) {
+        //        invoker_.set_time(time());
+        //        invoker_.invoke(actions, head.t(), f, dir_entry);
+      }
+      
+      log_debug("SnoopFilter: Received something");
+    }
+  }
+  return is_active();
+}
+
+SnoopFilterModel::SnoopFilterModel(const SnoopFilterOptions & opts) {}
+
+std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
+    const SnoopFilterOptions & opts) {
+
+  switch (opts.protocol()) {
+    case Protocol::MSI:
+      return std::make_unique<MsiSnoopFilterModel>(opts);
+      break;
+    case Protocol::MESI:
+    case Protocol::MOSI:
+    default:
+      // TODO: Not implemented
+      return nullptr;
+      break;
+  }
 }
 
 } // namespace ccm
-

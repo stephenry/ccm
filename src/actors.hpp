@@ -30,21 +30,18 @@
 
 #include "log.hpp"
 #include "transaction.hpp"
-#include "message.hpp"
-#include "coherence.hpp"
 #include "cache_model.hpp"
 
 namespace ccm {
 
 class Frontier;
+class Message;
 
 struct ActorOptions {
-  ActorOptions(std::size_t id, Protocol protocol)
-      : id_(id), protocol_(protocol)
+  ActorOptions(std::size_t id)
+      : id_(id)
   {}
   std::size_t id() const { return id_; }
-  Protocol protocol() const { return protocol_; }
-  CacheOptions cache_options() const { return cache_options_; }
   LoggerScope * logger_scope() const { return logger_scope_; }
 
   void set_logger_scope(LoggerScope * logger_scope) {
@@ -52,7 +49,6 @@ struct ActorOptions {
   }
  private:
   std::size_t id_;
-  Protocol protocol_;
   CacheOptions cache_options_;
   LoggerScope * logger_scope_;
 };
@@ -75,63 +71,6 @@ struct CoherentActor : Loggable {
  private:
   const ActorOptions & opts_;
   std::size_t time_;
-};
-
-struct AgentOptions : ActorOptions {
-  AgentOptions(std::size_t id, Protocol protocol)
-      : ActorOptions(id, protocol)
-  {}
-};
-
-struct Agent : CoherentActor {
-  Agent(const AgentOptions & opts);
-
-  void add_transaction(std::size_t time, Transaction * t);
-
-  bool can_accept() const {
-    return !tt_.is_full();
-  }
-
-  void apply(std::size_t t, const Message * m) override {
-    pending_messages_.push_back(m);
-  }
-  
-  bool eval(Frontier & f) override;
-  
-  bool is_active() const override {
-    // Agent is active if there are pending transction in the
-    // Transaction Table, or if there are transaction awaiting to be
-    // issued.
-    //
-    return (!tt_.is_empty() || !pending_transactions_.empty());
-  }
-  
- private:
-  const AgentOptions & opts_;
-  TransactionTable tt_;
-  Heap<TimeStamped<Transaction *> > pending_transactions_;
-  std::vector<const Message *> pending_messages_;
-  std::unique_ptr<CoherentAgentModel> cc_model_;
-  CoherentAgentCommandInvoker invoker_;
-};
-
-struct SnoopFilterOptions : ActorOptions {
-  SnoopFilterOptions(std::size_t id, Protocol protocol)
-      : ActorOptions(id, protocol)
-  {}
-};
-
-struct SnoopFilter : CoherentActor {
-  SnoopFilter(const SnoopFilterOptions & opts);
-  
-  bool is_active() const override { return !pending_messages_.empty(); }
-  void apply(std::size_t t, const Message * m) override;
-  bool eval(Frontier & f) override;
- private:
-  Heap<TimeStamped<const Message *> > pending_messages_;
-  std::unique_ptr<SnoopFilterModel> cc_model_;
-  SnoopFilterCommandInvoker invoker_;
-  const SnoopFilterOptions & opts_;
 };
 
 } // namespace ccm

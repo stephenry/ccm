@@ -25,76 +25,61 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __CACHE_MODEL_HPP__
-#define __CACHE_MODEL_HPP__
+#ifndef __SRC_AGENT_HPP__
+#define __SRC_AGENT_HPP__
 
-#include "utility.hpp"
-#include <tuple>
-#include <vector>
-#include <algorithm>
+#include "coherence.hpp"
 
 namespace ccm {
 
-using addr_t = uint64_t;
-
-#define EVICTION_POLICIES(__func)               \
-  __func(Fixed)                                 \
-  __func(Random)                                \
-  __func(PsuedoLru)                             \
-  __func(TrueLru)
-
-enum class EvictionPolicy {
-#define __declare_eviction_policy(p) p,
-  EVICTION_POLICIES(__declare_eviction_policy)
-#undef __declare_eviction_policy
-};
-const char * to_string(EvictionPolicy p);
-
-struct CacheOptions {
-  uint32_t sets_n{1 << 10};
-  uint8_t ways_n{1};
-  uint8_t bytes_per_line{64};
-  EvictionPolicy eviction_policy{EvictionPolicy::Fixed};
+struct AgentOptions : ActorOptions {
+  AgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options)
+      : ActorOptions(id), protocol_(protocol), cache_options_(cache_options)
+  {}
+  Protocol protocol() const { return protocol_; }
+  CacheOptions cache_options() const { return cache_options_; }
+ private:
+  Protocol protocol_;
+  CacheOptions cache_options_;
 };
 
-class CacheAddressFormat {
- public:
-  CacheAddressFormat() {}
-  CacheAddressFormat(std::size_t bytes_per_line, std::size_t sets_n)
-      : bytes_per_line_(bytes_per_line), sets_n_(sets_n) {
-    
-    l2c_bytes_per_line_ = log2ceil(bytes_per_line_);
-    mask_bytes_per_line_ = mask(l2c_bytes_per_line_);
+struct Agent : CoherentAgentCommandInvoker {
+  Agent(const AgentOptions & opts);
 
-    l2c_sets_n_ = log2ceil(sets_n_);
+  Protocol protocol() const { return opts_.protocol(); }
+  CacheOptions cache_options() const { return opts_.cache_options(); }
+
+  
+  void add_transaction(std::size_t time, Transaction * t);
+
+  bool can_accept() const {
+    return !tt_.is_full();
+  }
+
+  void apply(std::size_t t, const Message * m) override {
+    pending_messages_.push_back(m);
   }
   
-  addr_t offset(addr_t a) const {
-    return (a & mask_bytes_per_line_);
+  bool eval(Frontier & f) override;
+  
+  bool is_active() const override {
+    // Agent is active if there are pending transction in the
+    // Transaction Table, or if there are transaction awaiting to be
+    // issued.
+    //
+    return (!tt_.is_empty() || !pending_transactions_.empty());
   }
-
-  addr_t set(addr_t a) const {
-    return (a >> l2c_bytes_per_line_);
-  }
-
-  addr_t tag(addr_t a) const {
-    return set(a) >> l2c_sets_n_;
-  }
-
+  
  private:
-  std::size_t bytes_per_line_, l2c_bytes_per_line_, mask_bytes_per_line_;
-  std::size_t sets_n_, l2c_sets_n_;
+  const AgentOptions & opts_;
+  TransactionTable tt_;
+  Heap<TimeStamped<Transaction *> > pending_transactions_;
+  std::vector<const Message *> pending_messages_;
+  std::unique_ptr<CoherentAgentModel> cc_model_;
 };
 
-template<typename T>
-class GenericCache {
- public:
-  GenericCache(const CacheOptions & opts) {}
-
-  CacheOptions cache_options() const { return opts_; }
- private:
-  const CacheOptions opts_;
-};
+std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
+    const AgentOptions & opts);
 
 } // namespace ccm
 

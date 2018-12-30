@@ -34,4 +34,6 @@ add_library(ccm STATIC
   interconnect.cpp
   message.cpp
   log.cpp
+  agent.cpp
+  snoopfilter.cpp
   )

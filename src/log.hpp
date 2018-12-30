@@ -91,7 +91,6 @@ class LoggerScope {
   
   std::string path_;
   Logger * logger_;
-
   std::unordered_map<std::string, std::unique_ptr<LoggerScope>> scopes_;
 };
 

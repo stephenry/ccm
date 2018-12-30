@@ -30,6 +30,7 @@
 
 #include "cache_model.hpp"
 #include "message.hpp"
+#include "actors.hpp"
 #include <memory>
 #include <optional>
 
@@ -48,8 +49,11 @@ enum class Protocol {
   MOSI
 };
 
-struct DirectoryEntry {
+class DirectoryEntry {
+  friend std::string to_string(const DirectoryEntry & d);
 
+ public:
+  
   DirectoryEntry() {}
 
   //
@@ -80,6 +84,8 @@ struct DirectoryEntry {
   std::optional<std::size_t> owner_;
 };
 
+std::string to_string(const DirectoryEntry & d);
+
 #define AGENT_COMMANDS(__func)                  \
   __func(UpdateState)                           \
   __func(EmitGetS)                              \
@@ -95,8 +101,8 @@ enum class CoherentAgentCommand : uint8_t {
 #undef __declare_state
 };
 
-struct CoherentAgentCommandInvoker {
-  CoherentAgentCommandInvoker(const AgentOptions & opts);
+struct CoherentAgentCommandInvoker : CoherentActor {
+  CoherentAgentCommandInvoker(const ActorOptions & opts);
 
   std::size_t time() const { return time_; }
   
@@ -141,8 +147,8 @@ SNOOP_FILTER_COMMANDS(__declare_state)
 
 const char * to_string(SnoopFilterCommand command);
 
-struct SnoopFilterCommandInvoker {
-  SnoopFilterCommandInvoker(const SnoopFilterOptions & opts);
+struct SnoopFilterCommandInvoker : CoherentActor {
+  SnoopFilterCommandInvoker(const ActorOptions & opts);
   
   std::size_t time() const { return time_; }
 
@@ -226,6 +232,7 @@ class CoherentActorBase {
   virtual ~CoherentActorBase() {}
   
   virtual Protocol protocol() const = 0;
+ private:
 };
 
 class CoherentAgentModel : public CoherentActorBase {
@@ -233,23 +240,17 @@ class CoherentAgentModel : public CoherentActorBase {
   CoherentAgentModel(const AgentOptions & opts);
   virtual ~CoherentAgentModel() {}
   
-  virtual CoherentActorActions get_actions(const Message * t) = 0;
-  virtual CoherentActorActions get_actions(const Transaction * t) = 0;
+  virtual CoherentActorActions get_actions(const Message * t) const = 0;
+  virtual CoherentActorActions get_actions(const Transaction * t) const = 0;
 };
-
-std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
-    const AgentOptions & opts);
 
 class SnoopFilterModel : public CoherentActorBase {
  public:
   SnoopFilterModel(const SnoopFilterOptions & opts);
 
   virtual CoherentActorActions get_actions(
-      const Message * t, const DirectoryEntry & dir_entry) = 0;
+      const Message * t, const DirectoryEntry & dir_entry) const = 0;
 };
-
-std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
-    const SnoopFilterOptions & opts);
 
 } // namespace ccm
 

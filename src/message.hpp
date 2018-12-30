@@ -29,10 +29,9 @@
 #define __SRC_MESSAGE_HPP__
 
 #include "utility.hpp"
+#include "actors.hpp"
 
 namespace ccm {
-
-class ActorOptions;
 
 #define MESSAGE_CLASSES(__func)                 \
   __func(GetS)                                  \
@@ -112,6 +111,7 @@ class MessageDirector {
  private:
   std::size_t src_id_;
   ccm::Pool<Message> pool_;
+  const ActorOptions opts_;
 };
 
 } // namespace ccm

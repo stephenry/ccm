@@ -38,7 +38,7 @@ TEST(MSI, Load) {
 
   std::vector<ccm::Agent *> agents_;
   for (std::size_t i = 0; i < 4; i++) {
-    ccm::AgentOptions opts(i, ccm::Protocol::MSI);
+    ccm::AgentOptions opts(i, ccm::Protocol::MSI, ccm::CacheOptions());
 
     std::stringstream ss;
     ss << "Agent" << i;
@@ -51,7 +51,7 @@ TEST(MSI, Load) {
   ccm::Transaction * t = new ccm::Transaction{0};
   agents_[0]->add_transaction(10, t);
 
-  ccm::SnoopFilterOptions opts(4, ccm::Protocol::MSI);
+  ccm::SnoopFilterOptions opts(4, ccm::Protocol::MSI, ccm::CacheOptions());
   opts.set_logger_scope(top->child_scope("SnoopFilter"));
   s.add_actor(new ccm::SnoopFilter(opts));
   s.run();

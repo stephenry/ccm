@@ -25,18 +25,40 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "message.hpp"
+#ifndef __SRC_SNOOPFILTER_HPP__
+#define __SRC_SNOOPFILTER_HPP__
+
+#include "coherence.hpp"
 
 namespace ccm {
 
-MessageDirector::MessageDirector(const ActorOptions & opts)
-    : opts_(opts) {
-  src_id_ = opts.id();
-}
+struct SnoopFilterOptions : ActorOptions {
+  SnoopFilterOptions(std::size_t id, Protocol protocol, CacheOptions cache_options)
+      : ActorOptions(id), protocol_(protocol), cache_options_(cache_options)
+  {}
+  Protocol protocol() const { return protocol_; }
+  CacheOptions cache_options() const { return cache_options_; }
+ private:
+  Protocol protocol_;
+  CacheOptions cache_options_;
+};
 
-MessageBuilder MessageDirector::builder() {
-  return MessageBuilder{pool_.alloc(), src_id_};
-}
+struct SnoopFilter : CoherentActor {
+  SnoopFilter(const SnoopFilterOptions & opts);
+  
+  bool is_active() const override { return !pending_messages_.empty(); }
+  void apply(std::size_t t, const Message * m) override;
+  bool eval(Frontier & f) override;
+ private:
+  Heap<TimeStamped<const Message *> > pending_messages_;
+  std::unique_ptr<SnoopFilterModel> cc_model_;
+  const SnoopFilterOptions & opts_;
+};
+
+std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
+    const SnoopFilterOptions & opts);
 
 } // namespace ccm
+
+#endif
 
