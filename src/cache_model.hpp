@@ -96,6 +96,11 @@ class GenericCache {
   const CacheOptions opts_;
 };
 
+template<typename T>
+std::unique_ptr<GenericCache<T> > cache_factory(
+    CacheType type, const CacheOptions & opts);
+    
+
 } // namespace ccm
 
 #endif
