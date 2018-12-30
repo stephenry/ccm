@@ -66,6 +66,17 @@ const char * to_string(MsiAgentLineState s) {
   }
 }
 
+bool is_stable(MsiAgentLineState s) {
+  switch (s) {
+    case MsiAgentLineState::M:
+    case MsiAgentLineState::S:
+    case MsiAgentLineState::I:
+      return true;
+    default:
+      return false;
+  }
+}
+
 struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
   struct LineEntry {
     LineEntry() : state_(MsiAgentLineState::I) {}
@@ -76,9 +87,21 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     MsiAgentLineState state_;
   };
   
-  MsiCoherentAgentModelImpl(const AgentOptions & opts)
-      : opts_(opts), cache_(opts.cache_options())
+  MsiCoherentAgentModelImpl(const CoherentAgentOptions & opts)
+      : opts_(opts)
   {}
+
+  void line_init(CacheLine & l) const {
+    l.set_state(static_cast<CacheLine::state_type>(MsiAgentLineState::I));
+  }
+  
+  bool line_is_stable(const CacheLine & l) const {
+    return is_stable(static_cast<MsiAgentLineState>(l.state()));
+  }
+
+  std::string to_string(CacheLine::state_type s) const {
+    return ::ccm::to_string(static_cast<MsiAgentLineState>(s));
+  }
 
   CoherentActorActions get_actions(const Transaction * t) const {
     CoherentActorActions actions;
@@ -134,6 +157,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     switch (line_entry.state()) {
       case MsiAgentLineState::I:
         a.add_action(CoherentAgentCommand::EmitGetS);
+        a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::IS_D);
         [[fallthrough]];
         
@@ -162,6 +186,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     switch (line_entry.state()) {
       case MsiAgentLineState::I:
         a.add_action(CoherentAgentCommand::EmitGetM);
+        a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::IM_AD);
         [[fallthrough]];
 
@@ -178,6 +203,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         
       case MsiAgentLineState::S:
         a.add_action(CoherentAgentCommand::EmitGetM);
+        a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::SM_AD);
         a.set_stall();
         break;
@@ -202,12 +228,14 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       case MsiAgentLineState::M:
         a.add_action(CoherentAgentCommand::EmitDataToReq);
         a.add_action(CoherentAgentCommand::EmitDataToDir);
+        a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::S);
         break;
         
       case MsiAgentLineState::MI_A:
         a.add_action(CoherentAgentCommand::EmitDataToReq);
         a.add_action(CoherentAgentCommand::EmitDataToDir);
+        a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::SI_A);
         break;
         
@@ -227,11 +255,13 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         
       case MsiAgentLineState::M:
         a.add_action(CoherentAgentCommand::EmitDataToReq);
+        a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::S);
         break;
         
       case MsiAgentLineState::MI_A:
         a.add_action(CoherentAgentCommand::EmitDataToReq);
+        a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::SI_A);
         break;
         
@@ -252,6 +282,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         switch (line_entry.state()) {
           case MsiAgentLineState::IM_A:
           case MsiAgentLineState::SM_A:
+            a.add_action(CoherentAgentCommand::UpdateState);
             a.set_next_state(MsiAgentLineState::M);
             break;
             
@@ -271,16 +302,19 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
           
         case MsiAgentLineState::S:
           a.add_action(CoherentAgentCommand::EmitInvAck);
+          a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::I);
           break;
           
         case MsiAgentLineState::SM_AD:
           a.add_action(CoherentAgentCommand::EmitInvAck);
+          a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::IM_AD);
           break;
           
         case MsiAgentLineState::SI_A:
           a.add_action(CoherentAgentCommand::EmitInvAck);
+          a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::II_A);
           break;
           
@@ -295,6 +329,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       case MsiAgentLineState::MI_A:
       case MsiAgentLineState::SI_A:
       case MsiAgentLineState::II_A:
+        a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::I);
         break;
       default:
@@ -318,14 +353,17 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       //
       switch (line_entry.state()) {
         case MsiAgentLineState::IS_D:
+          a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::S);
           break;
           
         case MsiAgentLineState::IM_AD:
+          a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::M);
           break;
           
         case MsiAgentLineState::SM_AD:
+          a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::M);
           break;
           
@@ -339,10 +377,12 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       //
       switch (line_entry.state()) {
         case MsiAgentLineState::IM_AD:
+          a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::IM_A);
           break;
           
         case MsiAgentLineState::SM_AD:
+          a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::SM_A);
           break;
           
@@ -352,16 +392,27 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     }
   }
 
-  GenericCache<MsiAgentLineState> cache_;
-  const AgentOptions opts_;
+  const CoherentAgentOptions opts_;
 };
 
-MsiCoherentAgentModel::MsiCoherentAgentModel(const AgentOptions & opts)
+MsiCoherentAgentModel::MsiCoherentAgentModel(const CoherentAgentOptions & opts)
     : CoherentAgentModel(opts) {
   impl_ = std::make_unique<MsiCoherentAgentModelImpl>(opts);
 }
 
 MsiCoherentAgentModel::~MsiCoherentAgentModel() {};
+
+void MsiCoherentAgentModel::line_init(CacheLine & l) const {
+  impl_->line_init(l);
+}
+
+bool MsiCoherentAgentModel::line_is_stable(const CacheLine & l) const {
+  return impl_->line_is_stable(l);
+}
+
+std::string MsiCoherentAgentModel::to_string(CacheLine::state_type s) const {
+  return impl_->to_string(s);
+}
 
 CoherentActorActions MsiCoherentAgentModel::get_actions(const Transaction * t) const {
   return impl_->get_actions(t);
@@ -397,9 +448,29 @@ const char * to_string(MsiDirectoryLineState s) {
 struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   
   MsiSnoopFilterModelImpl(const SnoopFilterOptions & opts)
-      : opts_(opts), cache_(opts.cache_options())
+      : opts_(opts) 
   {}
+
+  void init(DirectoryEntry & l) const {
+    l.set_state(
+        static_cast<DirectoryEntry::state_type>(MsiDirectoryLineState::I));
+  }
   
+  bool is_stable(const DirectoryEntry & l) const {
+    return true;
+  }
+  
+  std::string to_string(const DirectoryEntry & l) const {
+    std::stringstream ss;
+    ss << ::ccm::to_string(static_cast<MsiDirectoryLineState>(l.state()));
+    return ss.str();
+  }
+  
+  std::string to_string(CacheLine::state_type l) const {
+    return ::ccm::to_string(static_cast<MsiDirectoryLineState>(l));
+    
+  }
+
   CoherentActorActions get_actions(
       const Message * m, const DirectoryEntry & dir_entry) {
     CoherentActorActions actions;
@@ -566,7 +637,6 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   }
   
   const SnoopFilterOptions opts_;
-  GenericCache<DirectoryEntry> cache_;
 };
 
 struct MsiSnoopFilterModel::MsiSnoopFilterModelNullFilterImpl
@@ -591,6 +661,22 @@ MsiSnoopFilterModel::MsiSnoopFilterModel(const SnoopFilterOptions & opts)
 }
 
 MsiSnoopFilterModel::~MsiSnoopFilterModel() {}
+
+void MsiSnoopFilterModel::init(DirectoryEntry & l) const {
+  impl_->init(l);
+}
+
+bool MsiSnoopFilterModel::is_stable(const DirectoryEntry & l) const {
+  return impl_->is_stable(l);
+}
+
+std::string MsiSnoopFilterModel::to_string(const DirectoryEntry & l) const {
+  return impl_->to_string(l);
+}
+
+std::string MsiSnoopFilterModel::to_string(CacheLine::state_type l) const {
+  return impl_->to_string(l);
+}
 
 CoherentActorActions MsiSnoopFilterModel::get_actions(
     const Message * m, const DirectoryEntry & dir_entry) const {

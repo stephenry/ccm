@@ -25,13 +25,14 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __CACHE_MODEL_HPP__
-#define __CACHE_MODEL_HPP__
+#ifndef __SRC_GENERICCACHE_HPP__
+#define __SRC_GENERICCACHE_HPP__
 
 #include "utility.hpp"
 #include <tuple>
 #include <vector>
 #include <algorithm>
+#include <unordered_map>
 
 namespace ccm {
 
@@ -50,11 +51,22 @@ enum class EvictionPolicy {
 };
 const char * to_string(EvictionPolicy p);
 
+enum class CacheType {
+  FullyAssociative
+};
+
 struct CacheOptions {
+  CacheType type() const { return type_; }
+
+  void set_type(CacheType type) { type_ = type; }
+  
   uint32_t sets_n{1 << 10};
   uint8_t ways_n{1};
   uint8_t bytes_per_line{64};
   EvictionPolicy eviction_policy{EvictionPolicy::Fixed};
+
+ private:
+  CacheType type_;
 };
 
 class CacheAddressFormat {
@@ -89,17 +101,78 @@ class CacheAddressFormat {
 template<typename T>
 class GenericCache {
  public:
-  GenericCache(const CacheOptions & opts) {}
+  GenericCache(const CacheOptions & opts) : opts_(opts) {}
+  virtual ~GenericCache() {}
 
   CacheOptions cache_options() const { return opts_; }
+
+  virtual bool is_hit(addr_t addr) const = 0;
+
+  virtual bool lookup(addr_t addr, T & t) = 0;
+  virtual bool lookup(addr_t addr, T t) const = 0;
+
+  virtual bool install(addr_t addr, const T & t) = 0;
+  virtual bool evict(addr_t addr) = 0;
+  
  private:
   const CacheOptions opts_;
 };
 
 template<typename T>
-std::unique_ptr<GenericCache<T> > cache_factory(
-    CacheType type, const CacheOptions & opts);
-    
+class FullyAssociativeCache : public GenericCache<T> {
+ public:
+  FullyAssociativeCache(const CacheOptions & opts)
+      : GenericCache<T>(opts)
+  {}
+
+  bool is_hit(addr_t addr) const override {
+    return (cache_.find(addr) != cache_.end());
+  }
+
+  bool lookup(addr_t addr, T & t) override {
+    auto it = cache_.find(addr);
+    const bool found = (it != cache_.end());
+    if (found)
+      t = it->second;
+    return found;
+  }
+  
+  bool lookup(addr_t addr, T t) const override {
+    auto it = cache_.find(addr);
+    const bool found = (it != cache_.end());
+    if (found)
+      t = it->second;
+    return found;
+  }
+
+  bool install(addr_t addr, const T & t) override {
+    const bool found = is_hit(addr);
+    if (found)
+      cache_.insert(std::make_pair(addr, t));
+    return found;
+  }
+
+  bool evict(addr_t addr) override {
+    auto it = cache_.find(addr);
+    const bool found = (it != cache_.end());
+    if (found)
+      cache_.erase(it);
+    return found;
+  }
+  
+ private:
+  std::unordered_map<addr_t, T> cache_;
+};
+
+template<typename T>
+std::unique_ptr<GenericCache<T> > cache_factory(const CacheOptions & opts) {
+  switch (opts.type()) {
+    case CacheType::FullyAssociative:
+      return std::make_unique<FullyAssociativeCache<T> >(opts);
+    default:
+      ;
+  }
+}
 
 } // namespace ccm
 

@@ -34,4 +34,4 @@
 #include "msi.hpp"
 #include "agent.hpp"
 #include "snoopfilter.hpp"
-#include "cache_model.hpp"
+#include "genericcache.hpp"

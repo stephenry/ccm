@@ -33,7 +33,6 @@ namespace ccm {
 Agent::Agent(const AgentOptions & opts)
     : CoherentAgentCommandInvoker(opts), opts_(opts) {
   set_logger_scope(opts.logger_scope());
-  cc_model_ = coherent_agent_factory(opts);
 }
 
 void Agent::add_transaction(std::size_t time, Transaction * t) {
@@ -45,9 +44,10 @@ bool Agent::eval(Frontier & f) {
 
     for (const Message * msg : pending_messages_) {
       const CoherentActorActions actions = cc_model_->get_actions(msg);
-      const bool do_commit = false;
-      //      if (do_commit)
-      //        invoker_.invoke(f, actions);
+
+      CacheLine cache_line;
+      cc_model_->line_init(cache_line);
+      execute(f, actions, cache_line);
     }
   }
   if (!pending_transactions_.empty()) {
@@ -57,35 +57,13 @@ bool Agent::eval(Frontier & f) {
       set_time(head.time());
 
       const CoherentActorActions actions = cc_model_->get_actions(head.t());
-      const bool do_commit = true;
 
-      if (do_commit) {
-        //        invoker_.set_time(time());
-        //        invoker_.invoke(f, actions);
-        //        set_time(invoker_.time());
-      }
-      log_debug("SnoopActor: Sending something");
+      CacheLine cache_line;
+      cc_model_->line_init(cache_line);
+      execute(f, actions, cache_line);
     }
   }
   return is_active();
 }
-
-std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
-    const AgentOptions & opts) {
-
-  switch (opts.protocol()) {
-    case Protocol::MSI:
-      return std::make_unique<MsiCoherentAgentModel>(opts);
-      break;
-    case Protocol::MESI:
-    case Protocol::MOSI:
-    default:
-      // TODO: Not implemented
-      return nullptr;
-      break;
-  }
-}
-
-CoherentAgentModel::CoherentAgentModel(const AgentOptions & opts) {}
 
 } // namespace ccm

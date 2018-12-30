@@ -28,7 +28,7 @@
 #ifndef __SRC_COHERENCE_HPP__
 #define __SRC_COHERENCE_HPP__
 
-#include "cache_model.hpp"
+#include "genericcache.hpp"
 #include "message.hpp"
 #include "actors.hpp"
 #include <memory>
@@ -49,42 +49,27 @@ enum class Protocol {
   MOSI
 };
 
-class DirectoryEntry {
-  friend std::string to_string(const DirectoryEntry & d);
-
- public:
-  
-  DirectoryEntry() {}
-
-  //
-  uint8_t state() const { return state_; }
-  void set_state(uint8_t state) { state_ = state; }
-    
-  //
-  std::size_t owner() const { return owner_.value(); }
-  void set_owner(std::size_t owner) { owner_ = owner; }
-  void clear_owner() { owner_.reset(); }
-
-  //
-  const std::vector<std::size_t> & sharers() const { return sharers_; }
-  void add_sharer(std::size_t id) { sharers_.push_back(id); }
-  void remove_sharer(std::size_t id) {
-    sharers_.erase(std::find(sharers_.begin(), sharers_.end(), id), sharers_.end());
-  }
-  void clear_sharers() { sharers_.clear(); }
-
+struct CoherentAgentOptions : ActorOptions {
+  CoherentAgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options)
+      : ActorOptions(id), protocol_(protocol), cache_options_(cache_options)
+  {}
+  Protocol protocol() const { return protocol_; }
+  CacheOptions cache_options() const { return cache_options_; }
  private:
-  // Current state of the line
-  uint8_t state_;
-
-  // Current set of sharing agents
-  std::vector<std::size_t> sharers_;
-
-  // Current owner agent
-  std::optional<std::size_t> owner_;
+  Protocol protocol_;
+  CacheOptions cache_options_;
 };
 
-std::string to_string(const DirectoryEntry & d);
+struct SnoopFilterOptions : ActorOptions {
+  SnoopFilterOptions(std::size_t id, Protocol protocol, CacheOptions cache_options)
+      : ActorOptions(id), protocol_(protocol), cache_options_(cache_options)
+  {}
+  Protocol protocol() const { return protocol_; }
+  CacheOptions cache_options() const { return cache_options_; }
+ private:
+  Protocol protocol_;
+  CacheOptions cache_options_;
+};
 
 #define AGENT_COMMANDS(__func)                  \
   __func(UpdateState)                           \
@@ -99,26 +84,6 @@ enum class CoherentAgentCommand : uint8_t {
   __state,
   AGENT_COMMANDS(__declare_state)
 #undef __declare_state
-};
-
-struct CoherentAgentCommandInvoker : CoherentActor {
-  CoherentAgentCommandInvoker(const ActorOptions & opts);
-
-  std::size_t time() const { return time_; }
-  
-  void invoke(Frontier & f, const CoherentActorActions & actions);
-  void set_time(std::size_t time) { time_ = time; }
- private:
-  void invoke_update_state(Frontier & f);
-  void invoke_emit_gets(Frontier & f);
-  void invoke_emit_getm(Frontier & f);
-  void invoke_emit_data_to_req(Frontier & f);
-  void invoke_emit_data_to_dir(Frontier & f);
-  void invoke_emit_inv_ack(Frontier & f);
-  
-  MessageDirector msgd_;
-  std::size_t id_;
-  std::size_t time_;
 };
 
 const char * to_string(CoherentAgentCommand command);
@@ -147,59 +112,59 @@ SNOOP_FILTER_COMMANDS(__declare_state)
 
 const char * to_string(SnoopFilterCommand command);
 
-struct SnoopFilterCommandInvoker : CoherentActor {
-  SnoopFilterCommandInvoker(const ActorOptions & opts);
-  
-  std::size_t time() const { return time_; }
-
-  void invoke(const CoherentActorActions & actions,
-              const Message * msg, Frontier & f, DirectoryEntry & d);
-  void set_time(std::size_t time) { time_ = time; }
-private:
-  void handle_update_state(
-      const Message * msg, const CoherentActorActions & a, Frontier & f, DirectoryEntry & d);
-  void handle_set_owner_to_req(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
-  void handle_send_data_to_req(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
-  void handle_send_inv_to_sharers(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
-  void handle_clear_sharers(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
-  void handle_add_req_to_sharers(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
-  void handle_del_req_from_sharers(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
-  void handle_del_owner(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
-  void handle_add_owner_to_sharers(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
-  void handle_cpy_data_to_memory(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
-  void handle_send_put_sack_to_req(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
-  void handle_send_put_mack_to_req(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
-  void handle_send_fwd_gets_to_owner(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
-
-  MessageDirector msgd_;
-  std::size_t id_;
-  std::size_t time_;
-};
-
 #define COHERENT_ACTOR_RESULT(__func)           \
   __func(Advances)                              \
   __func(BlockedOnProtocol)                     \
   __func(TagsExhausted)
 
+struct CacheLine {
+  using state_type = uint8_t;
+  
+  state_type state() const { return state_; }
+  void set_state(state_type state) { state_ = state; }
+ private:
+  state_type state_;
+};
+
+struct DirectoryEntry : CacheLine {
+  friend std::string to_string(const DirectoryEntry & d);
+
+  using state_type = uint8_t;
+  
+  DirectoryEntry() {}
+    
+  //
+  std::size_t owner() const { return owner_.value(); }
+  void set_owner(std::size_t owner) { owner_ = owner; }
+  void clear_owner() { owner_.reset(); }
+
+  //
+  const std::vector<std::size_t> & sharers() const { return sharers_; }
+  void add_sharer(std::size_t id) { sharers_.push_back(id); }
+  void remove_sharer(std::size_t id) {
+    sharers_.erase(std::find(sharers_.begin(), sharers_.end(), id), sharers_.end());
+  }
+  void clear_sharers() { sharers_.clear(); }
+
+ private:
+  // Current set of sharing agents
+  std::vector<std::size_t> sharers_;
+
+  // Current owner agent
+  std::optional<std::size_t> owner_;
+};
+
+std::string to_string(const DirectoryEntry & d);
+
 struct CoherentActorActions {
+  using state_type = CacheLine::state_type;
+  using action_type = uint8_t;
 
   bool has_state_update() const { return next_state_.has_value(); }
-  uint8_t next_state() const { return next_state_.value(); }
+  state_type next_state() const { return next_state_.value(); }
 
   template<typename T>
-  void set_next_state(T state) { next_state_ = static_cast<uint8_t>(state); }
+  void set_next_state(T state) { next_state_ = static_cast<state_type>(state); }
 
   //
   bool error() const { return false; }
@@ -211,20 +176,19 @@ struct CoherentActorActions {
 
   std::size_t message_count() const { return msgs_n_; }
 
-  const std::vector<uint8_t> & actions() const { return actions_; }
+  const std::vector<action_type> & actions() const { return actions_; }
 
   template<typename T>
   void add_action(T a) {
-    actions_.push_back(static_cast<uint8_t>(a));
+    actions_.push_back(static_cast<action_type>(a));
   }
 
  private:
   bool stall_{false};
-  std::optional<uint8_t> next_state_;
-  std::vector<uint8_t> actions_;
+  std::optional<state_type> next_state_;
+  std::vector<action_type> actions_;
   std::size_t msgs_n_{0};
 };
-
 
 class CoherentActorBase {
  public:
@@ -237,20 +201,114 @@ class CoherentActorBase {
 
 class CoherentAgentModel : public CoherentActorBase {
  public:
-  CoherentAgentModel(const AgentOptions & opts);
+  CoherentAgentModel(const CoherentAgentOptions & opts);
   virtual ~CoherentAgentModel() {}
+  
+  virtual void line_init(CacheLine & l) const = 0;
+  virtual bool line_is_stable(const CacheLine & l) const = 0;
+  virtual std::string to_string(CacheLine::state_type l) const = 0;
   
   virtual CoherentActorActions get_actions(const Message * t) const = 0;
   virtual CoherentActorActions get_actions(const Transaction * t) const = 0;
 };
 
+struct CoherentAgentCommandInvoker : CoherentActor {
+  using state_type = CoherentActorActions::state_type;
+  using action_type = CoherentActorActions::action_type;
+  
+  CoherentAgentCommandInvoker(const CoherentAgentOptions & opts);
+
+  std::size_t time() const { return time_; }
+  
+  void execute(
+      Frontier & f, const CoherentActorActions & actions, CacheLine & cache_line);
+  void set_time(std::size_t time) { time_ = time; }
+
+ protected:
+  std::unique_ptr<CoherentAgentModel> cc_model_;
+  std::unique_ptr<GenericCache<CacheLine> > cache_;
+ private:
+  void execute_update_state(
+      Frontier & f, CacheLine & cache_line, state_type state_next);
+  void execute_emit_gets(Frontier & f);
+  void execute_emit_getm(Frontier & f);
+  void execute_emit_data_to_req(Frontier & f);
+  void execute_emit_data_to_dir(Frontier & f);
+  void execute_emit_inv_ack(Frontier & f);
+  
+  MessageDirector msgd_;
+  std::size_t id_;
+  std::size_t time_;
+};
+
+std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
+    const CoherentAgentOptions & opts);
+
 class SnoopFilterModel : public CoherentActorBase {
  public:
   SnoopFilterModel(const SnoopFilterOptions & opts);
-
+  
+  virtual void init(DirectoryEntry & l) const = 0;
+  virtual bool is_stable(const DirectoryEntry & l) const = 0;
+  virtual std::string to_string(const DirectoryEntry & l) const = 0;
+  virtual std::string to_string(CacheLine::state_type l) const = 0;
+  
   virtual CoherentActorActions get_actions(
       const Message * t, const DirectoryEntry & dir_entry) const = 0;
+ private:
+  const SnoopFilterOptions opts_;
 };
+
+struct SnoopFilterCommandInvoker : CoherentActor {
+  using state_type = CoherentActorActions::state_type;
+  
+  SnoopFilterCommandInvoker(const SnoopFilterOptions & opts);
+  
+  std::size_t time() const { return time_; }
+
+  void execute(
+      Frontier & f, const CoherentActorActions & actions,
+      const Message * msg, DirectoryEntry & d);
+  void set_time(std::size_t time) { time_ = time; }
+ protected:
+  std::unique_ptr<SnoopFilterModel> cc_model_;
+  std::unique_ptr<GenericCache<CacheLine> > cache_;
+private:
+  void execute_update_state(
+      Frontier & f, DirectoryEntry & d, state_type state_next);
+  void execute_set_owner_to_req(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void execute_send_data_to_req(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void execute_send_inv_to_sharers(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void execute_clear_sharers(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void execute_add_req_to_sharers(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void execute_del_req_from_sharers(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void execute_del_owner(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void execute_add_owner_to_sharers(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void execute_cpy_data_to_memory(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void execute_send_put_sack_to_req(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void execute_send_put_mack_to_req(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+  void execute_send_fwd_gets_to_owner(
+      const Message * msg, Frontier & f, DirectoryEntry & d);
+
+  MessageDirector msgd_;
+  std::size_t id_;
+  std::size_t time_;
+  const SnoopFilterOptions opts_;
+};
+
+std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
+    const SnoopFilterOptions & opts);
 
 } // namespace ccm
 

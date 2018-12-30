@@ -32,15 +32,10 @@
 
 namespace ccm {
 
-struct AgentOptions : ActorOptions {
+struct AgentOptions : CoherentAgentOptions {
   AgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options)
-      : ActorOptions(id), protocol_(protocol), cache_options_(cache_options)
+      : CoherentAgentOptions(id, protocol, cache_options)
   {}
-  Protocol protocol() const { return protocol_; }
-  CacheOptions cache_options() const { return cache_options_; }
- private:
-  Protocol protocol_;
-  CacheOptions cache_options_;
 };
 
 struct Agent : CoherentAgentCommandInvoker {
@@ -52,9 +47,7 @@ struct Agent : CoherentAgentCommandInvoker {
   
   void add_transaction(std::size_t time, Transaction * t);
 
-  bool can_accept() const {
-    return !tt_.is_full();
-  }
+  bool can_accept() const { return !tt_.is_full(); }
 
   void apply(std::size_t t, const Message * m) override {
     pending_messages_.push_back(m);
@@ -75,11 +68,7 @@ struct Agent : CoherentAgentCommandInvoker {
   TransactionTable tt_;
   Heap<TimeStamped<Transaction *> > pending_transactions_;
   std::vector<const Message *> pending_messages_;
-  std::unique_ptr<CoherentAgentModel> cc_model_;
 };
-
-std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
-    const AgentOptions & opts);
 
 } // namespace ccm
 
