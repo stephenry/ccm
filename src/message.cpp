@@ -26,8 +26,30 @@
 //========================================================================== //
 
 #include "message.hpp"
+#include <sstream>
 
 namespace ccm {
+
+const char * to_string(MessageType t) {
+  switch (t) {
+#define __to_str(__e)                        \
+    case MessageType::__e: return #__e; break;
+    MESSAGE_CLASSES(__to_str)
+#undef __to_str
+    default: return "Unknown";
+  }
+}
+
+std::string Message::to_string() const {
+  StructRenderer sr;
+  sr.add("type", ::ccm::to_string(type()));
+  sr.add("src_id", src_id());
+  sr.add("dst_id", dst_id());
+  sr.add("tid", tid());
+  sr.add("is_ack", is_ack());
+  
+  return sr.str();
+}
 
 MessageDirector::MessageDirector(const ActorOptions & opts)
     : opts_(opts) {

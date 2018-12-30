@@ -191,6 +191,44 @@ std::string join(ARGS && ... args) {
   return ss.str();
 }
 
+template<typename FwdIt>
+std::string join(FwdIt begin, FwdIt end, const char * SEP = ", ") {
+  std::stringstream ss;
+  if (begin != end) {
+    ss << *begin; ++begin;
+
+    while (begin != end) {
+      ss << *SEP << *begin; ++begin;
+    }
+  }
+  return ss.str();
+}
+
+class StructRenderer {
+ public:
+  StructRenderer() {}
+
+  template<typename VALUE>
+  void add(const std::string & k, const VALUE & v) {
+  }
+
+  void add(const std::string & k, bool v) {
+    add(k, v ? "true" : "false");
+  }
+
+  void add(const char * k, const char * v) {
+    vs_.push_back(join(k, v));
+  }
+
+  std::string str() const {
+    std::stringstream ss;
+    ss << "'{" << join(vs_.begin(), vs_.end()) << "}";
+    return ss.str();
+  }
+ private:
+  std::vector<std::string> vs_;
+};
+
 template<typename T>
 T log2ceil(T t) {
   return static_cast<T>(std::ceil(std::log2(t)));

@@ -30,6 +30,7 @@
 
 #include "utility.hpp"
 #include "actors.hpp"
+#include <string>
 
 namespace ccm {
 
@@ -50,10 +51,14 @@ enum class MessageType {
   Invalid
 };
 
+const char * to_string(MessageType t);
+
 struct Message : ccm::Poolable {
   friend class MessageBuilder;
 
   Message() : type_(MessageType::Invalid) {}
+
+  std::string to_string() const;
 
   MessageType type() const { return type_; }
   std::size_t src_id() const { return src_id_; }

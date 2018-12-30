@@ -249,13 +249,14 @@ void SnoopFilterCommandInvoker::execute_set_owner_to_req(
 
 void SnoopFilterCommandInvoker::execute_send_data_to_req(
     const Message * msg, Frontier & f, DirectoryEntry & d) {
-  log_debug("Send Data to Requester.");
   
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::Data);
   b.set_dst_id(msg->src_id());
   b.set_tid(msg->tid());
-  f.add_to_frontier(1 + time(), b.msg());
+  const Message * m = b.msg();
+  f.add_to_frontier(1 + time(), m);
+  log_debug("Send Data to Requester: ", m->to_string());
 }
 
 void SnoopFilterCommandInvoker::execute_send_inv_to_sharers(
