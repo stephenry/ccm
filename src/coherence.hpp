@@ -208,8 +208,10 @@ class CoherentAgentModel : public CoherentActorBase {
   virtual bool line_is_stable(const CacheLine & l) const = 0;
   virtual std::string to_string(CacheLine::state_type l) const = 0;
   
-  virtual CoherentActorActions get_actions(const Message * t) const = 0;
-  virtual CoherentActorActions get_actions(const Transaction * t) const = 0;
+  virtual CoherentActorActions get_actions(
+      const Message * t, const CacheLine & cache_line) const = 0;
+  virtual CoherentActorActions get_actions(
+      const Transaction * t, const CacheLine & cache_line) const = 0;
 };
 
 struct CoherentAgentCommandInvoker : CoherentActor {

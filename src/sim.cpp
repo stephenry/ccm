@@ -55,9 +55,7 @@ void Sim::run() {
           
         const Message * t = head.t();
         actors_[t->dst_id()]->apply(time(), t);
-        t->release();
       }
-      f.clear();
     }
   }
   // All actors are inactive

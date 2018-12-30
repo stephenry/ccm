@@ -64,6 +64,7 @@ struct Agent : CoherentAgentCommandInvoker {
   }
   
  private:
+  addr_t addr_;
   const AgentOptions & opts_;
   TransactionTable tt_;
   Heap<TimeStamped<Transaction *> > pending_transactions_;

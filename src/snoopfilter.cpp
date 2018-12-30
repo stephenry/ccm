@@ -46,12 +46,10 @@ bool SnoopFilter::eval(Frontier & f) {
     while (pending_messages_.pop(head)) {
       set_time(head.time());
 
-      DirectoryEntry dir_entry; // TODO: cache lookup
-      const CoherentActorActions actions =
-          cc_model_->get_actions(head.t(), dir_entry);
-
       DirectoryEntry directory_entry;
       cc_model_->init(directory_entry);
+      const CoherentActorActions actions =
+          cc_model_->get_actions(head.t(), directory_entry);
       execute(f, actions, head.t(), directory_entry);
     }
   }

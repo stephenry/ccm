@@ -47,8 +47,10 @@ class MsiCoherentAgentModel : public CoherentAgentModel {
   std::string to_string(CacheLine::state_type s) const override;
   
   //
-  CoherentActorActions get_actions(const Transaction * t) const override;
-  CoherentActorActions get_actions(const Message * m) const override;
+  CoherentActorActions get_actions(
+      const Transaction * t, const CacheLine & cache_line) const override;
+  CoherentActorActions get_actions(
+      const Message * m, const CacheLine & cache_line) const override;
 
  private:
   struct MsiCoherentAgentModelImpl;

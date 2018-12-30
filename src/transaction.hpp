@@ -70,7 +70,7 @@ struct TransactionTable {
       : sz_(sz), is_fixed_(true)
   {}
 
-  bool is_empty() const { return !ts_.empty(); }
+  bool is_empty() const { return ts_.empty(); }
 
   bool is_full() const {
     return !is_fixed_ || (ts_.size() == sz_);

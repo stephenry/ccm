@@ -43,11 +43,13 @@ bool Agent::eval(Frontier & f) {
   if (!pending_messages_.empty()) {
 
     for (const Message * msg : pending_messages_) {
-      const CoherentActorActions actions = cc_model_->get_actions(msg);
-
-      log_debug("here");
       CacheLine cache_line;
-      cc_model_->line_init(cache_line);
+      cache_line = cache_->lookup(addr_);
+      //      cc_model_->line_init(cache_line);
+
+      const CoherentActorActions actions =
+          cc_model_->get_actions(msg, cache_line);
+
       execute(f, actions, cache_line);
     }
     pending_messages_.clear();
@@ -61,13 +63,16 @@ bool Agent::eval(Frontier & f) {
       set_time(head.time());
 
       if (!cache_->is_hit(t->addr())) {
+        addr_ = t->addr();
+        
         CacheLine cache_line;
         cc_model_->line_init(cache_line);
         cache_->install(t->addr(), cache_line);
       }
 
       CacheLine & cache_line = cache_->lookup(t->addr());
-      const CoherentActorActions actions = cc_model_->get_actions(head.t());
+      const CoherentActorActions actions =
+          cc_model_->get_actions(head.t(), cache_line);
 
       execute(f, actions, cache_line);
     }
