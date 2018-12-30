@@ -106,6 +106,8 @@ class Loggable {
   LOGLEVELS(__declare_handler)
 #undef __declare_handler
 
+  virtual std::size_t time() const = 0;
+  
  private:
 
   template<typename ARG>
@@ -122,10 +124,13 @@ class Loggable {
   void log(LogLevel ll, ARGS && ... args) {
     if (scope_) {
       std::stringstream ss;
+      prefix(ss);
       log_helper(ss, std::forward<ARGS>(args)...);
       scope_->log(ll, ss.str());
     }
-  }  
+  }
+
+  void prefix(std::ostream & os);
   
   LoggerScope * scope_{nullptr};
 };

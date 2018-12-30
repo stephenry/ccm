@@ -59,7 +59,7 @@ struct CoherentActor : Loggable {
   {}
   virtual ~CoherentActor() {}
 
-  std::size_t time() const { return time_; }
+  std::size_t time() const override { return time_; }
   std::size_t id() const { return opts_.id(); }
 
   virtual void apply(std::size_t t, const Message * m) = 0;

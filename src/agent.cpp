@@ -42,13 +42,12 @@ void Agent::add_transaction(std::size_t time, Transaction * t) {
 bool Agent::eval(Frontier & f) {
   if (!pending_messages_.empty()) {
 
-    for (const Message * msg : pending_messages_) {
-      CacheLine cache_line;
-      cache_line = cache_->lookup(addr_);
-      //      cc_model_->line_init(cache_line);
+    for (TimeStamped<const Message *> t : pending_messages_) {
+      set_time(t.time());
 
+      CacheLine cache_line = cache_->lookup(addr_);
       const CoherentActorActions actions =
-          cc_model_->get_actions(msg, cache_line);
+          cc_model_->get_actions(t.t(), cache_line);
 
       execute(f, actions, cache_line);
     }

@@ -44,10 +44,6 @@ class Frontier {
   std::vector<TimeStamped<const Message *>> & ts() { return msgs_.ts(); }
 
   void add_to_frontier(std::size_t t, const Message * msg) {
-    std::cout << " time = " << t
-              << " message = " << to_string(*msg)
-              << "\n";
-    
     msgs_.push(make_time_stamped(t, msg));
   }
 

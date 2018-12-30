@@ -48,7 +48,7 @@ TEST(MSI, Load) {
     s.add_actor(agents_.back());
   }
 
-  ccm::Transaction * t = new ccm::Transaction{0, ccm::TransactionType::Store};
+  ccm::Transaction * t = new ccm::Transaction{0, ccm::TransactionType::Load};
   agents_[0]->add_transaction(10, t);
 
   ccm::SnoopFilterOptions opts(4, ccm::Protocol::MSI, ccm::CacheOptions());

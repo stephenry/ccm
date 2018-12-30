@@ -50,7 +50,7 @@ struct Agent : CoherentAgentCommandInvoker {
   bool can_accept() const { return !tt_.is_full(); }
 
   void apply(std::size_t t, const Message * m) override {
-    pending_messages_.push_back(m);
+    pending_messages_.push_back(make_time_stamped(t, m));
   }
   
   bool eval(Frontier & f) override;
@@ -60,7 +60,7 @@ struct Agent : CoherentAgentCommandInvoker {
     // Transaction Table, or if there are transaction awaiting to be
     // issued.
     //
-    return (!tt_.is_empty() || !pending_transactions_.empty());
+    return (!pending_messages_.empty() || !pending_transactions_.empty());
   }
   
  private:
@@ -68,7 +68,7 @@ struct Agent : CoherentAgentCommandInvoker {
   const AgentOptions & opts_;
   TransactionTable tt_;
   Heap<TimeStamped<Transaction *> > pending_transactions_;
-  std::vector<const Message *> pending_messages_;
+  std::vector<TimeStamped<const Message *> > pending_messages_;
 };
 
 } // namespace ccm
