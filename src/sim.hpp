@@ -45,7 +45,7 @@ class Frontier {
 
   void add_to_frontier(std::size_t t, const Message * msg) {
     std::cout << " time = " << t
-              << " message = " << to_string(msg)
+              << " message = " << to_string(*msg)
               << "\n";
     
     msgs_.push(make_time_stamped(t, msg));

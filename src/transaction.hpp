@@ -71,10 +71,7 @@ struct TransactionTable {
   {}
 
   bool is_empty() const { return ts_.empty(); }
-
-  bool is_full() const {
-    return !is_fixed_ || (ts_.size() == sz_);
-  }
+  bool is_full() const { return !is_fixed_ || (ts_.size() == sz_); }
 
   std::size_t allocate(Transaction * t) {
     const std::size_t tid = ts_.size();
