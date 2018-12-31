@@ -49,7 +49,13 @@ std::string to_string(const Message & m) {
   sr.add("dst_id", std::to_string(m.dst_id()));
   //  sr.add("transaction", m.transaction());
   sr.add("is_ack", to_string(m.is_ack()));
-
+  switch (m.type()) {
+    case MessageType::Data:
+      sr.add("ack_count", std::to_string(m.ack_count()));
+      break;
+    default:
+      break;
+  }
   return sr.str();
 }
 

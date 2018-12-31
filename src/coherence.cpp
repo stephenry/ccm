@@ -53,6 +53,16 @@ const char * to_string(CoherentAgentCommand command) {
   }
 }
 
+const char * to_string(TransactionResult r) {
+  switch (r) {
+#define __declare_to_string(__state)                                    \
+    case TransactionResult::__state: return #__state; break;
+    TRANSACTION_RESULT(__declare_to_string)
+#undef __declare_to_string
+    default: return "<Invalid>";
+  }
+}
+
 CoherentAgentCommandInvoker::CoherentAgentCommandInvoker(
     const CoherentAgentOptions & opts) : CoherentActor(opts), msgd_(opts) {
   id_ = opts.id();
@@ -103,6 +113,10 @@ void CoherentAgentCommandInvoker::execute(
       
       case CoherentAgentCommand::EmitInvAck:
         execute_emit_inv_ack(f, t);
+        break;
+
+      case CoherentAgentCommand::SetAckCount:
+        execute_set_ack_count(cache_line, actions.ack_count());
         break;
     }
   }
@@ -168,6 +182,15 @@ void CoherentAgentCommandInvoker::execute_emit_inv_ack(
   b.set_type(MessageType::Inv);
   b.set_is_ack(true);
   b.set_transaction(t);
+
+  const Message * msg = b.msg();
+  f.add_to_frontier(1 + time(), msg);
+  log_debug("Emit InvAck: ", to_string(*msg));
+}
+
+void CoherentAgentCommandInvoker::execute_set_ack_count(
+    CacheLine & cache_line, ack_count_type ack_count) {
+  cache_line.set_ack_count(ack_count);
 }
 
 CoherentAgentModel::CoherentAgentModel(const CoherentAgentOptions & opts) {}
@@ -235,7 +258,7 @@ void SnoopFilterCommandInvoker::execute(
         break;
 
       case SnoopFilterCommand::SendDataToReq:
-        execute_send_data_to_req(msg, f, d);
+        execute_send_data_to_req(msg, f, d, actions);
         break;
 
       case SnoopFilterCommand::SendInvToSharers:
@@ -297,12 +320,15 @@ void SnoopFilterCommandInvoker::execute_set_owner_to_req(
 }
 
 void SnoopFilterCommandInvoker::execute_send_data_to_req(
-    const Message * msg, Frontier & f, DirectoryEntry & d) {
+    const Message * msg, Frontier & f, DirectoryEntry & d, const CoherentActorActions & a) {
   
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::Data);
   b.set_dst_id(msg->src_id());
   b.set_transaction(msg->transaction());
+
+  b.set_ack_count(a.ack_count());
+  //  b.set_ack_count(0);
 
   const Message * m = b.msg();
   f.add_to_frontier(1 + time(), m);
@@ -315,8 +341,8 @@ void SnoopFilterCommandInvoker::execute_send_inv_to_sharers(
   log_debug("Send Invalidation(s) to sharers.");
   
   std::size_t time_start = 1 + time();
-  MessageBuilder b = msgd_.builder();
   for (std::size_t sharer : d.sharers()) {
+    MessageBuilder b = msgd_.builder();
     b.set_type(MessageType::Inv);
     b.set_dst_id(sharer);
     b.set_transaction(msg->transaction());

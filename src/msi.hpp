@@ -49,7 +49,7 @@ namespace ccm {
 enum class MsiAgentLineState : uint8_t {
 #define __declare_state(__state)                \
   __state,
-LINE_STATES(__declare_state)
+  LINE_STATES(__declare_state)
 #undef __declare_state
 };
 

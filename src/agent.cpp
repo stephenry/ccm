@@ -36,7 +36,7 @@ Agent::Agent(const AgentOptions & opts)
 }
 
 void Agent::add_transaction(std::size_t time, Transaction * t) {
-  pending_transactions_.push(make_time_stamped(time, t));
+  pending_transactions_.push_back(make_time_stamped(time, t));
 }
 
 bool Agent::eval(Frontier & f) {
@@ -57,8 +57,8 @@ bool Agent::eval(Frontier & f) {
   }
   if (!pending_transactions_.empty()) {
 
-    TimeStamped<Transaction *> head;
-    while (pending_transactions_.pop(head)) {
+    while (!pending_transactions_.empty()) {
+      TimeStamped<Transaction *> & head = pending_transactions_.front();
       const Transaction * t = head.t();
       
       set_time(head.time());
@@ -73,7 +73,24 @@ bool Agent::eval(Frontier & f) {
       const CoherentActorActions actions =
           cc_model_->get_actions(head.t(), cache_line);
 
-      execute(f, actions, cache_line, t);
+      bool advance = true;
+      switch (actions.result()) {
+        case TransactionResult::Hit:
+          // Transaction completes;
+          [[fallthrough]];
+          
+        case TransactionResult::Miss:
+          execute(f, actions, cache_line, t);
+          pending_transactions_.pop_front();
+          break;
+          
+        case TransactionResult::Blocked:
+          advance = false;
+          break;
+      }
+      
+      if (!advance)
+        break;
     }
   }
   return is_active();

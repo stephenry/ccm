@@ -139,7 +139,8 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         a.add_action(CoherentAgentCommand::EmitGetS);
         a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::IS_D);
-        [[fallthrough]];
+        a.set_result(TransactionResult::Miss);
+        break;
         
       case MsiAgentLineState::IS_D:
       case MsiAgentLineState::IM_AD:
@@ -147,14 +148,14 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       case MsiAgentLineState::MI_A:
       case MsiAgentLineState::SI_A:
       case MsiAgentLineState::II_A:
-        a.set_stall();
+        a.set_result(TransactionResult::Blocked);
         break;
 
       case MsiAgentLineState::S:
       case MsiAgentLineState::SM_AD:
       case MsiAgentLineState::SM_A:
       case MsiAgentLineState::M:
-        //        a.response = ResponseType::Hit;
+        a.set_result(TransactionResult::Blocked);
         break;
         
       default:
@@ -169,7 +170,8 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         a.add_action(CoherentAgentCommand::EmitGetM);
         a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::IM_AD);
-        [[fallthrough]];
+        a.set_result(TransactionResult::Miss);
+        break;
 
       case MsiAgentLineState::IS_D:
       case MsiAgentLineState::IM_AD:
@@ -179,17 +181,18 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       case MsiAgentLineState::MI_A:
       case MsiAgentLineState::SI_A:
       case MsiAgentLineState::II_A:
-        a.set_stall();
+        a.set_result(TransactionResult::Blocked);
         break;
         
       case MsiAgentLineState::S:
         a.add_action(CoherentAgentCommand::EmitGetM);
         a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::SM_AD);
-        a.set_stall();
+        a.set_result(TransactionResult::Miss);
         break;
                      
       case MsiAgentLineState::M:
+        a.set_result(TransactionResult::Hit);
         break;
         
       default:
@@ -204,7 +207,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       case MsiAgentLineState::IM_A:
       case MsiAgentLineState::SM_AD:
       case MsiAgentLineState::SM_A:
-        a.set_stall();
+        a.set_mresult(MessageResult::Stall);
         break;
         
       case MsiAgentLineState::M:
@@ -212,6 +215,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         a.add_action(CoherentAgentCommand::EmitDataToDir);
         a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::S);
+        a.set_mresult(MessageResult::Commit);
         break;
         
       case MsiAgentLineState::MI_A:
@@ -219,6 +223,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         a.add_action(CoherentAgentCommand::EmitDataToDir);
         a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::SI_A);
+        a.set_mresult(MessageResult::Commit);
         break;
         
       default:
@@ -233,19 +238,21 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       case MsiAgentLineState::IM_A:
       case MsiAgentLineState::SM_AD:
       case MsiAgentLineState::SM_A:
-        a.set_stall();
+        a.set_mresult(MessageResult::Stall);
         break;
         
       case MsiAgentLineState::M:
         a.add_action(CoherentAgentCommand::EmitDataToReq);
         a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::S);
+        a.set_mresult(MessageResult::Commit);
         break;
         
       case MsiAgentLineState::MI_A:
         a.add_action(CoherentAgentCommand::EmitDataToReq);
         a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::SI_A);
+        a.set_mresult(MessageResult::Commit);
         break;
         
       default:
@@ -256,18 +263,18 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
   void handle__Inv(
       const Message *m, const CacheLine & cache_line, CoherentActorActions & a) const {
     if (m->is_ack()) {
-      // Line awaits invalidation acknowledgements from other agents
-      // before upgrade to modified state.
-      //
-      // TODO: retain this on a line-by-line basis.
-      const bool is_last_ack = false;
+      const bool is_last_ack = (cache_line.ack_count() == 1);
 
+      a.add_action(CoherentAgentCommand::SetAckCount);
+      a.set_ack_count(cache_line.ack_count() - 1);
+      
       if (is_last_ack) {
         switch (_s(cache_line.state())) {
           case MsiAgentLineState::IM_A:
           case MsiAgentLineState::SM_A:
             a.add_action(CoherentAgentCommand::UpdateState);
             a.set_next_state(MsiAgentLineState::M);
+            a.set_mresult(MessageResult::Commit);
             break;
             
           default:
@@ -281,25 +288,28 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       //
       switch (_s(cache_line.state())) {
         case MsiAgentLineState::IS_D:
-          a.set_stall();
+          //          a.set_stall();
           break;
           
         case MsiAgentLineState::S:
           a.add_action(CoherentAgentCommand::EmitInvAck);
           a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::I);
+          a.set_mresult(MessageResult::Commit);
           break;
           
         case MsiAgentLineState::SM_AD:
           a.add_action(CoherentAgentCommand::EmitInvAck);
           a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::IM_AD);
+          a.set_mresult(MessageResult::Commit);
           break;
           
         case MsiAgentLineState::SI_A:
           a.add_action(CoherentAgentCommand::EmitInvAck);
           a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::II_A);
+          a.set_mresult(MessageResult::Commit);
           break;
           
         default:
@@ -316,6 +326,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       case MsiAgentLineState::II_A:
         a.add_action(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::I);
+        a.set_mresult(MessageResult::Commit);
         break;
       default:
         a.set_error();
@@ -325,10 +336,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
   void handle__Data(
       const Message * m, const CacheLine & cache_line, CoherentActorActions & a) const {
 
-    // TODO: retain this on a line-by-line basis.
-
-    bool is_from_dir = false;
-    bool is_last_ack = true;
+    const bool is_last_ack = (m->ack_count() == 0);
 
     if (is_last_ack) {
 
@@ -341,16 +349,19 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         case MsiAgentLineState::IS_D:
           a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::S);
+          a.set_mresult(MessageResult::Commit);
           break;
           
         case MsiAgentLineState::IM_AD:
           a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::M);
+          a.set_mresult(MessageResult::Commit);
           break;
           
         case MsiAgentLineState::SM_AD:
           a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::M);
+          a.set_mresult(MessageResult::Commit);
           break;
           
         default:
@@ -363,13 +374,19 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       //
       switch (_s(cache_line.state())) {
         case MsiAgentLineState::IM_AD:
+          a.add_action(CoherentAgentCommand::SetAckCount);
+          a.set_ack_count(m->ack_count());
           a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::IM_A);
+          a.set_mresult(MessageResult::Commit);
           break;
           
         case MsiAgentLineState::SM_AD:
+          a.add_action(CoherentAgentCommand::SetAckCount);
+          a.set_ack_count(m->ack_count());
           a.add_action(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::SM_A);
+          a.set_mresult(MessageResult::Commit);
           break;
           
         default:
@@ -486,12 +503,14 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
     switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
       case MsiDirectoryLineState::I:
         a.add_action(SnoopFilterCommand::SendDataToReq);
+        a.set_ack_count(0);
         a.add_action(SnoopFilterCommand::AddReqToSharers);
         a.add_action(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::S);
         break;
       case MsiDirectoryLineState::S:
         a.add_action(SnoopFilterCommand::SendDataToReq);
+        a.set_ack_count(0);
         a.add_action(SnoopFilterCommand::AddReqToSharers);
         break;
       case MsiDirectoryLineState::M:
@@ -502,7 +521,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
         a.set_next_state(MsiDirectoryLineState::S);
         break;
       case MsiDirectoryLineState::S_D:
-        a.set_stall();
+        //        a.set_stall();
         break;
       default:
         a.set_error();
@@ -514,12 +533,14 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
     switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
       case MsiDirectoryLineState::I:
         a.add_action(SnoopFilterCommand::SendDataToReq);
+        a.set_ack_count(0);
         a.add_action(SnoopFilterCommand::SetOwnerToReq);
         a.add_action(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::M);
         break;
       case MsiDirectoryLineState::S:
         a.add_action(SnoopFilterCommand::SendDataToReq);
+        a.set_ack_count(dir_entry.num_sharers_not_id(m->src_id()));
         a.add_action(SnoopFilterCommand::SendInvToSharers);
         a.add_action(SnoopFilterCommand::ClearSharers);
         a.add_action(SnoopFilterCommand::SetOwnerToReq);
@@ -529,7 +550,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
       case MsiDirectoryLineState::M:
         break;
       case MsiDirectoryLineState::S_D:
-        a.set_stall();
+        //        a.set_stall();
         break;
       default:
         a.set_error();

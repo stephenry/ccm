@@ -29,6 +29,7 @@
 #define __SRC_AGENT_HPP__
 
 #include "coherence.hpp"
+#include <deque>
 
 namespace ccm {
 
@@ -53,7 +54,7 @@ struct Agent : CoherentAgentCommandInvoker {
   
  private:
   TransactionTable tt_;
-  Heap<TimeStamped<Transaction *> > pending_transactions_;
+  std::deque<TimeStamped<Transaction *> > pending_transactions_;
   std::vector<TimeStamped<const Message *> > pending_messages_;
   const AgentOptions & opts_;
 };

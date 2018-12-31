@@ -64,6 +64,7 @@ struct Message : ccm::Poolable {
   uint64_t addr() const { return addr_; }
   bool is_ack() const { return is_ack_; }
   const Transaction * transaction() const { return transaction_; }
+  std::size_t ack_count() const { return ack_count_; }
 
   void reset() {}
 
@@ -74,6 +75,7 @@ struct Message : ccm::Poolable {
   void set_addr(uint64_t addr) { addr_ = addr; }
   void set_is_ack(bool is_ack = true) { is_ack_ = is_ack; }
   void set_transaction(const Transaction * t) { transaction_ = t; }
+  void set_ack_count(std::size_t ack_count) { ack_count_ = ack_count; }
 
   MessageType type_;
   std::size_t src_id_;
@@ -81,6 +83,7 @@ struct Message : ccm::Poolable {
   uint64_t addr_;
   bool is_ack_;
   const Transaction * transaction_;
+  std::size_t ack_count_;
 };
 
 std::string to_string(const Message & m);
@@ -103,6 +106,7 @@ class MessageBuilder {
   void set_dst_id(std::size_t id) { msg_->set_dst_id(id); }
   void set_is_ack(bool is_ack = true) { msg_->set_is_ack(is_ack); }
   void set_transaction(const Transaction * t) { msg_->set_transaction(t); }
+  void set_ack_count(std::size_t ack_count) { msg_->set_ack_count(ack_count); }
  private:
   void set_src_id() { msg_->set_src_id(src_id_); }
   std::size_t src_id_;

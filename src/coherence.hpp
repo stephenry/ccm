@@ -71,6 +71,7 @@ struct SnoopFilterOptions : ActorOptions {
 
 #define AGENT_COMMANDS(__func)                  \
   __func(UpdateState)                           \
+  __func(SetAckCount)                           \
   __func(EmitGetS)                              \
   __func(EmitGetM)                              \
   __func(EmitDataToReq)                         \
@@ -117,11 +118,16 @@ const char * to_string(SnoopFilterCommand command);
 
 struct CacheLine {
   using state_type = uint8_t;
+  using ack_count_type = uint8_t;
+
+  ack_count_type ack_count() const { return ack_count_; }
+  void set_ack_count(ack_count_type ack_count) { ack_count_ = ack_count; }
   
   state_type state() const { return state_; }
   void set_state(state_type state) { state_ = state; }
  private:
   state_type state_;
+  ack_count_type ack_count_;
 };
 
 struct DirectoryEntry : CacheLine {
@@ -143,6 +149,15 @@ struct DirectoryEntry : CacheLine {
     sharers_.erase(std::find(sharers_.begin(), sharers_.end(), id), sharers_.end());
   }
   void clear_sharers() { sharers_.clear(); }
+  std::size_t num_sharers() const { return sharers_.size(); }
+
+  // TODO: refactor the size of the sharer set, minus the current ID (if
+  // present in the sharer list). Denotes the number of invalidations
+  // to emit to everything but the requester.
+  std::size_t num_sharers_not_id(std::size_t id) const {
+    return sharers_.size() - std::count(sharers_.begin(), sharers_.end(), id);
+  }
+  
 
  private:
   // Current set of sharing agents
@@ -154,9 +169,41 @@ struct DirectoryEntry : CacheLine {
 
 std::string to_string(const DirectoryEntry & d);
 
+#define TRANSACTION_RESULT(__func)              \
+  __func(Hit)                                   \
+  __func(Miss)                                  \
+  __func(Blocked)
+
+enum class TransactionResult {
+#define __declare_state(__state)                \
+  __state,
+  TRANSACTION_RESULT(__declare_state)
+#undef __declare_state
+};
+
+const char * to_string(TransactionResult r);
+
+#define MESSAGE_RESULT(__func)                  \
+  __func(Commit)                                \
+  __func(Stall)
+
+enum class MessageResult {
+#define __declare_state(__state)                \
+  __state,
+  MESSAGE_RESULT(__declare_state)
+#undef __declare_state
+};
+
 struct CoherentActorActions {
   using state_type = CacheLine::state_type;
   using action_type = uint8_t;
+  using ack_count_type = CacheLine::ack_count_type;
+
+  MessageResult mresult() const { return message_result_; }
+  void set_mresult(MessageResult result) { message_result_ = result; }
+
+  TransactionResult result() const { return transaction_result_; }
+  void set_result(TransactionResult result) { transaction_result_ = result; }
 
   bool has_state_update() const { return next_state_.has_value(); }
   state_type next_state() const { return next_state_.value(); }
@@ -168,10 +215,6 @@ struct CoherentActorActions {
   bool error() const { return false; }
   void set_error() {}
 
-  //
-  bool stall() const { return stall_; }
-  void set_stall() { stall_ = true; }
-
   std::size_t message_count() const { return msgs_n_; }
 
   const std::vector<action_type> & actions() const { return actions_; }
@@ -181,11 +224,16 @@ struct CoherentActorActions {
     actions_.push_back(static_cast<action_type>(a));
   }
 
+  ack_count_type ack_count() const { return ack_count_; }
+  void set_ack_count(ack_count_type ack_count) { ack_count_ = ack_count; }
+
  private:
-  bool stall_{false};
   std::optional<state_type> next_state_;
   std::vector<action_type> actions_;
   std::size_t msgs_n_{0};
+  TransactionResult transaction_result_;
+  MessageResult message_result_;
+  ack_count_type ack_count_;
 };
 
 class CoherentActorBase {
@@ -215,6 +263,7 @@ class CoherentAgentModel : public CoherentActorBase {
 struct CoherentAgentCommandInvoker : CoherentActor {
   using state_type = CoherentActorActions::state_type;
   using action_type = CoherentActorActions::action_type;
+  using ack_count_type = CacheLine::ack_count_type;
   
   CoherentAgentCommandInvoker(const CoherentAgentOptions & opts);
 
@@ -232,6 +281,8 @@ struct CoherentAgentCommandInvoker : CoherentActor {
  private:
   void execute_update_state(
       Frontier & f, CacheLine & cache_line, state_type state_next);
+  void execute_set_ack_count(
+      CacheLine & cache_line, ack_count_type ack_count);
   void execute_emit_gets(Frontier & f, const Transaction * t);
   void execute_emit_getm(Frontier & f, const Transaction * t);
   void execute_emit_data_to_req(Frontier & f, const Transaction * t);
@@ -282,7 +333,7 @@ private:
   void execute_set_owner_to_req(
       const Message * msg, Frontier & f, DirectoryEntry & d);
   void execute_send_data_to_req(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
+      const Message * msg, Frontier & f, DirectoryEntry & d, const CoherentActorActions & act);
   void execute_send_inv_to_sharers(
       const Message * msg, Frontier & f, DirectoryEntry & d);
   void execute_clear_sharers(
