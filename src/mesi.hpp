@@ -54,7 +54,6 @@ enum class MesiAgentLineState : state_t {
 #undef __declare_state
 };
 
-
 #define MESI_DIRECTORY_STATES(__func)           \
   __func(I)                                     \
   __func(S)                                     \
