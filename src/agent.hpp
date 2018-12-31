@@ -41,34 +41,21 @@ struct AgentOptions : CoherentAgentOptions {
 struct Agent : CoherentAgentCommandInvoker {
   Agent(const AgentOptions & opts);
 
+  bool is_active() const override;
   Protocol protocol() const { return opts_.protocol(); }
   CacheOptions cache_options() const { return opts_.cache_options(); }
-
+  bool can_accept() const { return !tt_.is_full(); }
   
   void add_transaction(std::size_t time, Transaction * t);
 
-  bool can_accept() const { return !tt_.is_full(); }
-
-  void apply(std::size_t t, const Message * m) override {
-    pending_messages_.push_back(make_time_stamped(t, m));
-  }
-  
+  void apply(std::size_t t, const Message * m) override;
   bool eval(Frontier & f) override;
   
-  bool is_active() const override {
-    // Agent is active if there are pending transction in the
-    // Transaction Table, or if there are transaction awaiting to be
-    // issued.
-    //
-    return (!pending_messages_.empty() || !pending_transactions_.empty());
-  }
-  
  private:
-  addr_t addr_;
-  const AgentOptions & opts_;
   TransactionTable tt_;
   Heap<TimeStamped<Transaction *> > pending_transactions_;
   std::vector<TimeStamped<const Message *> > pending_messages_;
+  const AgentOptions & opts_;
 };
 
 } // namespace ccm

@@ -46,7 +46,8 @@ bool Agent::eval(Frontier & f) {
       const Message * msg = t.t();
       set_time(t.time());
 
-      CacheLine cache_line = cache_->lookup(addr_);
+      const Transaction * transaction = msg->transaction();
+      CacheLine cache_line = cache_->lookup(transaction->addr());
       const CoherentActorActions actions =
           cc_model_->get_actions(t.t(), cache_line);
 
@@ -63,8 +64,6 @@ bool Agent::eval(Frontier & f) {
       set_time(head.time());
 
       if (!cache_->is_hit(t->addr())) {
-        addr_ = t->addr();
-        
         CacheLine cache_line;
         cc_model_->line_init(cache_line);
         cache_->install(t->addr(), cache_line);
@@ -78,6 +77,18 @@ bool Agent::eval(Frontier & f) {
     }
   }
   return is_active();
+}
+
+void Agent::apply(std::size_t t, const Message * m) {
+  pending_messages_.push_back(make_time_stamped(t, m));
+}
+
+bool Agent::is_active() const {
+  // Agent is active if there are pending transction in the
+  // Transaction Table, or if there are transaction awaiting to be
+  // issued.
+  //
+  return (!pending_messages_.empty() || !pending_transactions_.empty());
 }
 
 } // namespace ccm
