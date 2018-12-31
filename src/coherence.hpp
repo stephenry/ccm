@@ -36,18 +36,16 @@
 
 namespace ccm {
 
-class Message;
 class Transaction;
-class AgentOptions;
-class SnoopFilterOptions;
 class Frontier;
-class CoherentActorActions;
 
 enum class Protocol {
   MSI,
   MESI,
   MOSI
 };
+
+const char * to_string(Protocol p);
 
 struct CoherentAgentOptions : ActorOptions {
   CoherentAgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options)
@@ -204,8 +202,8 @@ class CoherentAgentModel : public CoherentActorBase {
   CoherentAgentModel(const CoherentAgentOptions & opts);
   virtual ~CoherentAgentModel() {}
   
-  virtual void line_init(CacheLine & l) const = 0;
-  virtual bool line_is_stable(const CacheLine & l) const = 0;
+  virtual void init(CacheLine & l) const = 0;
+  virtual bool is_stable(const CacheLine & l) const = 0;
   virtual std::string to_string(CacheLine::state_type l) const = 0;
   
   virtual CoherentActorActions get_actions(
@@ -221,6 +219,7 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   CoherentAgentCommandInvoker(const CoherentAgentOptions & opts);
 
   std::size_t time() const { return time_; }
+  CacheLine cache_line(std::size_t addr) const;
   
   void execute(
       Frontier & f, const CoherentActorActions & actions,
@@ -268,14 +267,15 @@ struct SnoopFilterCommandInvoker : CoherentActor {
   SnoopFilterCommandInvoker(const SnoopFilterOptions & opts);
   
   std::size_t time() const { return time_; }
-
+  DirectoryEntry directory_entry(std::size_t addr) const;
+  
   void execute(
       Frontier & f, const CoherentActorActions & actions,
       const Message * msg, DirectoryEntry & d);
   void set_time(std::size_t time) { time_ = time; }
  protected:
   std::unique_ptr<SnoopFilterModel> cc_model_;
-  std::unique_ptr<GenericCache<CacheLine> > cache_;
+  std::unique_ptr<GenericCache<DirectoryEntry> > cache_;
 private:
   void execute_update_state(
       Frontier & f, DirectoryEntry & d, state_type state_next);

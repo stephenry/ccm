@@ -34,6 +34,15 @@
 
 namespace ccm {
 
+const char * to_string(Protocol p) {
+  switch (p) {
+    case Protocol::MSI: return "MSI"; break;
+    case Protocol::MESI: return "MESI"; break;
+    case Protocol::MOSI: return "MOSI"; break;
+    default: return "Unknown"; break;
+  }
+}
+
 const char * to_string(CoherentAgentCommand command) {
   switch (command) {
 #define __declare_to_string(__e)                        \
@@ -51,13 +60,26 @@ CoherentAgentCommandInvoker::CoherentAgentCommandInvoker(
   cache_ = cache_factory<CacheLine>(opts.cache_options());
 }
 
+CacheLine CoherentAgentCommandInvoker::cache_line(std::size_t addr) const {
+  CacheLine cl;
+  if (cache_->is_hit(addr)) {
+    cl = cache_->lookup(addr);
+  } else {
+    cc_model_->init(cl);
+  }
+  return cl;
+}
+
 void CoherentAgentCommandInvoker::execute(
     Frontier & f, const CoherentActorActions & actions,
     CacheLine & cache_line, const Transaction * t) {
 
-  for (const uint8_t cmd : actions.actions()) {
+  for (CoherentActorActions::action_type c : actions.actions()) {
 
-    switch (static_cast<CoherentAgentCommand>(cmd)) {
+    const CoherentAgentCommand cmd{c};
+    log_debug("Execute: ", to_string(cmd));
+    
+    switch (cmd) {
       
       case CoherentAgentCommand::UpdateState:
         execute_update_state(f, cache_line, actions.next_state());
@@ -181,15 +203,29 @@ SnoopFilterCommandInvoker::SnoopFilterCommandInvoker(
     : opts_(opts), msgd_(opts), CoherentActor(opts) {
   id_ = opts.id();
   cc_model_ = snoop_filter_factory(opts);
+  cache_ = cache_factory<DirectoryEntry>(opts.cache_options());
+}
+
+DirectoryEntry SnoopFilterCommandInvoker::directory_entry(std::size_t addr) const {
+  DirectoryEntry directory_entry;
+  if (cache_->is_hit(addr)) {
+    directory_entry = cache_->lookup(addr);
+  } else {
+    cc_model_->init(directory_entry);
+  }
+  return directory_entry;
 }
 
 void SnoopFilterCommandInvoker::execute(
     Frontier & f, const CoherentActorActions & actions,
     const Message * msg, DirectoryEntry & d) {
 
-  for (const uint8_t cmd : actions.actions()) {
+  for (CoherentActorActions::action_type c : actions.actions()) {
 
-    switch (static_cast<SnoopFilterCommand>(cmd)) {
+    const SnoopFilterCommand cmd{c};
+    log_debug("Execute: ", to_string(cmd));
+
+    switch (cmd) {
       case SnoopFilterCommand::UpdateState:
         execute_update_state(f, d, actions.next_state());
         break;

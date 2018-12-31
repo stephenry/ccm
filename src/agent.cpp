@@ -65,7 +65,7 @@ bool Agent::eval(Frontier & f) {
 
       if (!cache_->is_hit(t->addr())) {
         CacheLine cache_line;
-        cc_model_->line_init(cache_line);
+        cc_model_->init(cache_line);
         cache_->install(t->addr(), cache_line);
       }
 

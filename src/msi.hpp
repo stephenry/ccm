@@ -33,6 +33,47 @@
 
 namespace ccm {
 
+#define LINE_STATES(__func)                     \
+  __func(I)                                     \
+  __func(IS_D)                                  \
+  __func(IM_AD)                                 \
+  __func(IM_A)                                  \
+  __func(S)                                     \
+  __func(SM_AD)                                 \
+  __func(SM_A)                                  \
+  __func(M)                                     \
+  __func(MI_A)                                  \
+  __func(SI_A)                                  \
+  __func(II_A)
+
+enum class MsiAgentLineState : uint8_t {
+#define __declare_state(__state)                \
+  __state,
+LINE_STATES(__declare_state)
+#undef __declare_state
+};
+
+const char * to_string(MsiAgentLineState s);
+MsiAgentLineState _s(CacheLine::state_type s);
+bool is_stable(MsiAgentLineState s);
+
+CacheLine::state_type _g(MsiAgentLineState s);
+
+#define DIRECTORY_STATES(__func)                \
+  __func(I)                                     \
+  __func(S)                                     \
+  __func(M)                                     \
+  __func(S_D)
+
+enum class MsiDirectoryLineState : uint8_t {
+#define __declare_state(__state)                \
+  __state,
+  DIRECTORY_STATES(__declare_state)
+#undef __declare_state
+};
+const char * to_string(MsiDirectoryLineState s);
+CacheLine::state_type _g(MsiDirectoryLineState s);
+
 class MsiCoherentAgentModel : public CoherentAgentModel {
  public:
   MsiCoherentAgentModel(const CoherentAgentOptions & opts);
@@ -42,8 +83,8 @@ class MsiCoherentAgentModel : public CoherentAgentModel {
   Protocol protocol() const override { return Protocol::MSI; }
 
   //
-  void line_init(CacheLine & l) const override;
-  bool line_is_stable(const CacheLine & l) const override;
+  void init(CacheLine & l) const override;
+  bool is_stable(const CacheLine & l) const override;
   std::string to_string(CacheLine::state_type s) const override;
   
   //

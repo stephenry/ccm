@@ -29,14 +29,17 @@
 #include <gtest/gtest.h>
 
 TEST(MSI, Load) {
+  const std::size_t addr = 0;
+  
   ccm::Logger l;
   l.set_force_flush(true);
-
+  
   ccm::LoggerScope * top = l.top();
   
   ccm::Sim s;
 
   std::vector<ccm::Agent *> agents_;
+  ccm::SnoopFilter * snoop_filter;
   for (std::size_t i = 0; i < 4; i++) {
     ccm::AgentOptions opts(i, ccm::Protocol::MSI, ccm::CacheOptions());
 
@@ -48,13 +51,20 @@ TEST(MSI, Load) {
     s.add_actor(agents_.back());
   }
 
-  ccm::Transaction * t = new ccm::Transaction{0, ccm::TransactionType::Store};
+  ccm::Transaction * t = new ccm::Transaction{addr, ccm::TransactionType::Load};
   agents_[0]->add_transaction(10, t);
 
   ccm::SnoopFilterOptions opts(4, ccm::Protocol::MSI, ccm::CacheOptions());
   opts.set_logger_scope(top->child_scope("SnoopFilter"));
-  s.add_actor(new ccm::SnoopFilter(opts));
+  snoop_filter = new ccm::SnoopFilter(opts);
+  s.add_actor(snoop_filter);
   s.run();
+
+  const ccm::CacheLine cache_line = agents_[0]->cache_line(addr);
+  EXPECT_EQ(cache_line.state(), _g(ccm::MsiAgentLineState::S));
+
+  const ccm::DirectoryEntry directory_entry = snoop_filter->directory_entry(addr);
+  EXPECT_EQ(directory_entry.state(), _g(ccm::MsiDirectoryLineState::S));
 }
 
 int main(int argc, char ** argv) {

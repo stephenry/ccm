@@ -31,7 +31,7 @@
 #include "interconnect.hpp"
 #include "sim.hpp"
 #include "coherence.hpp"
-#include "msi.hpp"
 #include "agent.hpp"
 #include "snoopfilter.hpp"
 #include "genericcache.hpp"
+#include "msi.hpp"

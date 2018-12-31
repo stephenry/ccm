@@ -36,26 +36,6 @@
 
 namespace ccm {
 
-#define LINE_STATES(__func)                     \
-  __func(I)                                     \
-  __func(IS_D)                                  \
-  __func(IM_AD)                                 \
-  __func(IM_A)                                  \
-  __func(S)                                     \
-  __func(SM_AD)                                 \
-  __func(SM_A)                                  \
-  __func(M)                                     \
-  __func(MI_A)                                  \
-  __func(SI_A)                                  \
-  __func(II_A)
-
-enum class MsiAgentLineState : uint8_t {
-#define __declare_state(__state)                \
-  __state,
-  LINE_STATES(__declare_state)
-#undef __declare_state
-};
-
 const char * to_string(MsiAgentLineState s) {
   switch (s) {
 #define __declare_to_string(__e)                \
@@ -64,6 +44,10 @@ const char * to_string(MsiAgentLineState s) {
 #undef __declare_to_string
     default: return "<Invalid Line State>";
   }
+}
+
+CacheLine::state_type _g(MsiAgentLineState s) {
+  return static_cast<CacheLine::state_type>(s);
 }
 
 MsiAgentLineState _s(CacheLine::state_type s) {
@@ -86,12 +70,12 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       : opts_(opts)
   {}
 
-  void line_init(CacheLine & l) const {
+  void init(CacheLine & l) const {
     l.set_state(static_cast<CacheLine::state_type>(MsiAgentLineState::I));
   }
   
-  bool line_is_stable(const CacheLine & l) const {
-    return is_stable(static_cast<MsiAgentLineState>(l.state()));
+  bool is_stable(const CacheLine & l) const {
+    return ::ccm::is_stable(_s(l.state()));
   }
 
   std::string to_string(CacheLine::state_type s) const {
@@ -404,12 +388,12 @@ MsiCoherentAgentModel::MsiCoherentAgentModel(const CoherentAgentOptions & opts)
 
 MsiCoherentAgentModel::~MsiCoherentAgentModel() {};
 
-void MsiCoherentAgentModel::line_init(CacheLine & l) const {
-  impl_->line_init(l);
+void MsiCoherentAgentModel::init(CacheLine & l) const {
+  impl_->init(l);
 }
 
-bool MsiCoherentAgentModel::line_is_stable(const CacheLine & l) const {
-  return impl_->line_is_stable(l);
+bool MsiCoherentAgentModel::is_stable(const CacheLine & l) const {
+  return impl_->is_stable(l);
 }
 
 std::string MsiCoherentAgentModel::to_string(CacheLine::state_type s) const {
@@ -426,19 +410,6 @@ CoherentActorActions MsiCoherentAgentModel::get_actions(
   return impl_->get_actions(m, cache_line);
 }
 
-#define DIRECTORY_STATES(__func)                \
-  __func(I)                                     \
-  __func(S)                                     \
-  __func(M)                                     \
-  __func(S_D)
-
-enum class MsiDirectoryLineState : uint8_t {
-#define __declare_state(__state)                \
-  __state,
-  DIRECTORY_STATES(__declare_state)
-#undef __declare_state
-};
-
 const char * to_string(MsiDirectoryLineState s) {
   switch (s) {
 #define __declare_to_string(__e)                \
@@ -447,6 +418,10 @@ const char * to_string(MsiDirectoryLineState s) {
 #undef __declare_to_string
   }
   return "<Invalid Directory State>";
+}
+
+CacheLine::state_type _g(MsiDirectoryLineState s) {
+  return static_cast<CacheLine::state_type>(s);
 }
 
 struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
