@@ -508,11 +508,13 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
         a.add_action(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::S);
         break;
+
       case MsiDirectoryLineState::S:
         a.add_action(SnoopFilterCommand::SendDataToReq);
         a.set_ack_count(0);
         a.add_action(SnoopFilterCommand::AddReqToSharers);
         break;
+
       case MsiDirectoryLineState::M:
         a.add_action(SnoopFilterCommand::SendFwdGetSToOwner);
         a.add_action(SnoopFilterCommand::AddReqToSharers);
@@ -520,9 +522,11 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
         a.add_action(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::S);
         break;
+
       case MsiDirectoryLineState::S_D:
         //        a.set_stall();
         break;
+
       default:
         a.set_error();
     }
@@ -538,6 +542,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
         a.add_action(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::M);
         break;
+
       case MsiDirectoryLineState::S:
         a.add_action(SnoopFilterCommand::SendDataToReq);
         a.set_ack_count(dir_entry.num_sharers_not_id(m->src_id()));
@@ -547,11 +552,14 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
         a.add_action(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::M);
         break;
+
       case MsiDirectoryLineState::M:
         break;
+
       case MsiDirectoryLineState::S_D:
         //        a.set_stall();
         break;
+
       default:
         a.set_error();
     }
@@ -564,6 +572,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
       case MsiDirectoryLineState::I:
         a.add_action(SnoopFilterCommand::SendPutSAckToReq);
         break;
+
       case MsiDirectoryLineState::S:
         a.add_action(SnoopFilterCommand::DelReqFromSharers);
         a.add_action(SnoopFilterCommand::SendPutSAckToReq);
@@ -572,14 +581,17 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
           a.set_next_state(MsiDirectoryLineState::I);
         }
         break;
+
       case MsiDirectoryLineState::M:
         a.add_action(SnoopFilterCommand::DelReqFromSharers);
         a.add_action(SnoopFilterCommand::SendPutSAckToReq);
         break;
+
       case MsiDirectoryLineState::S_D:
         a.add_action(SnoopFilterCommand::DelReqFromSharers);
         a.add_action(SnoopFilterCommand::SendPutSAckToReq);
         break;
+
       default:
         a.set_error();
     }
@@ -594,12 +606,14 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
           a.add_action(SnoopFilterCommand::SendPutMAckToReq);
         }
         break;
+
       case MsiDirectoryLineState::S:
         if (!is_data_from_owner) {
           a.add_action(SnoopFilterCommand::DelReqFromSharers);
           a.add_action(SnoopFilterCommand::SendPutMAckToReq);
         }
         break;
+
       case MsiDirectoryLineState::M:
         a.add_action(SnoopFilterCommand::SendPutMAckToReq);
         if (is_data_from_owner) {
@@ -609,12 +623,14 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
           a.set_next_state(MsiDirectoryLineState::I);
         }
         break;
+
       case MsiDirectoryLineState::S_D:
         if (!is_data_from_owner) {
           a.add_action(SnoopFilterCommand::DelReqFromSharers);
           a.add_action(SnoopFilterCommand::SendPutMAckToReq);
         }
         break;
+
       default:
         a.set_error();
     }
@@ -628,6 +644,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
         a.add_action(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::S);
         break;
+
       default:
         a.set_error();
     }
