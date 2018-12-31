@@ -46,8 +46,16 @@ bool SnoopFilter::eval(Frontier & f) {
     while (pending_messages_.pop(head)) {
       set_time(head.time());
 
-      DirectoryEntry directory_entry;
-      cc_model_->init(directory_entry);
+      const Message * message = head.t();
+      const Transaction * transaction = message->transaction();
+      
+      if (!cache_->is_hit(transaction->addr())) {
+        DirectoryEntry directory_entry;
+        cc_model_->init(directory_entry);
+        cache_->install(transaction->addr(), directory_entry);
+      }
+      
+      DirectoryEntry & directory_entry = cache_->lookup(transaction->addr());
       const CoherentActorActions actions =
           cc_model_->get_actions(head.t(), directory_entry);
       execute(f, actions, head.t(), directory_entry);

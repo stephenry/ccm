@@ -47,7 +47,7 @@ bool Agent::eval(Frontier & f) {
       set_time(t.time());
 
       const Transaction * transaction = msg->transaction();
-      CacheLine cache_line = cache_->lookup(transaction->addr());
+      CacheLine & cache_line = cache_->lookup(transaction->addr());
       const CoherentActorActions actions =
           cc_model_->get_actions(t.t(), cache_line);
 
