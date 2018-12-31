@@ -81,6 +81,12 @@ struct BasicPlatform {
 };
 
 TEST(MSI, SimpleLoad) {
+  // Perform a single load to one agent in the system. At the end of
+  // the simulation, the line should be installed in the requestor in
+  // the shared state, and installed in the directory in the shared
+  // state.
+  //
+  
   const std::size_t addr = 0;
 
   ccm::Sim s;
@@ -101,6 +107,14 @@ TEST(MSI, SimpleLoad) {
 }
 
 TEST(MSI, SimpleLoadPromotion) {
+  // Perform a load followed by a store to the same address in the
+  // same agent. Upon completion of the first transaction, the line
+  // should be installed in the shared state. Upon completion of the
+  // second instruction, the line should be promoted to the modified
+  // state. As no other agents hold the line, no invalidation requests
+  // should be passed to any other agent.
+  //
+  
   const std::size_t addr = 0;
 
   ccm::Sim s;
@@ -122,6 +136,11 @@ TEST(MSI, SimpleLoadPromotion) {
 }
 
 TEST(MSI, SimpleStore) {
+  // Perform a single store to one agent in the system. At the end of
+  // the simulation, the line should be installed in the requester in the
+  // modified state, and installed in the directory in the modified state.
+  //
+  
   const std::size_t addr = 0;
 
   ccm::Sim s;
@@ -142,6 +161,13 @@ TEST(MSI, SimpleStore) {
 }
 
 TEST(MSI, MultipleSharers) {
+  // Each agent in the system performs a load request to the same
+  // line.  Upon completion of the commands, each agent should have a
+  // line installed in its cache in the shared state. The directory
+  // should have the line in the shared state and each agent should
+  // be present in the sharer set.
+  //
+  
   const std::size_t addr = 0;
 
   ccm::Sim s;
@@ -169,6 +195,15 @@ TEST(MSI, MultipleSharers) {
 }
 
 TEST(MSI, MultipleSharersThenPromotion) {
+  // Each agent performs a load to the same line. After the loads have
+  // completed, an agent performs a Store operation to the line.
+  // Before the Store operation completes, each line in the other
+  // agents must be invalidate and the resulting acknowlegement passed
+  // to the original requesting agent. Upon completion, the storing
+  // agent is the only agent with a copy of the line (in the modified
+  // state).
+  //
+  
   const std::size_t addr = 0;
 
   ccm::Sim s;

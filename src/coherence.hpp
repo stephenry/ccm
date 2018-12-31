@@ -201,13 +201,12 @@ enum class MessageResult : result_t {
   __func(commands, std::vector<command_t>)
 
 struct CoherenceActions {
-
-#define __declare_getter_setter(__name, __type)                         \
-  using __name ## _type = __type;                                       \
-  __type __name() const { return __name ## _; }                         \
-  template<typename T>                                                  \
-  void set_ ## __name(const T & __name) {                               \
-    __name ## _ = static_cast<__type>(__name);                          \
+#define __declare_getter_setter(__name, __type) \
+  using __name ## _type = __type;               \
+  __type __name() const { return __name ## _; } \
+  template<typename T>                          \
+  void set_ ## __name(const T & __name) {       \
+    __name ## _ = static_cast<__type>(__name);  \
   }
   ACTION_FIELDS(__declare_getter_setter)
 #undef __declare_getter_setter

@@ -289,7 +289,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       //
       switch (_s(cache_line.state())) {
         case MsiAgentLineState::IS_D:
-          //          a.set_stall();
+          a.set_result(MessageResult::Stall);
           break;
           
         case MsiAgentLineState::S:

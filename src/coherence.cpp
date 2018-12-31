@@ -341,7 +341,14 @@ void SnoopFilterCommandInvoker::execute_send_inv_to_sharers(
   log_debug("Send Invalidation(s) to sharers.");
   
   std::size_t time_start = 1 + time();
-  for (std::size_t sharer : d.sharers()) {
+  for (const std::size_t sharer : d.sharers()) {
+
+    // Do not invalidation request to requester, only the other
+    // sharing agents in the system.
+    //
+    if (sharer == msg->src_id())
+      continue;
+    
     MessageBuilder b = msgd_.builder();
     b.set_type(MessageType::Inv);
     b.set_dst_id(sharer);
