@@ -28,4 +28,54 @@
 #include "mesi.hpp"
 
 namespace ccm {
+
+MesiCoherentAgentModel::MesiCoherentAgentModel(const CoherentAgentOptions & opts)
+    : CoherentAgentModel(opts) {
+}
+
+MesiCoherentAgentModel::~MesiCoherentAgentModel() {
+}
+
+void MesiCoherentAgentModel::init(CacheLine & l) const {
+}
+
+bool MesiCoherentAgentModel::is_stable(const CacheLine & l) const {
+}
+
+std::string MesiCoherentAgentModel::to_string(CacheLine::state_type s) const {
+}
+  
+//
+CoherenceActions MesiCoherentAgentModel::get_actions(
+    const Transaction * t, const CacheLine & cache_line) const {
+}
+
+CoherenceActions MesiCoherentAgentModel::get_actions(
+    const Message * m, const CacheLine & cache_line) const {
+}
+
+
+MesiSnoopFilterModel::MesiSnoopFilterModel(const SnoopFilterOptions & opts)
+    : SnoopFilterModel(opts) {
+}
+
+MesiSnoopFilterModel::~MesiSnoopFilterModel() {
+}
+
+void MesiSnoopFilterModel::init(DirectoryEntry & l) const {
+}
+
+bool MesiSnoopFilterModel::is_stable(const DirectoryEntry & l) const {
+}
+
+std::string MesiSnoopFilterModel::to_string(const DirectoryEntry & l) const {
+}
+
+std::string MesiSnoopFilterModel::to_string(CacheLine::state_type l) const {
+}
+
+CoherenceActions MesiSnoopFilterModel::get_actions(
+    const Message * m, const DirectoryEntry & dir_entry) const {
+}
+
 } // namespace ccm

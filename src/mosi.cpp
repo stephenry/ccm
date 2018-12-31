@@ -28,4 +28,54 @@
 #include "mosi.hpp"
 
 namespace ccm {
+
+MosiCoherentAgentModel::MosiCoherentAgentModel(const CoherentAgentOptions & opts)
+    : CoherentAgentModel(opts) {
+}
+
+MosiCoherentAgentModel::~MosiCoherentAgentModel() {
+}
+
+void MosiCoherentAgentModel::init(CacheLine & l) const {
+}
+
+bool MosiCoherentAgentModel::is_stable(const CacheLine & l) const {
+}
+
+std::string MosiCoherentAgentModel::to_string(CacheLine::state_type s) const {
+}
+  
+//
+CoherenceActions MosiCoherentAgentModel::get_actions(
+    const Transaction * t, const CacheLine & cache_line) const {
+}
+
+CoherenceActions MosiCoherentAgentModel::get_actions(
+    const Message * m, const CacheLine & cache_line) const {
+}
+
+
+MosiSnoopFilterModel::MosiSnoopFilterModel(const SnoopFilterOptions & opts)
+    : SnoopFilterModel(opts) {
+}
+
+MosiSnoopFilterModel::~MosiSnoopFilterModel() {
+}
+
+void MosiSnoopFilterModel::init(DirectoryEntry & l) const {
+}
+
+bool MosiSnoopFilterModel::is_stable(const DirectoryEntry & l) const {
+}
+
+std::string MosiSnoopFilterModel::to_string(const DirectoryEntry & l) const {
+}
+
+std::string MosiSnoopFilterModel::to_string(CacheLine::state_type l) const {
+}
+
+CoherenceActions MosiSnoopFilterModel::get_actions(
+    const Message * m, const DirectoryEntry & dir_entry) const {
+}
+
 } // namespace ccm

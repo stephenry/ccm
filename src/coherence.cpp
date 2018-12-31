@@ -31,6 +31,8 @@
 #include "snoopfilter.hpp"
 #include "sim.hpp"
 #include "msi.hpp"
+#include "mesi.hpp"
+#include "mosi.hpp"
 
 namespace ccm {
 
@@ -202,8 +204,15 @@ std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
     case Protocol::MSI:
       return std::make_unique<MsiCoherentAgentModel>(opts);
       break;
+      
     case Protocol::MESI:
+      return std::make_unique<MesiCoherentAgentModel>(opts);
+      break;
+      
     case Protocol::MOSI:
+      return std::make_unique<MosiCoherentAgentModel>(opts);
+      break;
+      
     default:
       // TODO: Not implemented
       return nullptr;
@@ -476,8 +485,15 @@ std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
     case Protocol::MSI:
       return std::make_unique<MsiSnoopFilterModel>(opts);
       break;
+      
     case Protocol::MESI:
+      return std::make_unique<MesiSnoopFilterModel>(opts);
+      break;
+      
     case Protocol::MOSI:
+      return std::make_unique<MosiSnoopFilterModel>(opts);
+      break;
+      
     default:
       // TODO: Not implemented
       return nullptr;

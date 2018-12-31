@@ -68,6 +68,55 @@ enum class MosiDirectoryLineState : state_t {
 #undef __declare_state
 };
 
+class MosiCoherentAgentModel : public CoherentAgentModel {
+ public:
+  MosiCoherentAgentModel(const CoherentAgentOptions & opts);
+  virtual ~MosiCoherentAgentModel();
+
+  //
+  Protocol protocol() const override { return Protocol::MSI; }
+
+  //
+  void init(CacheLine & l) const override;
+  bool is_stable(const CacheLine & l) const override;
+  std::string to_string(CacheLine::state_type s) const override;
+  
+  //
+  CoherenceActions get_actions(
+      const Transaction * t, const CacheLine & cache_line) const override;
+  CoherenceActions get_actions(
+      const Message * m, const CacheLine & cache_line) const override;
+
+ private:
+  struct MosiCoherentAgentModelImpl;
+
+  //  std::unique_ptr<MosiCoherentAgentModelImpl> impl_;
+};
+
+class MosiSnoopFilterModel : public SnoopFilterModel {
+ public:
+  MosiSnoopFilterModel(const SnoopFilterOptions & opts);
+  virtual ~MosiSnoopFilterModel();
+
+  //
+  Protocol protocol() const override { return Protocol::MSI; }
+
+  //
+  void init(DirectoryEntry & l) const override;
+  bool is_stable(const DirectoryEntry & l) const override;
+  std::string to_string(const DirectoryEntry & l) const override;
+  std::string to_string(CacheLine::state_type l) const override;
+
+  //
+  CoherenceActions get_actions(
+      const Message * m, const DirectoryEntry & dir_entry) const override;
+
+ private:
+  struct MosiSnoopFilterModelImpl;
+
+  //  std::unique_ptr<MosiSnoopFilterModelImpl> impl_;
+};
+
 } // namespace ccm
 
 #endif
