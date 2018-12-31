@@ -40,20 +40,23 @@ void MesiCoherentAgentModel::init(CacheLine & l) const {
 }
 
 bool MesiCoherentAgentModel::is_stable(const CacheLine & l) const {
+  return false;
 }
 
 std::string MesiCoherentAgentModel::to_string(CacheLine::state_type s) const {
+  return "";
 }
   
 //
 CoherenceActions MesiCoherentAgentModel::get_actions(
     const Transaction * t, const CacheLine & cache_line) const {
+  return {};
 }
 
 CoherenceActions MesiCoherentAgentModel::get_actions(
     const Message * m, const CacheLine & cache_line) const {
+  return {};
 }
-
 
 MesiSnoopFilterModel::MesiSnoopFilterModel(const SnoopFilterOptions & opts)
     : SnoopFilterModel(opts) {
@@ -66,16 +69,20 @@ void MesiSnoopFilterModel::init(DirectoryEntry & l) const {
 }
 
 bool MesiSnoopFilterModel::is_stable(const DirectoryEntry & l) const {
+  return false;
 }
 
 std::string MesiSnoopFilterModel::to_string(const DirectoryEntry & l) const {
+  return "";
 }
 
 std::string MesiSnoopFilterModel::to_string(CacheLine::state_type l) const {
+  return "";
 }
 
 CoherenceActions MesiSnoopFilterModel::get_actions(
     const Message * m, const DirectoryEntry & dir_entry) const {
+  return {};
 }
 
 } // namespace ccm

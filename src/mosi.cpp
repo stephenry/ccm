@@ -40,20 +40,23 @@ void MosiCoherentAgentModel::init(CacheLine & l) const {
 }
 
 bool MosiCoherentAgentModel::is_stable(const CacheLine & l) const {
+  return false;
 }
 
 std::string MosiCoherentAgentModel::to_string(CacheLine::state_type s) const {
+  return "";
 }
   
 //
 CoherenceActions MosiCoherentAgentModel::get_actions(
     const Transaction * t, const CacheLine & cache_line) const {
+  return {};
 }
 
 CoherenceActions MosiCoherentAgentModel::get_actions(
     const Message * m, const CacheLine & cache_line) const {
+  return {};
 }
-
 
 MosiSnoopFilterModel::MosiSnoopFilterModel(const SnoopFilterOptions & opts)
     : SnoopFilterModel(opts) {
@@ -66,16 +69,20 @@ void MosiSnoopFilterModel::init(DirectoryEntry & l) const {
 }
 
 bool MosiSnoopFilterModel::is_stable(const DirectoryEntry & l) const {
+  return false;
 }
 
 std::string MosiSnoopFilterModel::to_string(const DirectoryEntry & l) const {
+  return "";
 }
 
 std::string MosiSnoopFilterModel::to_string(CacheLine::state_type l) const {
+  return "";
 }
 
 CoherenceActions MosiSnoopFilterModel::get_actions(
     const Message * m, const DirectoryEntry & dir_entry) const {
+  return {};
 }
 
 } // namespace ccm
