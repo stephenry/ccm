@@ -81,10 +81,10 @@ CacheLine CoherentAgentCommandInvoker::cache_line(std::size_t addr) const {
 }
 
 void CoherentAgentCommandInvoker::execute(
-    Frontier & f, const CoherentActorActions & actions,
+    Frontier & f, const CoherenceActions & actions,
     CacheLine & cache_line, const Transaction * t) {
 
-  for (CoherentActorActions::action_type c : actions.actions()) {
+  for (const command_t c : actions.commands()) {
 
     const CoherentAgentCommand cmd{c};
     log_debug("Execute: ", to_string(cmd));
@@ -123,7 +123,7 @@ void CoherentAgentCommandInvoker::execute(
 }
 
 void CoherentAgentCommandInvoker::execute_update_state(
-    Frontier & f, CacheLine & cache_line, state_type state_next) {
+    Frontier & f, CacheLine & cache_line, state_t state_next) {
   log_debug("Update state; current: ", cc_model_->to_string(state_next),
             " previous: ", cc_model_->to_string(cache_line.state()));
   
@@ -240,10 +240,10 @@ DirectoryEntry SnoopFilterCommandInvoker::directory_entry(std::size_t addr) cons
 }
 
 void SnoopFilterCommandInvoker::execute(
-    Frontier & f, const CoherentActorActions & actions,
+    Frontier & f, const CoherenceActions & actions,
     const Message * msg, DirectoryEntry & d) {
 
-  for (CoherentActorActions::action_type c : actions.actions()) {
+  for (const command_t c : actions.commands()) {
 
     const SnoopFilterCommand cmd{c};
     log_debug("Execute: ", to_string(cmd));
@@ -305,7 +305,7 @@ void SnoopFilterCommandInvoker::execute(
 }
 
 void SnoopFilterCommandInvoker::execute_update_state(
-    Frontier & f, DirectoryEntry & d, state_type state_next) {
+    Frontier & f, DirectoryEntry & d, state_t state_next) {
   log_debug("Update state; current: ", cc_model_->to_string(state_next),
             " previous: ", cc_model_->to_string(d.state()));
   
@@ -320,7 +320,7 @@ void SnoopFilterCommandInvoker::execute_set_owner_to_req(
 }
 
 void SnoopFilterCommandInvoker::execute_send_data_to_req(
-    const Message * msg, Frontier & f, DirectoryEntry & d, const CoherentActorActions & a) {
+    const Message * msg, Frontier & f, DirectoryEntry & d, const CoherenceActions & a) {
   
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::Data);

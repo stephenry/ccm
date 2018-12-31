@@ -48,7 +48,7 @@ bool Agent::eval(Frontier & f) {
 
       const Transaction * transaction = msg->transaction();
       CacheLine & cache_line = cache_->lookup(transaction->addr());
-      const CoherentActorActions actions =
+      const CoherenceActions actions =
           cc_model_->get_actions(t.t(), cache_line);
 
       execute(f, actions, cache_line, msg->transaction());
@@ -70,11 +70,11 @@ bool Agent::eval(Frontier & f) {
       }
 
       CacheLine & cache_line = cache_->lookup(t->addr());
-      const CoherentActorActions actions =
+      const CoherenceActions actions =
           cc_model_->get_actions(head.t(), cache_line);
 
       bool advance = true;
-      switch (actions.result()) {
+      switch (static_cast<TransactionResult>(actions.result())) {
         case TransactionResult::Hit:
           // Transaction completes;
           [[fallthrough]];

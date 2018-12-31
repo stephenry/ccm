@@ -56,7 +56,7 @@ bool SnoopFilter::eval(Frontier & f) {
       }
       
       DirectoryEntry & directory_entry = cache_->lookup(transaction->addr());
-      const CoherentActorActions actions =
+      const CoherenceActions actions =
           cc_model_->get_actions(head.t(), directory_entry);
       execute(f, actions, head.t(), directory_entry);
     }

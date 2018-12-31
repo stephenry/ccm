@@ -82,9 +82,9 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return ::ccm::to_string(static_cast<MsiAgentLineState>(s));
   }
 
-  CoherentActorActions get_actions(
+  CoherenceActions get_actions(
       const Transaction * t, const CacheLine & cache_line) const {
-    CoherentActorActions actions;
+    CoherenceActions actions;
     switch (t->type()) {
       case TransactionType::Load:
         handle__Load(t, cache_line, actions);
@@ -97,9 +97,9 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
     return actions;
   }
   
-  CoherentActorActions get_actions(
+  CoherenceActions get_actions(
       const Message * m, const CacheLine & cache_line) const {
-    CoherentActorActions actions;
+    CoherenceActions actions;
     switch (m->type()) {
       case MessageType::FwdGetS:
         handle__FwdGetS(m, cache_line, actions);
@@ -123,7 +123,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         break;
 
       default:
-        actions.set_error();
+        actions.set_error(true);
     }
     return actions;
   }
@@ -133,11 +133,12 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
   }
 
   void handle__Load(
-      const Transaction * t, const CacheLine & cache_line, CoherentActorActions & a) const {
+      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
+
     switch (_s(cache_line.state())) {
       case MsiAgentLineState::I:
-        a.add_action(CoherentAgentCommand::EmitGetS);
-        a.add_action(CoherentAgentCommand::UpdateState);
+        a.append_command(CoherentAgentCommand::EmitGetS);
+        a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::IS_D);
         a.set_result(TransactionResult::Miss);
         break;
@@ -159,16 +160,16 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         break;
         
       default:
-        a.set_error();
+        a.set_error(true);
     }
   }
   
   void handle__Store(
-      const Transaction * t, const CacheLine & cache_line, CoherentActorActions & a) const {
+      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
     switch (_s(cache_line.state())) {
       case MsiAgentLineState::I:
-        a.add_action(CoherentAgentCommand::EmitGetM);
-        a.add_action(CoherentAgentCommand::UpdateState);
+        a.append_command(CoherentAgentCommand::EmitGetM);
+        a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::IM_AD);
         a.set_result(TransactionResult::Miss);
         break;
@@ -185,8 +186,8 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         break;
         
       case MsiAgentLineState::S:
-        a.add_action(CoherentAgentCommand::EmitGetM);
-        a.add_action(CoherentAgentCommand::UpdateState);
+        a.append_command(CoherentAgentCommand::EmitGetM);
+        a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::SM_AD);
         a.set_result(TransactionResult::Miss);
         break;
@@ -196,89 +197,89 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         break;
         
       default:
-        a.set_error();
+        a.set_error(true);
     }
   }
 
   void handle__FwdGetS(
-      const Message * m, const CacheLine & cache_line, CoherentActorActions & a) const {
+      const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
     switch (_s(cache_line.state())) {
       case MsiAgentLineState::IM_AD:
       case MsiAgentLineState::IM_A:
       case MsiAgentLineState::SM_AD:
       case MsiAgentLineState::SM_A:
-        a.set_mresult(MessageResult::Stall);
+        a.set_result(MessageResult::Stall);
         break;
         
       case MsiAgentLineState::M:
-        a.add_action(CoherentAgentCommand::EmitDataToReq);
-        a.add_action(CoherentAgentCommand::EmitDataToDir);
-        a.add_action(CoherentAgentCommand::UpdateState);
+        a.append_command(CoherentAgentCommand::EmitDataToReq);
+        a.append_command(CoherentAgentCommand::EmitDataToDir);
+        a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::S);
-        a.set_mresult(MessageResult::Commit);
+        a.set_result(MessageResult::Commit);
         break;
         
       case MsiAgentLineState::MI_A:
-        a.add_action(CoherentAgentCommand::EmitDataToReq);
-        a.add_action(CoherentAgentCommand::EmitDataToDir);
-        a.add_action(CoherentAgentCommand::UpdateState);
+        a.append_command(CoherentAgentCommand::EmitDataToReq);
+        a.append_command(CoherentAgentCommand::EmitDataToDir);
+        a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::SI_A);
-        a.set_mresult(MessageResult::Commit);
+        a.set_result(MessageResult::Commit);
         break;
         
       default:
-        a.set_error();
+        a.set_error(true);
     }
   }
 
   void handle__FwdGetM(
-      const Message * m, const CacheLine & cache_line, CoherentActorActions & a) const {
+      const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
     switch (_s(cache_line.state())) {
       case MsiAgentLineState::IM_AD:
       case MsiAgentLineState::IM_A:
       case MsiAgentLineState::SM_AD:
       case MsiAgentLineState::SM_A:
-        a.set_mresult(MessageResult::Stall);
+        a.set_result(MessageResult::Stall);
         break;
         
       case MsiAgentLineState::M:
-        a.add_action(CoherentAgentCommand::EmitDataToReq);
-        a.add_action(CoherentAgentCommand::UpdateState);
+        a.append_command(CoherentAgentCommand::EmitDataToReq);
+        a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::S);
-        a.set_mresult(MessageResult::Commit);
+        a.set_result(MessageResult::Commit);
         break;
         
       case MsiAgentLineState::MI_A:
-        a.add_action(CoherentAgentCommand::EmitDataToReq);
-        a.add_action(CoherentAgentCommand::UpdateState);
+        a.append_command(CoherentAgentCommand::EmitDataToReq);
+        a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::SI_A);
-        a.set_mresult(MessageResult::Commit);
+        a.set_result(MessageResult::Commit);
         break;
         
       default:
-        a.set_error();
+        a.set_error(true);
     }
   }
 
   void handle__Inv(
-      const Message *m, const CacheLine & cache_line, CoherentActorActions & a) const {
+      const Message *m, const CacheLine & cache_line, CoherenceActions & a) const {
     if (m->is_ack()) {
       const bool is_last_ack = (cache_line.ack_count() == 1);
 
-      a.add_action(CoherentAgentCommand::SetAckCount);
+      a.append_command(CoherentAgentCommand::SetAckCount);
       a.set_ack_count(cache_line.ack_count() - 1);
       
       if (is_last_ack) {
         switch (_s(cache_line.state())) {
           case MsiAgentLineState::IM_A:
           case MsiAgentLineState::SM_A:
-            a.add_action(CoherentAgentCommand::UpdateState);
+            a.append_command(CoherentAgentCommand::UpdateState);
             a.set_next_state(MsiAgentLineState::M);
-            a.set_mresult(MessageResult::Commit);
+            a.set_result(MessageResult::Commit);
             break;
             
           default:
-            a.set_error();
+            a.set_error(true);
         }
       }
       
@@ -292,49 +293,50 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
           break;
           
         case MsiAgentLineState::S:
-          a.add_action(CoherentAgentCommand::EmitInvAck);
-          a.add_action(CoherentAgentCommand::UpdateState);
+          a.append_command(CoherentAgentCommand::EmitInvAck);
+          a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::I);
-          a.set_mresult(MessageResult::Commit);
+          a.set_result(MessageResult::Commit);
           break;
           
         case MsiAgentLineState::SM_AD:
-          a.add_action(CoherentAgentCommand::EmitInvAck);
-          a.add_action(CoherentAgentCommand::UpdateState);
+          a.append_command(CoherentAgentCommand::EmitInvAck);
+          a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::IM_AD);
-          a.set_mresult(MessageResult::Commit);
+          a.set_result(MessageResult::Commit);
           break;
           
         case MsiAgentLineState::SI_A:
-          a.add_action(CoherentAgentCommand::EmitInvAck);
-          a.add_action(CoherentAgentCommand::UpdateState);
+          a.append_command(CoherentAgentCommand::EmitInvAck);
+          a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::II_A);
-          a.set_mresult(MessageResult::Commit);
+          a.set_result(MessageResult::Commit);
           break;
           
         default:
-          a.set_error();
+          a.set_error(true);
       }
     }
   }
 
   void handle__PutAck(
-      const Message * m, const CacheLine & cache_line, CoherentActorActions & a) const {
+      const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
     switch (_s(cache_line.state())) {
       case MsiAgentLineState::MI_A:
       case MsiAgentLineState::SI_A:
       case MsiAgentLineState::II_A:
-        a.add_action(CoherentAgentCommand::UpdateState);
+        a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::I);
-        a.set_mresult(MessageResult::Commit);
+        a.set_result(MessageResult::Commit);
         break;
+        
       default:
-        a.set_error();
+        a.set_error(true);
     }
   }
 
   void handle__Data(
-      const Message * m, const CacheLine & cache_line, CoherentActorActions & a) const {
+      const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
 
     const bool is_last_ack = (m->ack_count() == 0);
 
@@ -347,25 +349,25 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       //
       switch (_s(cache_line.state())) {
         case MsiAgentLineState::IS_D:
-          a.add_action(CoherentAgentCommand::UpdateState);
+          a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::S);
-          a.set_mresult(MessageResult::Commit);
+          a.set_result(MessageResult::Commit);
           break;
           
         case MsiAgentLineState::IM_AD:
-          a.add_action(CoherentAgentCommand::UpdateState);
+          a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::M);
-          a.set_mresult(MessageResult::Commit);
+          a.set_result(MessageResult::Commit);
           break;
           
         case MsiAgentLineState::SM_AD:
-          a.add_action(CoherentAgentCommand::UpdateState);
+          a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::M);
-          a.set_mresult(MessageResult::Commit);
+          a.set_result(MessageResult::Commit);
           break;
           
         default:
-          a.set_error();
+          a.set_error(true);
       }
     } else {
 
@@ -374,23 +376,23 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       //
       switch (_s(cache_line.state())) {
         case MsiAgentLineState::IM_AD:
-          a.add_action(CoherentAgentCommand::SetAckCount);
+          a.append_command(CoherentAgentCommand::SetAckCount);
           a.set_ack_count(m->ack_count());
-          a.add_action(CoherentAgentCommand::UpdateState);
+          a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::IM_A);
-          a.set_mresult(MessageResult::Commit);
+          a.set_result(MessageResult::Commit);
           break;
           
         case MsiAgentLineState::SM_AD:
-          a.add_action(CoherentAgentCommand::SetAckCount);
+          a.append_command(CoherentAgentCommand::SetAckCount);
           a.set_ack_count(m->ack_count());
-          a.add_action(CoherentAgentCommand::UpdateState);
+          a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::SM_A);
-          a.set_mresult(MessageResult::Commit);
+          a.set_result(MessageResult::Commit);
           break;
           
         default:
-          a.set_error();
+          a.set_error(true);
       }
     }
   }
@@ -417,12 +419,12 @@ std::string MsiCoherentAgentModel::to_string(CacheLine::state_type s) const {
   return impl_->to_string(s);
 }
 
-CoherentActorActions MsiCoherentAgentModel::get_actions(
+CoherenceActions MsiCoherentAgentModel::get_actions(
     const Transaction * t, const CacheLine & cache_line) const {
   return impl_->get_actions(t, cache_line);
 }
 
-CoherentActorActions MsiCoherentAgentModel::get_actions(
+CoherenceActions MsiCoherentAgentModel::get_actions(
     const Message * m, const CacheLine & cache_line) const {
   return impl_->get_actions(m, cache_line);
 }
@@ -467,9 +469,9 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
     
   }
 
-  CoherentActorActions get_actions(
+  CoherenceActions get_actions(
       const Message * m, const DirectoryEntry & dir_entry) {
-    CoherentActorActions actions;
+    CoherenceActions actions;
     switch (m->type()) {
       case MessageType::GetS:
         handle__GetS(m, dir_entry, actions);
@@ -492,34 +494,34 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
         break;
           
       default:
-        actions.set_error();
+        actions.set_error(true);
     }
     return actions;
   }
  private:
   
   void handle__GetS(
-      const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
+      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
     switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
       case MsiDirectoryLineState::I:
-        a.add_action(SnoopFilterCommand::SendDataToReq);
+        a.append_command(SnoopFilterCommand::SendDataToReq);
         a.set_ack_count(0);
-        a.add_action(SnoopFilterCommand::AddReqToSharers);
-        a.add_action(SnoopFilterCommand::UpdateState);
+        a.append_command(SnoopFilterCommand::AddReqToSharers);
+        a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::S);
         break;
 
       case MsiDirectoryLineState::S:
-        a.add_action(SnoopFilterCommand::SendDataToReq);
+        a.append_command(SnoopFilterCommand::SendDataToReq);
         a.set_ack_count(0);
-        a.add_action(SnoopFilterCommand::AddReqToSharers);
+        a.append_command(SnoopFilterCommand::AddReqToSharers);
         break;
 
       case MsiDirectoryLineState::M:
-        a.add_action(SnoopFilterCommand::SendFwdGetSToOwner);
-        a.add_action(SnoopFilterCommand::AddReqToSharers);
-        a.add_action(SnoopFilterCommand::AddOwnerToSharers);
-        a.add_action(SnoopFilterCommand::UpdateState);
+        a.append_command(SnoopFilterCommand::SendFwdGetSToOwner);
+        a.append_command(SnoopFilterCommand::AddReqToSharers);
+        a.append_command(SnoopFilterCommand::AddOwnerToSharers);
+        a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::S);
         break;
 
@@ -528,28 +530,28 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
         break;
 
       default:
-        a.set_error();
+        a.set_error(true);
     }
   }
 
   void handle__GetM(
-      const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
+      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
     switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
       case MsiDirectoryLineState::I:
-        a.add_action(SnoopFilterCommand::SendDataToReq);
+        a.append_command(SnoopFilterCommand::SendDataToReq);
         a.set_ack_count(0);
-        a.add_action(SnoopFilterCommand::SetOwnerToReq);
-        a.add_action(SnoopFilterCommand::UpdateState);
+        a.append_command(SnoopFilterCommand::SetOwnerToReq);
+        a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::M);
         break;
 
       case MsiDirectoryLineState::S:
-        a.add_action(SnoopFilterCommand::SendDataToReq);
+        a.append_command(SnoopFilterCommand::SendDataToReq);
         a.set_ack_count(dir_entry.num_sharers_not_id(m->src_id()));
-        a.add_action(SnoopFilterCommand::SendInvToSharers);
-        a.add_action(SnoopFilterCommand::ClearSharers);
-        a.add_action(SnoopFilterCommand::SetOwnerToReq);
-        a.add_action(SnoopFilterCommand::UpdateState);
+        a.append_command(SnoopFilterCommand::SendInvToSharers);
+        a.append_command(SnoopFilterCommand::ClearSharers);
+        a.append_command(SnoopFilterCommand::SetOwnerToReq);
+        a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::M);
         break;
 
@@ -561,92 +563,92 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
         break;
 
       default:
-        a.set_error();
+        a.set_error(true);
     }
   }
 
   void handle__PutS(
-      const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
+      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
     const bool is_last = false; // TODO
     switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
       case MsiDirectoryLineState::I:
-        a.add_action(SnoopFilterCommand::SendPutSAckToReq);
+        a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
 
       case MsiDirectoryLineState::S:
-        a.add_action(SnoopFilterCommand::DelReqFromSharers);
-        a.add_action(SnoopFilterCommand::SendPutSAckToReq);
+        a.append_command(SnoopFilterCommand::DelReqFromSharers);
+        a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         if (is_last) {
-          a.add_action(SnoopFilterCommand::UpdateState);
+          a.append_command(SnoopFilterCommand::UpdateState);
           a.set_next_state(MsiDirectoryLineState::I);
         }
         break;
 
       case MsiDirectoryLineState::M:
-        a.add_action(SnoopFilterCommand::DelReqFromSharers);
-        a.add_action(SnoopFilterCommand::SendPutSAckToReq);
+        a.append_command(SnoopFilterCommand::DelReqFromSharers);
+        a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
 
       case MsiDirectoryLineState::S_D:
-        a.add_action(SnoopFilterCommand::DelReqFromSharers);
-        a.add_action(SnoopFilterCommand::SendPutSAckToReq);
+        a.append_command(SnoopFilterCommand::DelReqFromSharers);
+        a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
 
       default:
-        a.set_error();
+        a.set_error(true);
     }
   }
 
   void handle__PutM(
-      const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
+      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
     const bool is_data_from_owner = false;
     switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
       case MsiDirectoryLineState::I:
         if (!is_data_from_owner) {
-          a.add_action(SnoopFilterCommand::SendPutMAckToReq);
+          a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         }
         break;
 
       case MsiDirectoryLineState::S:
         if (!is_data_from_owner) {
-          a.add_action(SnoopFilterCommand::DelReqFromSharers);
-          a.add_action(SnoopFilterCommand::SendPutMAckToReq);
+          a.append_command(SnoopFilterCommand::DelReqFromSharers);
+          a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         }
         break;
 
       case MsiDirectoryLineState::M:
-        a.add_action(SnoopFilterCommand::SendPutMAckToReq);
+        a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         if (is_data_from_owner) {
-          a.add_action(SnoopFilterCommand::DelOwner);
-          a.add_action(SnoopFilterCommand::CpyDataToMemory);
-          a.add_action(SnoopFilterCommand::UpdateState);
+          a.append_command(SnoopFilterCommand::DelOwner);
+          a.append_command(SnoopFilterCommand::CpyDataToMemory);
+          a.append_command(SnoopFilterCommand::UpdateState);
           a.set_next_state(MsiDirectoryLineState::I);
         }
         break;
 
       case MsiDirectoryLineState::S_D:
         if (!is_data_from_owner) {
-          a.add_action(SnoopFilterCommand::DelReqFromSharers);
-          a.add_action(SnoopFilterCommand::SendPutMAckToReq);
+          a.append_command(SnoopFilterCommand::DelReqFromSharers);
+          a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         }
         break;
 
       default:
-        a.set_error();
+        a.set_error(true);
     }
   }
 
   void handle__Data(
-      const Message * m, const DirectoryEntry & dir_entry, CoherentActorActions & a) const {
+      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
     switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
       case MsiDirectoryLineState::S_D:
-        a.add_action(SnoopFilterCommand::CpyDataToMemory);
-        a.add_action(SnoopFilterCommand::UpdateState);
+        a.append_command(SnoopFilterCommand::CpyDataToMemory);
+        a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::S);
         break;
 
       default:
-        a.set_error();
+        a.set_error(true);
     }
   }
 
@@ -700,7 +702,7 @@ std::string MsiSnoopFilterModel::to_string(CacheLine::state_type l) const {
   return impl_->to_string(l);
 }
 
-CoherentActorActions MsiSnoopFilterModel::get_actions(
+CoherenceActions MsiSnoopFilterModel::get_actions(
     const Message * m, const DirectoryEntry & dir_entry) const {
   return impl_->get_actions(m, dir_entry);
 }

@@ -47,6 +47,10 @@ enum class Protocol {
 
 const char * to_string(Protocol p);
 
+using state_t = uint8_t;
+using result_t = uint8_t;
+using command_t = uint8_t;
+
 struct CoherentAgentOptions : ActorOptions {
   CoherentAgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options)
       : ActorOptions(id), protocol_(protocol), cache_options_(cache_options)
@@ -78,7 +82,7 @@ struct SnoopFilterOptions : ActorOptions {
   __func(EmitDataToDir)                         \
   __func(EmitInvAck)
 
-enum class CoherentAgentCommand : uint8_t {
+enum class CoherentAgentCommand : command_t {
 #define __declare_state(__state)                \
   __state,
   AGENT_COMMANDS(__declare_state)
@@ -102,7 +106,7 @@ const char * to_string(CoherentAgentCommand command);
   __func(SendPutMAckToReq)                      \
   __func(SendFwdGetSToOwner)
 
-enum class SnoopFilterCommand : uint8_t {
+enum class SnoopFilterCommand : command_t {
 #define __declare_state(__state)                \
   __state,
 SNOOP_FILTER_COMMANDS(__declare_state)
@@ -110,11 +114,6 @@ SNOOP_FILTER_COMMANDS(__declare_state)
 };
 
 const char * to_string(SnoopFilterCommand command);
-
-#define COHERENT_ACTOR_RESULT(__func)           \
-  __func(Advances)                              \
-  __func(BlockedOnProtocol)                     \
-  __func(TagsExhausted)
 
 struct CacheLine {
   using state_type = uint8_t;
@@ -174,7 +173,7 @@ std::string to_string(const DirectoryEntry & d);
   __func(Miss)                                  \
   __func(Blocked)
 
-enum class TransactionResult {
+enum class TransactionResult : result_t {
 #define __declare_state(__state)                \
   __state,
   TRANSACTION_RESULT(__declare_state)
@@ -187,53 +186,42 @@ const char * to_string(TransactionResult r);
   __func(Commit)                                \
   __func(Stall)
 
-enum class MessageResult {
+enum class MessageResult : result_t {
 #define __declare_state(__state)                \
   __state,
   MESSAGE_RESULT(__declare_state)
 #undef __declare_state
 };
 
-struct CoherentActorActions {
-  using state_type = CacheLine::state_type;
-  using action_type = uint8_t;
-  using ack_count_type = CacheLine::ack_count_type;
+#define ACTION_FIELDS(__func)                   \
+  __func(next_state, state_t)                   \
+  __func(error, bool)                           \
+  __func(ack_count, uint8_t)                    \
+  __func(result, result_t)                      \
+  __func(commands, std::vector<command_t>)
 
-  MessageResult mresult() const { return message_result_; }
-  void set_mresult(MessageResult result) { message_result_ = result; }
+struct CoherenceActions {
 
-  TransactionResult result() const { return transaction_result_; }
-  void set_result(TransactionResult result) { transaction_result_ = result; }
-
-  bool has_state_update() const { return next_state_.has_value(); }
-  state_type next_state() const { return next_state_.value(); }
-
-  template<typename T>
-  void set_next_state(T state) { next_state_ = static_cast<state_type>(state); }
-
-  //
-  bool error() const { return false; }
-  void set_error() {}
-
-  std::size_t message_count() const { return msgs_n_; }
-
-  const std::vector<action_type> & actions() const { return actions_; }
-
-  template<typename T>
-  void add_action(T a) {
-    actions_.push_back(static_cast<action_type>(a));
+#define __declare_getter_setter(__name, __type)                         \
+  using __name ## _type = __type;                                       \
+  __type __name() const { return __name ## _; }                         \
+  template<typename T>                                                  \
+  void set_ ## __name(const T & __name) {                               \
+    __name ## _ = static_cast<__type>(__name);                          \
   }
+  ACTION_FIELDS(__declare_getter_setter)
+#undef __declare_getter_setter
 
-  ack_count_type ack_count() const { return ack_count_; }
-  void set_ack_count(ack_count_type ack_count) { ack_count_ = ack_count; }
-
+  template<typename T>
+  void append_command(const T & cmd) {
+    commands_.push_back(static_cast<command_t>(cmd));
+  }
+  
  private:
-  std::optional<state_type> next_state_;
-  std::vector<action_type> actions_;
-  std::size_t msgs_n_{0};
-  TransactionResult transaction_result_;
-  MessageResult message_result_;
-  ack_count_type ack_count_;
+#define __declare_field(__name, __type)         \
+  __type __name ## _;
+  ACTION_FIELDS(__declare_field)
+#undef __declare_field
 };
 
 class CoherentActorBase {
@@ -252,18 +240,16 @@ class CoherentAgentModel : public CoherentActorBase {
   
   virtual void init(CacheLine & l) const = 0;
   virtual bool is_stable(const CacheLine & l) const = 0;
-  virtual std::string to_string(CacheLine::state_type l) const = 0;
+  virtual std::string to_string(state_t l) const = 0;
   
-  virtual CoherentActorActions get_actions(
+  virtual CoherenceActions get_actions(
       const Message * t, const CacheLine & cache_line) const = 0;
-  virtual CoherentActorActions get_actions(
+  virtual CoherenceActions get_actions(
       const Transaction * t, const CacheLine & cache_line) const = 0;
 };
 
 struct CoherentAgentCommandInvoker : CoherentActor {
-  using state_type = CoherentActorActions::state_type;
-  using action_type = CoherentActorActions::action_type;
-  using ack_count_type = CacheLine::ack_count_type;
+  using ack_count_type = std::size_t;
   
   CoherentAgentCommandInvoker(const CoherentAgentOptions & opts);
 
@@ -271,7 +257,7 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   CacheLine cache_line(std::size_t addr) const;
   
   void execute(
-      Frontier & f, const CoherentActorActions & actions,
+      Frontier & f, const CoherenceActions & actions,
       CacheLine & cache_line, const Transaction * t);
   void set_time(std::size_t time) { time_ = time; }
 
@@ -280,7 +266,7 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   std::unique_ptr<GenericCache<CacheLine> > cache_;
  private:
   void execute_update_state(
-      Frontier & f, CacheLine & cache_line, state_type state_next);
+      Frontier & f, CacheLine & cache_line, state_t state_next);
   void execute_set_ack_count(
       CacheLine & cache_line, ack_count_type ack_count);
   void execute_emit_gets(Frontier & f, const Transaction * t);
@@ -304,24 +290,22 @@ class SnoopFilterModel : public CoherentActorBase {
   virtual void init(DirectoryEntry & l) const = 0;
   virtual bool is_stable(const DirectoryEntry & l) const = 0;
   virtual std::string to_string(const DirectoryEntry & l) const = 0;
-  virtual std::string to_string(CacheLine::state_type l) const = 0;
+  virtual std::string to_string(state_t l) const = 0;
   
-  virtual CoherentActorActions get_actions(
+  virtual CoherenceActions get_actions(
       const Message * t, const DirectoryEntry & dir_entry) const = 0;
  private:
   const SnoopFilterOptions opts_;
 };
 
 struct SnoopFilterCommandInvoker : CoherentActor {
-  using state_type = CoherentActorActions::state_type;
-  
   SnoopFilterCommandInvoker(const SnoopFilterOptions & opts);
   
   std::size_t time() const { return time_; }
   DirectoryEntry directory_entry(std::size_t addr) const;
   
   void execute(
-      Frontier & f, const CoherentActorActions & actions,
+      Frontier & f, const CoherenceActions & actions,
       const Message * msg, DirectoryEntry & d);
   void set_time(std::size_t time) { time_ = time; }
  protected:
@@ -329,11 +313,11 @@ struct SnoopFilterCommandInvoker : CoherentActor {
   std::unique_ptr<GenericCache<DirectoryEntry> > cache_;
 private:
   void execute_update_state(
-      Frontier & f, DirectoryEntry & d, state_type state_next);
+      Frontier & f, DirectoryEntry & d, state_t state_next);
   void execute_set_owner_to_req(
       const Message * msg, Frontier & f, DirectoryEntry & d);
   void execute_send_data_to_req(
-      const Message * msg, Frontier & f, DirectoryEntry & d, const CoherentActorActions & act);
+      const Message * msg, Frontier & f, DirectoryEntry & d, const CoherenceActions & act);
   void execute_send_inv_to_sharers(
       const Message * msg, Frontier & f, DirectoryEntry & d);
   void execute_clear_sharers(

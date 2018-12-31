@@ -46,7 +46,7 @@ namespace ccm {
   __func(SI_A)                                  \
   __func(II_A)
 
-enum class MsiAgentLineState : uint8_t {
+enum class MsiAgentLineState : state_t {
 #define __declare_state(__state)                \
   __state,
   LINE_STATES(__declare_state)
@@ -65,7 +65,7 @@ CacheLine::state_type _g(MsiAgentLineState s);
   __func(M)                                     \
   __func(S_D)
 
-enum class MsiDirectoryLineState : uint8_t {
+enum class MsiDirectoryLineState : state_t {
 #define __declare_state(__state)                \
   __state,
   DIRECTORY_STATES(__declare_state)
@@ -88,9 +88,9 @@ class MsiCoherentAgentModel : public CoherentAgentModel {
   std::string to_string(CacheLine::state_type s) const override;
   
   //
-  CoherentActorActions get_actions(
+  CoherenceActions get_actions(
       const Transaction * t, const CacheLine & cache_line) const override;
-  CoherentActorActions get_actions(
+  CoherenceActions get_actions(
       const Message * m, const CacheLine & cache_line) const override;
 
  private:
@@ -114,7 +114,7 @@ class MsiSnoopFilterModel : public SnoopFilterModel {
   std::string to_string(CacheLine::state_type l) const override;
 
   //
-  CoherentActorActions get_actions(
+  CoherenceActions get_actions(
       const Message * m, const DirectoryEntry & dir_entry) const override;
 
  private:
