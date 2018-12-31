@@ -25,59 +25,27 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "agent.hpp"
-#include "msi.hpp"
+#include "transaction.hpp"
+#include "utility.hpp"
 
 namespace ccm {
 
-Agent::Agent(const AgentOptions & opts)
-    : CoherentAgentCommandInvoker(opts), opts_(opts) {
-  set_logger_scope(opts.logger_scope());
+const char * to_string(TransactionType t) {
+  switch (t) {
+    case TransactionType::Load: return "Load"; break;
+    case TransactionType::Store: return "Store"; break;
+    default: return "Unknown"; break;
+  }
 }
 
-void Agent::add_transaction(std::size_t time, Transaction * t) {
-  pending_transactions_.push(make_time_stamped(time, t));
-}
+std::string to_string(const Transaction & t) {
+  using namespace std;
 
-bool Agent::eval(Frontier & f) {
-  if (!pending_messages_.empty()) {
-
-    for (TimeStamped<const Message *> t : pending_messages_) {
-      const Message * msg = t.t();
-      set_time(t.time());
-
-      CacheLine cache_line = cache_->lookup(addr_);
-      const CoherentActorActions actions =
-          cc_model_->get_actions(t.t(), cache_line);
-
-      execute(f, actions, cache_line, msg->transaction());
-    }
-    pending_messages_.clear();
-  }
-  if (!pending_transactions_.empty()) {
-
-    TimeStamped<Transaction *> head;
-    while (pending_transactions_.pop(head)) {
-      const Transaction * t = head.t();
-      
-      set_time(head.time());
-
-      if (!cache_->is_hit(t->addr())) {
-        addr_ = t->addr();
-        
-        CacheLine cache_line;
-        cc_model_->line_init(cache_line);
-        cache_->install(t->addr(), cache_line);
-      }
-
-      CacheLine & cache_line = cache_->lookup(t->addr());
-      const CoherentActorActions actions =
-          cc_model_->get_actions(head.t(), cache_line);
-
-      execute(f, actions, cache_line, t);
-    }
-  }
-  return is_active();
+  StructRenderer sr;
+  sr.add("type", to_string(t.type()));
+  sr.add("addr", std::to_string(t.addr()));
+  sr.add("tid", std::to_string(t.tid()));
+  return sr.str();
 }
 
 } // namespace ccm

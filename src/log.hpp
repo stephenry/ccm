@@ -135,6 +135,19 @@ class Loggable {
   LoggerScope * scope_{nullptr};
 };
 
+struct StateUpdateLogger {
+  StateUpdateLogger() {}
+
+  std::string str() const { return ss.str(); }
+  
+  template<typename T>
+  void add(const T & t, const std::string & prefix = "") {
+    ss << prefix << "'{" << join(t.begin(), t.end()) << "}";
+  }
+ private:
+  std::stringstream ss;
+};
+
 } // namespace ccm
 
 #endif

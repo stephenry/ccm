@@ -29,6 +29,7 @@
 #define __SRC_TRANSACTION_HPP__
 
 #include <vector>
+#include <string>
 
 namespace ccm {
 
@@ -36,6 +37,8 @@ enum class TransactionType {
   Load,
   Store
 };
+
+const char * to_string(TransactionType t);
 
 class Transaction {
  public:
@@ -59,6 +62,8 @@ class Transaction {
   uint64_t addr_;
   tid_type tid_;
 };
+
+std::string to_string(const Transaction & t);
 
 struct TransactionTable {
 

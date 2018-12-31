@@ -223,7 +223,8 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   std::size_t time() const { return time_; }
   
   void execute(
-      Frontier & f, const CoherentActorActions & actions, CacheLine & cache_line);
+      Frontier & f, const CoherentActorActions & actions,
+      CacheLine & cache_line, const Transaction * t);
   void set_time(std::size_t time) { time_ = time; }
 
  protected:
@@ -232,11 +233,11 @@ struct CoherentAgentCommandInvoker : CoherentActor {
  private:
   void execute_update_state(
       Frontier & f, CacheLine & cache_line, state_type state_next);
-  void execute_emit_gets(Frontier & f);
-  void execute_emit_getm(Frontier & f);
-  void execute_emit_data_to_req(Frontier & f);
-  void execute_emit_data_to_dir(Frontier & f);
-  void execute_emit_inv_ack(Frontier & f);
+  void execute_emit_gets(Frontier & f, const Transaction * t);
+  void execute_emit_getm(Frontier & f, const Transaction * t);
+  void execute_emit_data_to_req(Frontier & f, const Transaction * t);
+  void execute_emit_data_to_dir(Frontier & f, const Transaction * t);
+  void execute_emit_inv_ack(Frontier & f, const Transaction * t);
   
   MessageDirector msgd_;
   std::size_t id_;

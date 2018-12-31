@@ -47,7 +47,7 @@ std::string to_string(const Message & m) {
   sr.add("type", to_string(m.type()));
   sr.add("src_id", std::to_string(m.src_id()));
   sr.add("dst_id", std::to_string(m.dst_id()));
-  sr.add("tid", std::to_string(m.tid()));
+  //  sr.add("transaction", m.transaction());
   sr.add("is_ack", to_string(m.is_ack()));
 
   return sr.str();
