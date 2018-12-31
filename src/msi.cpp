@@ -40,7 +40,7 @@ const char * to_string(MsiAgentLineState s) {
   switch (s) {
 #define __declare_to_string(__e)                \
     case MsiAgentLineState::__e: return #__e;
-    LINE_STATES(__declare_to_string)
+    MSI_LINE_STATES(__declare_to_string)
 #undef __declare_to_string
     default: return "<Invalid Line State>";
   }
@@ -433,7 +433,7 @@ const char * to_string(MsiDirectoryLineState s) {
   switch (s) {
 #define __declare_to_string(__e)                \
     case MsiDirectoryLineState::__e: return #__e;
-    DIRECTORY_STATES(__declare_to_string)
+    MSI_DIRECTORY_STATES(__declare_to_string)
 #undef __declare_to_string
   }
   return "<Invalid Directory State>";

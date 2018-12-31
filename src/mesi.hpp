@@ -25,15 +25,14 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __SRC_MSI_HPP__
-#define __SRC_MSI_HPP__
+#ifndef __SRC_MESI_HPP__
+#define __SRC_MESI_HPP__
 
 #include "coherence.hpp"
-#include <memory>
 
 namespace ccm {
 
-#define MSI_LINE_STATES(__func)                 \
+#define MESI_LINE_STATES(__func)                \
   __func(I)                                     \
   __func(IS_D)                                  \
   __func(IM_AD)                                 \
@@ -42,89 +41,33 @@ namespace ccm {
   __func(SM_AD)                                 \
   __func(SM_A)                                  \
   __func(M)                                     \
+  __func(E)                                     \
   __func(MI_A)                                  \
+  __func(EI_A)                                  \
   __func(SI_A)                                  \
   __func(II_A)
 
-enum class MsiAgentLineState : state_t {
+enum class MesiAgentLineState : state_t {
 #define __declare_state(__state)                \
   __state,
-  MSI_LINE_STATES(__declare_state)
+  MESI_LINE_STATES(__declare_state)
 #undef __declare_state
 };
 
-const char * to_string(MsiAgentLineState s);
-MsiAgentLineState _s(CacheLine::state_type s);
-bool is_stable(MsiAgentLineState s);
 
-CacheLine::state_type _g(MsiAgentLineState s);
-
-#define MSI_DIRECTORY_STATES(__func)            \
+#define MESI_DIRECTORY_STATES(__func)           \
   __func(I)                                     \
   __func(S)                                     \
+  __func(E)                                     \
   __func(M)                                     \
   __func(S_D)
 
-enum class MsiDirectoryLineState : state_t {
+enum class MesiDirectoryLineState : state_t {
 #define __declare_state(__state)                \
   __state,
-  MSI_DIRECTORY_STATES(__declare_state)
+  MESI_DIRECTORY_STATES(__declare_state)
 #undef __declare_state
 };
-const char * to_string(MsiDirectoryLineState s);
-CacheLine::state_type _g(MsiDirectoryLineState s);
-
-class MsiCoherentAgentModel : public CoherentAgentModel {
- public:
-  MsiCoherentAgentModel(const CoherentAgentOptions & opts);
-  virtual ~MsiCoherentAgentModel();
-
-  //
-  Protocol protocol() const override { return Protocol::MSI; }
-
-  //
-  void init(CacheLine & l) const override;
-  bool is_stable(const CacheLine & l) const override;
-  std::string to_string(CacheLine::state_type s) const override;
-  
-  //
-  CoherenceActions get_actions(
-      const Transaction * t, const CacheLine & cache_line) const override;
-  CoherenceActions get_actions(
-      const Message * m, const CacheLine & cache_line) const override;
-
- private:
-  struct MsiCoherentAgentModelImpl;
-
-  std::unique_ptr<MsiCoherentAgentModelImpl> impl_;
-};
-
-class MsiSnoopFilterModel : public SnoopFilterModel {
- public:
-  MsiSnoopFilterModel(const SnoopFilterOptions & opts);
-  virtual ~MsiSnoopFilterModel();
-
-  //
-  Protocol protocol() const override { return Protocol::MSI; }
-
-  //
-  void init(DirectoryEntry & l) const override;
-  bool is_stable(const DirectoryEntry & l) const override;
-  std::string to_string(const DirectoryEntry & l) const override;
-  std::string to_string(CacheLine::state_type l) const override;
-
-  //
-  CoherenceActions get_actions(
-      const Message * m, const DirectoryEntry & dir_entry) const override;
-
- private:
-  struct MsiSnoopFilterModelImpl;
-  struct MsiSnoopFilterModelNullFilterImpl;
-  struct MsiSnoopFilterModelDirectoryImpl;
-
-  std::unique_ptr<MsiSnoopFilterModelImpl> impl_;
-};
-
 
 } // namespace ccm
 

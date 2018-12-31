@@ -25,15 +25,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "utility.hpp"
-#include "log.hpp"
-#include "actors.hpp"
-#include "interconnect.hpp"
-#include "sim.hpp"
-#include "coherence.hpp"
-#include "agent.hpp"
-#include "snoopfilter.hpp"
-#include "genericcache.hpp"
-#include "msi.hpp"
-#include "mesi.hpp"
 #include "mosi.hpp"
+
+namespace ccm {
+} // namespace ccm

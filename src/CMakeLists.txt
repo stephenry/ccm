@@ -28,7 +28,6 @@
 add_library(ccm STATIC
   ccm.cpp
   coherence.cpp
-  msi.cpp
   actors.cpp
   utility.cpp
   interconnect.cpp
@@ -39,4 +38,7 @@ add_library(ccm STATIC
   genericcache.cpp
   sim.cpp
   transaction.cpp
+  msi.cpp
+  mesi.cpp
+  mosi.cpp
   )

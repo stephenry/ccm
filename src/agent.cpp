@@ -52,6 +52,7 @@ bool Agent::eval(Frontier & f) {
           cc_model_->get_actions(t.t(), cache_line);
 
       execute(f, actions, cache_line, msg->transaction());
+      //      msg->release();
     }
     pending_messages_.clear();
   }
