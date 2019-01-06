@@ -32,6 +32,8 @@
 #include <string>
 #include <cmath>
 #include <sstream>
+#include <memory>
+#include <algorithm>
 
 namespace ccm {
 
