@@ -56,7 +56,7 @@ struct Agent : CoherentAgentCommandInvoker {
   TransactionTable tt_;
   std::deque<TimeStamped<Transaction *> > pending_transactions_;
   std::vector<TimeStamped<const Message *> > pending_messages_;
-  const AgentOptions & opts_;
+  const AgentOptions opts_;
 };
 
 } // namespace ccm
