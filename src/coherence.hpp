@@ -104,6 +104,10 @@ const char * to_string(CoherentAgentCommand command);
   __func(CpyDataToMemory)                       \
   __func(SendPutSAckToReq)                      \
   __func(SendPutMAckToReq)                      \
+  __func(SendPutEAckToReq)                      \
+  __func(SendPutOAckToReq)                      \
+  __func(SendAckCountToReq)                     \
+  __func(SendFwdGetMToOwner)                    \
   __func(SendFwdGetSToOwner)
 
 enum class SnoopFilterCommand : command_t {
@@ -195,6 +199,7 @@ enum class MessageResult : result_t {
 
 #define ACTION_FIELDS(__func)                   \
   __func(next_state, state_t)                   \
+  __func(is_exclusive, bool)                    \
   __func(error, bool)                           \
   __func(ack_count, uint8_t)                    \
   __func(result, result_t)                      \

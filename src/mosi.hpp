@@ -49,7 +49,7 @@ namespace ccm {
   __func(SI_A)                                  \
   __func(II_A)
 
-enum MosiAgentLineState : state_t {
+enum MosiAgentLineState : CacheLine::state_type {
 #define __declare_state(__state)                \
   __state,
   MOSI_LINE_STATES(__declare_state)
@@ -62,7 +62,7 @@ enum MosiAgentLineState : state_t {
   __func(O)                                     \
   __func(M)
 
-enum class MosiDirectoryLineState : state_t {
+enum class MosiDirectoryLineState : DirectoryEntry::state_type {
 #define __declare_state(__state)                \
   __state,
   MOSI_DIRECTORY_STATES(__declare_state)

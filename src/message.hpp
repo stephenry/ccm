@@ -39,9 +39,12 @@ namespace ccm {
   __func(GetM)                                  \
   __func(PutS)                                  \
   __func(PutM)                                  \
+  __func(PutE)                                  \
+  __func(PutO)                                  \
   __func(FwdGetS)                               \
   __func(FwdGetM)                               \
   __func(Inv)                                   \
+  __func(AckCount)                              \
   __func(Data)
 
 enum class MessageType {

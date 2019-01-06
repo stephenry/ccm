@@ -35,6 +35,10 @@ MesiAgentLineState _s(CacheLine::state_type s) {
   return static_cast<MesiAgentLineState>(s);
 }
 
+MesiDirectoryLineState _d(DirectoryEntry::state_type s) {
+  return static_cast<MesiDirectoryLineState>(s);
+}
+
 } // namespace
 
 struct MesiCoherentAgentModel::MesiCoherentAgentModelImpl {
@@ -422,6 +426,277 @@ CoherenceActions MesiCoherentAgentModel::get_actions(
     const Message * m, const CacheLine & cache_line) const {
   return {};
 }
+
+struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
+  
+  MesiSnoopFilterModelImpl(const SnoopFilterOptions & opts)
+      : opts_(opts) 
+  {}
+
+  CoherenceActions get_actions(
+      const Message * m, const DirectoryEntry & dir_entry) {
+    CoherenceActions actions;
+    switch (m->type()) {
+      case MessageType::GetS:
+        handle__GetS(m, dir_entry, actions);
+        break;
+          
+      case MessageType::GetM:
+        handle__GetM(m, dir_entry, actions);
+        break;
+          
+      case MessageType::PutS:
+        handle__PutS(m, dir_entry, actions);
+        break;
+          
+      case MessageType::PutM:
+        handle__PutM(m, dir_entry, actions);
+        break;
+          
+      case MessageType::PutE:
+        handle__PutM(m, dir_entry, actions);
+        break;
+          
+      case MessageType::Data:
+        handle__PutM(m, dir_entry, actions);
+        break;
+          
+      default:
+        actions.set_error(true);
+    }
+    return actions;
+  }
+ private:
+
+  void handle__GetS(
+      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
+
+    switch (_d(dir_entry.state())) {
+      case MesiDirectoryLineState::I:
+        a.append_command(SnoopFilterCommand::SendDataToReq);
+        a.set_is_exclusive(true);
+        a.append_command(SnoopFilterCommand::SetOwnerToReq);
+        a.append_command(SnoopFilterCommand::UpdateState);
+        a.set_next_state(MesiDirectoryLineState::E);
+        break;
+
+      case MesiDirectoryLineState::S:
+        a.append_command(SnoopFilterCommand::SendDataToReq);
+        a.append_command(SnoopFilterCommand::AddReqToSharers);
+        break;
+
+      case MesiDirectoryLineState::E:
+        a.append_command(SnoopFilterCommand::SendFwdGetSToOwner);
+        a.append_command(SnoopFilterCommand::AddOwnerToSharers);
+        a.append_command(SnoopFilterCommand::AddReqToSharers);
+        a.append_command(SnoopFilterCommand::DelOwner);
+        a.append_command(SnoopFilterCommand::UpdateState);
+        a.set_next_state(MesiDirectoryLineState::S_D);
+        break;
+
+      case MesiDirectoryLineState::M:
+        a.append_command(SnoopFilterCommand::SendFwdGetSToOwner);
+        a.append_command(SnoopFilterCommand::AddOwnerToSharers);
+        a.append_command(SnoopFilterCommand::AddReqToSharers);
+        a.append_command(SnoopFilterCommand::DelOwner);
+        break;
+
+      case MesiDirectoryLineState::S_D:
+        // TODO: stall
+        break;
+
+      default:
+        a.set_error(true);
+        break;
+    }
+  }
+
+  void handle__GetM(
+      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
+
+    switch (_d(dir_entry.state())) {
+      case MesiDirectoryLineState::I:
+        a.append_command(SnoopFilterCommand::SendDataToReq);
+        a.append_command(SnoopFilterCommand::SetOwnerToReq);
+        a.append_command(SnoopFilterCommand::UpdateState);
+        a.set_next_state(MesiDirectoryLineState::M);
+        break;
+
+      case MesiDirectoryLineState::S:
+        a.append_command(SnoopFilterCommand::SendDataToReq);
+        a.append_command(SnoopFilterCommand::SendInvToSharers);
+        a.append_command(SnoopFilterCommand::ClearSharers);
+        a.append_command(SnoopFilterCommand::SetOwnerToReq);
+        a.append_command(SnoopFilterCommand::UpdateState);
+        a.set_next_state(MesiDirectoryLineState::M);
+        break;
+
+      case MesiDirectoryLineState::E:
+        a.append_command(SnoopFilterCommand::SendFwdGetMToOwner);
+        a.append_command(SnoopFilterCommand::SetOwnerToReq);
+        a.append_command(SnoopFilterCommand::UpdateState);
+        a.set_next_state(MesiDirectoryLineState::M);
+        break;
+
+      case MesiDirectoryLineState::M:
+        a.append_command(SnoopFilterCommand::SendFwdGetMToOwner);
+        a.append_command(SnoopFilterCommand::SetOwnerToReq);
+        break;
+
+      case MesiDirectoryLineState::S_D:
+        // TODO: Stall
+        break;
+
+      default:
+        a.set_error(true);
+        break;
+    }
+  }
+
+  void handle__PutS(
+      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
+
+    const bool is_last = false;
+
+    switch (_d(dir_entry.state())) {
+      case MesiDirectoryLineState::I:
+        a.append_command(SnoopFilterCommand::SendPutSAckToReq);
+        break;
+
+      case MesiDirectoryLineState::S:
+        a.append_command(SnoopFilterCommand::DelReqFromSharers);
+        a.append_command(SnoopFilterCommand::SendPutSAckToReq);
+        if (is_last) {
+          a.append_command(SnoopFilterCommand::UpdateState);
+          a.set_next_state(MesiDirectoryLineState::I);
+        }
+        break;
+
+      case MesiDirectoryLineState::E:
+        a.append_command(SnoopFilterCommand::SendPutSAckToReq);
+        break;
+
+      case MesiDirectoryLineState::M:
+        a.append_command(SnoopFilterCommand::SendPutSAckToReq);
+        break;
+
+      case MesiDirectoryLineState::S_D:
+        a.append_command(SnoopFilterCommand::DelReqFromSharers);
+        a.append_command(SnoopFilterCommand::SendPutSAckToReq);
+        break;
+
+      default:
+        a.set_error(true);
+        break;
+    }
+  }
+  
+  void handle__PutM(
+      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
+
+    const bool data_from_owner = false;
+
+    switch (_d(dir_entry.state())) {
+      case MesiDirectoryLineState::I:
+        if (!data_from_owner)
+          a.append_command(SnoopFilterCommand::SendPutMAckToReq);
+        break;
+
+      case MesiDirectoryLineState::S:
+        if (!data_from_owner) {
+          a.append_command(SnoopFilterCommand::DelReqFromSharers);
+          a.append_command(SnoopFilterCommand::SendPutMAckToReq);
+        }
+        break;
+
+      case MesiDirectoryLineState::E:
+        a.append_command(SnoopFilterCommand::SendPutMAckToReq);
+        if (data_from_owner) {
+          a.append_command(SnoopFilterCommand::CpyDataToMemory);
+          a.append_command(SnoopFilterCommand::DelOwner);
+          a.append_command(SnoopFilterCommand::UpdateState);
+          a.set_next_state(MesiDirectoryLineState::I);
+        }
+        break;
+
+      case MesiDirectoryLineState::M:
+        a.append_command(SnoopFilterCommand::SendPutMAckToReq);
+        if (data_from_owner) {
+          a.append_command(SnoopFilterCommand::CpyDataToMemory);
+          a.append_command(SnoopFilterCommand::DelOwner);
+          a.append_command(SnoopFilterCommand::UpdateState);
+          a.set_next_state(MesiDirectoryLineState::I);
+        }
+        break;
+
+      case MesiDirectoryLineState::S_D:
+        a.append_command(SnoopFilterCommand::SendPutMAckToReq);
+        a.append_command(SnoopFilterCommand::DelReqFromSharers);
+        break;
+
+      default:
+        a.set_error(true);
+        break;
+    }
+  }
+  
+  void handle__PutE(
+      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
+
+    const bool is_from_owner = false;
+
+    switch (_d(dir_entry.state())) {
+      case MesiDirectoryLineState::I:
+        a.append_command(SnoopFilterCommand::SendPutEAckToReq);
+        break;
+
+      case MesiDirectoryLineState::S:
+        a.append_command(SnoopFilterCommand::DelReqFromSharers);
+        a.append_command(SnoopFilterCommand::SendPutEAckToReq);
+        break;
+
+      case MesiDirectoryLineState::E:
+        a.append_command(SnoopFilterCommand::SendPutEAckToReq);
+        if (is_from_owner) {
+          a.append_command(SnoopFilterCommand::DelOwner);
+          a.append_command(SnoopFilterCommand::UpdateState);
+          a.set_next_state(MesiDirectoryLineState::I);
+        }
+        break;
+
+      case MesiDirectoryLineState::M:
+        a.append_command(SnoopFilterCommand::SendPutEAckToReq);
+        break;
+
+      case MesiDirectoryLineState::S_D:
+        a.append_command(SnoopFilterCommand::DelReqFromSharers);
+        a.append_command(SnoopFilterCommand::SendPutEAckToReq);
+        break;
+
+      default:
+        a.set_error(true);
+        break;
+    }
+  }
+  
+  void handle__Data(
+      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
+
+    switch (_d(dir_entry.state())) {
+      case MesiDirectoryLineState::S_D:
+        a.append_command(SnoopFilterCommand::CpyDataToMemory);
+        a.append_command(SnoopFilterCommand::UpdateState);
+        a.set_next_state(MesiDirectoryLineState::S);
+        break;
+
+      default:
+        a.set_error(true);
+        break;
+    }
+  }
+
+  const SnoopFilterOptions opts_;
+};
 
 MesiSnoopFilterModel::MesiSnoopFilterModel(const SnoopFilterOptions & opts)
     : SnoopFilterModel(opts) {
