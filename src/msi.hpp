@@ -54,7 +54,6 @@ enum class MsiAgentLineState : state_t {
 };
 
 const char * to_string(MsiAgentLineState s);
-MsiAgentLineState _s(CacheLine::state_type s);
 bool is_stable(MsiAgentLineState s);
 
 CacheLine::state_type _g(MsiAgentLineState s);

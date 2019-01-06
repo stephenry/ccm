@@ -74,7 +74,7 @@ class MesiCoherentAgentModel : public CoherentAgentModel {
   virtual ~MesiCoherentAgentModel();
 
   //
-  Protocol protocol() const override { return Protocol::MSI; }
+  Protocol protocol() const override { return Protocol::MESI; }
 
   //
   void init(CacheLine & l) const override;
@@ -99,7 +99,7 @@ class MesiSnoopFilterModel : public SnoopFilterModel {
   virtual ~MesiSnoopFilterModel();
 
   //
-  Protocol protocol() const override { return Protocol::MSI; }
+  Protocol protocol() const override { return Protocol::MESI; }
 
   //
   void init(DirectoryEntry & l) const override;

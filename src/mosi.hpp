@@ -36,6 +36,7 @@ namespace ccm {
   __func(I)                                     \
   __func(IS_D)                                  \
   __func(IM_AD)                                 \
+  __func(IM_A)                                  \
   __func(S)                                     \
   __func(SM_AD)                                 \
   __func(SM_A)                                  \

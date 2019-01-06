@@ -1,5 +1,6 @@
 //========================================================================== //
 // Copyright (c) 2018, Stephen Henry
+
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -50,9 +51,13 @@ CacheLine::state_type _g(MsiAgentLineState s) {
   return static_cast<CacheLine::state_type>(s);
 }
 
+namespace {
+
 MsiAgentLineState _s(CacheLine::state_type s) {
   return static_cast<MsiAgentLineState>(s);
 }
+
+} // namespace
 
 bool is_stable(MsiAgentLineState s) {
   switch (s) {
@@ -156,7 +161,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       case MsiAgentLineState::SM_AD:
       case MsiAgentLineState::SM_A:
       case MsiAgentLineState::M:
-        a.set_result(TransactionResult::Blocked);
+        a.set_result(TransactionResult::Hit);
         break;
         
       default:
