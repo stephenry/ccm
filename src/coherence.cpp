@@ -183,6 +183,7 @@ void CoherentAgentCommandInvoker::execute_emit_inv_ack(
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::Inv);
   b.set_is_ack(true);
+  b.set_dst_id(0); // TODO! Need to derive dst_id somehow. TODO!
   b.set_transaction(t);
 
   const Message * msg = b.msg();

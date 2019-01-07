@@ -69,7 +69,7 @@ class Logger {
 
   std::ostream & os_{std::cout};
   std::unique_ptr<LoggerScope> top_{nullptr};
-  bool force_flush_;
+  bool force_flush_{false};
 };
 
 class LoggerScope {

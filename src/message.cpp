@@ -40,6 +40,16 @@ const char * to_string(MessageType t) {
   }
 }
 
+void Message::set_invalid() {
+  type_ = MessageType::Invalid;
+  src_id_ = 1000;
+  dst_id_ = 1000;
+  addr_ = 0;
+  is_ack_ = false;
+  transaction_ = nullptr;
+  ack_count_ = 0;
+}
+  
 std::string to_string(const Message & m) {
   using namespace std;
   

@@ -218,8 +218,6 @@ TEST(MSI, MultipleSharersThenPromotion) {
   p.agent(0)->add_transaction(
       1000, new ccm::Transaction{addr, ccm::TransactionType::Store});
 
-  ccm::SnoopFilter * sf = p.snoop_filter();
-
   s.run();
 
   for (std::size_t i = 0; i < p.agents(); i++) {
@@ -231,6 +229,7 @@ TEST(MSI, MultipleSharersThenPromotion) {
       EXPECT_EQ(cache_line.state(), _g(ccm::MsiAgentLineState::I));
   }
 
+  ccm::SnoopFilter * sf = p.snoop_filter();
   const ccm::DirectoryEntry directory_entry = sf->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), _g(ccm::MsiDirectoryLineState::M));
 }

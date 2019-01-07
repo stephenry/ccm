@@ -31,6 +31,10 @@ namespace ccm {
 
 void Poolable::release() const { parent_->release(this); }
 
-const char * to_string(bool b) { return b ? "true" : "false"; }
+const char * to_string(bool b) {
+  const char * ret = b ? "true" : "false";
+  
+  return ret;
+}
 
 } // namespace ccma

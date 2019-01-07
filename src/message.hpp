@@ -59,7 +59,7 @@ const char * to_string(MessageType t);
 struct Message : ccm::Poolable {
   friend class MessageBuilder;
 
-  Message() : type_(MessageType::Invalid) {}
+  Message() : type_(MessageType::Invalid) { set_invalid(); }
 
   MessageType type() const { return type_; }
   std::size_t src_id() const { return src_id_; }
@@ -69,9 +69,11 @@ struct Message : ccm::Poolable {
   const Transaction * transaction() const { return transaction_; }
   std::size_t ack_count() const { return ack_count_; }
 
-  void reset() {}
+  void reset() { set_invalid(); }
 
  private:
+  void set_invalid();
+  
   void set_type(MessageType type) { type_ = type; }
   void set_src_id(std::size_t id) { src_id_ = id; }
   void set_dst_id(std::size_t id) { dst_id_ = id; }
