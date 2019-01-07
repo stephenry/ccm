@@ -25,8 +25,8 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __TESTS_COMMON_HPP__
-#define __TESTS_COMMON_HPP__
+#ifndef __TESTS_TESTCOMMON_HPP__
+#define __TESTS_TESTCOMMON_HPP__
 
 #include "ccm.hpp"
 

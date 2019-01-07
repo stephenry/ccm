@@ -26,7 +26,7 @@
 ##========================================================================== //
 
 macro (build_common_library)
-  add_library(testcommon common.cpp)
+  add_library(testcommon testcommon.cpp)
   target_include_directories(testcommon PUBLIC ${CMAKE_SOURCE_DIR}/src)
   target_link_libraries(testcommon ccm)
 endmacro ()
@@ -39,5 +39,7 @@ macro (create_test fn)
 endmacro ()
 
 build_common_library()
+
 create_test(msi)
+create_test(mesi)
 

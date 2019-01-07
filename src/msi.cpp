@@ -469,8 +469,8 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
     return ss.str();
   }
   
-  std::string to_string(CacheLine::state_type l) const {
-    return ::ccm::to_string(static_cast<MsiDirectoryLineState>(l));
+  std::string to_string(const MsiDirectoryLineState l) const {
+    return ::ccm::to_string(l);
     
   }
 
@@ -704,7 +704,7 @@ std::string MsiSnoopFilterModel::to_string(const DirectoryEntry & l) const {
 }
 
 std::string MsiSnoopFilterModel::to_string(CacheLine::state_type l) const {
-  return impl_->to_string(l);
+  return impl_->to_string(static_cast<MsiDirectoryLineState>(l));
 }
 
 CoherenceActions MsiSnoopFilterModel::get_actions(

@@ -25,47 +25,36 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "common.hpp"
+#include "testcommon.hpp"
+#include <gtest/gtest.h>
 
-namespace ccm::test {
-
-BasicPlatform::BasicPlatform(Sim & sim, Protocol protocol, std::size_t agents_n)
-  : sim_(sim), protocol_(protocol) {
-  top_ = logger_.top();
-
-  for (std::size_t i = 0; i < agents_n; i++)
-    construct_agent(i);
-  construct_snoop_filter(4);
-}
+TEST(MESI, SimpleLoad) {
+  // Perform a single load to one agent in the system. At the end of
+  // the simulation, the line should be installed in the requestor in
+  // the shared state, and installed in the directory in the shared
+  // state.
+  //
   
-BasicPlatform::~BasicPlatform() {
-  for (CoherentActor * actor : actors_)
-    delete actor;
+  const std::size_t addr = 0;
+
+  ccm::Sim s;
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
+
+  ccm::Agent * a0 = p.agent(0);
+  a0->add_transaction(10, new ccm::Transaction{addr, ccm::TransactionType::Load});
+
+  ccm::SnoopFilter * sf = p.snoop_filter();
+
+  s.run();
+
+  const ccm::CacheLine cache_line = a0->cache_line(addr);
+  EXPECT_EQ(cache_line.state(), _g(ccm::MesiAgentLineState::E));
+
+  const ccm::DirectoryEntry directory_entry = sf->directory_entry(addr);
+  EXPECT_EQ(directory_entry.state(), _g(ccm::MesiDirectoryLineState::E));
 }
 
-void BasicPlatform::construct_snoop_filter(std::size_t id) {
-  SnoopFilterOptions opts(4, Protocol::MSI, CacheOptions());
-  opts.set_logger_scope(top_->child_scope("SnoopFilter"));
-    
-  snoop_filter_ = new SnoopFilter(opts);
-  add_actor(snoop_filter_);
+int main(int argc, char ** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
 }
-  
-void BasicPlatform::construct_agent(std::size_t id) {
-  AgentOptions opts(id, Protocol::MSI, CacheOptions());
-
-  std::stringstream ss;
-  ss << "Agent" << id;
-  opts.set_logger_scope(top_->child_scope(ss.str()));
-
-  Agent * agent = new Agent(opts);
-  agents_.push_back(agent);
-  add_actor(agent);
-}
-
-void BasicPlatform::add_actor(CoherentActor * actor) {
-  actors_.push_back(actor);
-  sim_.add_actor(actor);
-}
-
-} // namespace ccm::test

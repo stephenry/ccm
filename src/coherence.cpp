@@ -339,6 +339,7 @@ void SnoopFilterCommandInvoker::execute_send_data_to_req(
 
   b.set_ack_count(a.ack_count());
   //  b.set_ack_count(0);
+  b.set_is_exclusive(a.is_exclusive());
 
   const Message * m = b.msg();
   f.add_to_frontier(1 + time(), m);

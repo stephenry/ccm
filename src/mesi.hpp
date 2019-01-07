@@ -54,6 +54,9 @@ enum class MesiAgentLineState : state_t {
 #undef __declare_state
 };
 
+const char * to_string(const MesiAgentLineState state);
+  CacheLine::state_type _g(MesiAgentLineState s);
+
 #define MESI_DIRECTORY_STATES(__func)           \
   __func(I)                                     \
   __func(S)                                     \
@@ -67,6 +70,9 @@ enum class MesiDirectoryLineState : state_t {
   MESI_DIRECTORY_STATES(__declare_state)
 #undef __declare_state
 };
+
+const char * to_string(const MesiDirectoryLineState state);
+DirectoryEntry::state_type _g(MesiDirectoryLineState s);
 
 class MesiCoherentAgentModel : public CoherentAgentModel {
  public:
@@ -90,7 +96,7 @@ class MesiCoherentAgentModel : public CoherentAgentModel {
  private:
   struct MesiCoherentAgentModelImpl;
 
-  //  std::unique_ptr<MesiCoherentAgentModelImpl> impl_;
+  std::unique_ptr<MesiCoherentAgentModelImpl> impl_;
 };
 
 class MesiSnoopFilterModel : public SnoopFilterModel {
@@ -114,7 +120,7 @@ class MesiSnoopFilterModel : public SnoopFilterModel {
  private:
   struct MesiSnoopFilterModelImpl;
 
-  //  std::unique_ptr<MesiSnoopFilterModelImpl> impl_;
+  std::unique_ptr<MesiSnoopFilterModelImpl> impl_;
 };
 
 } // namespace ccm

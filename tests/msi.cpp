@@ -25,7 +25,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "common.hpp"
+#include "testcommon.hpp"
 #include <gtest/gtest.h>
 
 TEST(MSI, SimpleLoad) {
