@@ -42,4 +42,5 @@ build_common_library()
 
 create_test(msi)
 create_test(mesi)
+create_test(mosi)
 

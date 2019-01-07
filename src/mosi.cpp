@@ -41,10 +41,84 @@ MosiDirectoryLineState _d(DirectoryEntry::state_type s) {
 
 } // namespace
 
+const char * to_string(const MosiAgentLineState state) {
+  switch (state) {
+#define __declare_state(__name)                                 \
+    case MosiAgentLineState::__name: return #__name; break;
+    MOSI_LINE_STATES(__declare_state)
+#undef __declare_state
+    default: return "Invalid State";
+  }
+}
+  
+CacheLine::state_type _g(MosiAgentLineState s) {
+  return static_cast<CacheLine::state_type>(s);
+}
+
+bool is_stable(const MosiAgentLineState state) {
+  bool ret{false};
+  switch (state) {
+  case MosiAgentLineState::I:
+  case MosiAgentLineState::S:
+  case MosiAgentLineState::O:
+  case MosiAgentLineState::M:
+    ret = true;
+    break;
+
+  default:
+    ret = false;
+    break;
+  }
+  return ret;
+}
+  
+const char * to_string(const MosiDirectoryLineState state) {
+  switch (state) {
+#define __declare_state(__name)                                 \
+  case MosiDirectoryLineState::__name: return #__name; break;
+    MOSI_DIRECTORY_STATES(__declare_state)
+#undef __declare_state
+  default: return "Invalid State";
+  }
+}
+
+bool is_stable(const MosiDirectoryLineState state) {
+  bool ret{false};
+  switch (state) {
+  case MosiDirectoryLineState::I:
+  case MosiDirectoryLineState::S:
+  case MosiDirectoryLineState::O:
+  case MosiDirectoryLineState::M:
+    ret = true;
+    break;
+    
+  default:
+    ret = false;
+    break;
+  }
+  return ret;
+}
+ 
+DirectoryEntry::state_type _g(MosiDirectoryLineState s) {
+  return static_cast<DirectoryEntry::state_type>(s);
+}
+
 struct MosiCoherentAgentModel::MosiCoherentAgentModelImpl {
   MosiCoherentAgentModelImpl(const CoherentAgentOptions & opts)
       : opts_(opts)
   {}
+
+  void init(CacheLine & cache_line) const {
+    cache_line.set_state(static_cast<CacheLine::state_type>(MosiAgentLineState::I));
+  }
+
+  bool is_stable(const MosiAgentLineState state) const {
+    return ::ccm::is_stable(state);
+  }
+
+  std::string to_string(const MosiAgentLineState s) const {
+    return ::ccm::to_string(s);
+  }
 
   CoherenceActions get_actions(
       const Transaction * t, const CacheLine & cache_line) const {
@@ -100,6 +174,7 @@ struct MosiCoherentAgentModel::MosiCoherentAgentModelImpl {
     return actions;
   }
 
+private:
   void handle__Load(
       const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
 
@@ -384,9 +459,9 @@ struct MosiCoherentAgentModel::MosiCoherentAgentModelImpl {
   void handle__Data(
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    const bool is_data_from_dir_ack_zero = false;
-    const bool is_data_from_dir_ack_non_zero = false;
-    const bool is_data_from_owner = false;
+    const bool is_data_from_dir_ack_zero = true; // TODO
+    const bool is_data_from_dir_ack_non_zero = false; // TODO
+    const bool is_data_from_owner = false; // TODO
 
     if (is_data_from_dir_ack_zero || is_data_from_owner) {
 
@@ -454,25 +529,26 @@ MosiCoherentAgentModel::~MosiCoherentAgentModel() {
 }
 
 void MosiCoherentAgentModel::init(CacheLine & l) const {
+  impl_->init(l);
 }
 
 bool MosiCoherentAgentModel::is_stable(const CacheLine & l) const {
-  return false;
+  return impl_->is_stable(static_cast<MosiAgentLineState>(l.state()));
 }
 
 std::string MosiCoherentAgentModel::to_string(CacheLine::state_type s) const {
-  return "";
+  return impl_->to_string(static_cast<MosiAgentLineState>(s));
 }
   
 //
 CoherenceActions MosiCoherentAgentModel::get_actions(
     const Transaction * t, const CacheLine & cache_line) const {
-  return {};
+  return impl_->get_actions(t, cache_line);
 }
 
 CoherenceActions MosiCoherentAgentModel::get_actions(
     const Message * m, const CacheLine & cache_line) const {
-  return {};
+  return impl_->get_actions(m, cache_line);
 }
 
 struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
@@ -480,6 +556,24 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
   MosiSnoopFilterModelImpl(const SnoopFilterOptions & opts)
       : opts_(opts) 
   {}
+
+  void init(DirectoryEntry & l) const {
+    l.set_state(static_cast<DirectoryEntry::state_type>(MosiDirectoryLineState::I));
+  }
+
+  bool is_stable(const DirectoryEntry & dir_entry) const {
+    return ::ccm::is_stable(static_cast<MosiDirectoryLineState>(dir_entry.state()));
+  }
+
+  std::string to_string(const DirectoryEntry & dir_entry) const {
+    std::stringstream ss;
+    ss << ::ccm::to_string(static_cast<MosiDirectoryLineState>(dir_entry.state()));
+    return ss.str();
+  }
+
+  std::string to_string(MosiDirectoryLineState l) const {
+    return ::ccm::to_string(l);
+  }
 
   CoherenceActions get_actions(
       const Message * m, const DirectoryEntry & dir_entry) {
@@ -549,7 +643,7 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
   void handle__GetM(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    const bool is_from_owner = false;
+    const bool is_from_owner = false; // TODO
 
     if (is_from_owner) {
     
@@ -612,7 +706,7 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
   void handle__PutS(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    const bool is_last = false;
+    const bool is_last = false; // TODO
 
     switch (_d(dir_entry.state())) {
       case MosiDirectoryLineState::I:
@@ -646,7 +740,7 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
   void handle__PutM(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    const bool data_is_from_owner = false;
+    const bool data_is_from_owner = false; // TODO
 
     switch (_d(dir_entry.state())) {
       case MosiDirectoryLineState::I:
@@ -689,7 +783,7 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
   void handle__PutO(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    const bool data_is_from_owner = false;
+    const bool data_is_from_owner = false; // TODO
     
     switch (_d(dir_entry.state())) {
       case MosiDirectoryLineState::I:
@@ -738,23 +832,24 @@ MosiSnoopFilterModel::~MosiSnoopFilterModel() {
 }
 
 void MosiSnoopFilterModel::init(DirectoryEntry & l) const {
+  impl_->init(l);
 }
 
 bool MosiSnoopFilterModel::is_stable(const DirectoryEntry & l) const {
-  return false;
+  return impl_->is_stable(l);
 }
 
 std::string MosiSnoopFilterModel::to_string(const DirectoryEntry & l) const {
-  return "";
+  return impl_->to_string(l);
 }
 
 std::string MosiSnoopFilterModel::to_string(CacheLine::state_type l) const {
-  return "";
+  return impl_->to_string(static_cast<MosiDirectoryLineState>(l));
 }
 
 CoherenceActions MosiSnoopFilterModel::get_actions(
     const Message * m, const DirectoryEntry & dir_entry) const {
-  return {};
+  return impl_->get_actions(m, dir_entry);
 }
 
 } // namespace ccm

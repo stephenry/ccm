@@ -56,6 +56,10 @@ enum MosiAgentLineState : CacheLine::state_type {
 #undef __declare_state
 };
 
+const char * to_string(const MosiAgentLineState state);
+CacheLine::state_type _g(MosiAgentLineState s);
+bool is_stable(const MosiAgentLineState state);
+
 #define MOSI_DIRECTORY_STATES(__func)           \
   __func(I)                                     \
   __func(S)                                     \
@@ -68,6 +72,10 @@ enum class MosiDirectoryLineState : DirectoryEntry::state_type {
   MOSI_DIRECTORY_STATES(__declare_state)
 #undef __declare_state
 };
+
+const char * to_string(const MosiDirectoryLineState state);
+DirectoryEntry::state_type _g(MosiDirectoryLineState s);
+bool is_stable(const MosiDirectoryLineState state);
 
 class MosiCoherentAgentModel : public CoherentAgentModel {
  public:
@@ -91,7 +99,7 @@ class MosiCoherentAgentModel : public CoherentAgentModel {
  private:
   struct MosiCoherentAgentModelImpl;
 
-  //  std::unique_ptr<MosiCoherentAgentModelImpl> impl_;
+  std::unique_ptr<MosiCoherentAgentModelImpl> impl_;
 };
 
 class MosiSnoopFilterModel : public SnoopFilterModel {
@@ -115,7 +123,7 @@ class MosiSnoopFilterModel : public SnoopFilterModel {
  private:
   struct MosiSnoopFilterModelImpl;
 
-  //  std::unique_ptr<MosiSnoopFilterModelImpl> impl_;
+  std::unique_ptr<MosiSnoopFilterModelImpl> impl_;
 };
 
 } // namespace ccm

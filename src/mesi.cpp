@@ -389,10 +389,10 @@ private:
   void handle__Data(
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    const bool is_exclusive_data_from_dir = m->is_exclusive();
-    const bool is_data_from_dir_ack_zero = false;
-    const bool is_data_from_dir_ack_non_zero = false;
-    const bool is_data_from_owner = false;
+    const bool is_exclusive_data_from_dir = m->is_exclusive(); // TODO
+    const bool is_data_from_dir_ack_zero = false; // TODO
+    const bool is_data_from_dir_ack_non_zero = false; // TODO
+    const bool is_data_from_owner = false; // TODO
 
     if (is_exclusive_data_from_dir) {
 
@@ -644,7 +644,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
   void handle__PutS(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    const bool is_last = false;
+    const bool is_last = false; // TODO
 
     switch (_d(dir_entry.state())) {
       case MesiDirectoryLineState::I:
@@ -682,16 +682,16 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
   void handle__PutM(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    const bool data_from_owner = false;
+    const bool is_from_owner = false; // TODO
 
     switch (_d(dir_entry.state())) {
       case MesiDirectoryLineState::I:
-        if (!data_from_owner)
+        if (!is_from_owner)
           a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         break;
 
       case MesiDirectoryLineState::S:
-        if (!data_from_owner) {
+        if (!is_from_owner) {
           a.append_command(SnoopFilterCommand::DelReqFromSharers);
           a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         }
@@ -699,7 +699,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
 
       case MesiDirectoryLineState::E:
         a.append_command(SnoopFilterCommand::SendPutMAckToReq);
-        if (data_from_owner) {
+        if (is_from_owner) {
           a.append_command(SnoopFilterCommand::CpyDataToMemory);
           a.append_command(SnoopFilterCommand::DelOwner);
           a.append_command(SnoopFilterCommand::UpdateState);
@@ -709,7 +709,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
 
       case MesiDirectoryLineState::M:
         a.append_command(SnoopFilterCommand::SendPutMAckToReq);
-        if (data_from_owner) {
+        if (is_from_owner) {
           a.append_command(SnoopFilterCommand::CpyDataToMemory);
           a.append_command(SnoopFilterCommand::DelOwner);
           a.append_command(SnoopFilterCommand::UpdateState);
@@ -731,7 +731,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
   void handle__PutE(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    const bool is_from_owner = false;
+    const bool is_from_owner = false; // TODO
 
     switch (_d(dir_entry.state())) {
       case MesiDirectoryLineState::I:

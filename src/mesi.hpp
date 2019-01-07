@@ -55,7 +55,7 @@ enum class MesiAgentLineState : state_t {
 };
 
 const char * to_string(const MesiAgentLineState state);
-  CacheLine::state_type _g(MesiAgentLineState s);
+CacheLine::state_type _g(MesiAgentLineState s);
 
 #define MESI_DIRECTORY_STATES(__func)           \
   __func(I)                                     \

@@ -28,7 +28,7 @@
 #include "testcommon.hpp"
 #include <gtest/gtest.h>
 
-TEST(MESI, SimpleLoad) {
+TEST(MOSI, SimpleLoad) {
   // Perform a single load to one agent in the system. At the end of
   // the simulation, the line should be installed in the requestor in
   // the shared state, and installed in the directory in the shared
@@ -38,7 +38,7 @@ TEST(MESI, SimpleLoad) {
   const std::size_t addr = 0;
 
   ccm::Sim s;
-  ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MOSI, 4};
 
   ccm::Agent * a0 = p.agent(0);
   a0->add_transaction(10, new ccm::Transaction{addr, ccm::TransactionType::Load});
@@ -46,11 +46,11 @@ TEST(MESI, SimpleLoad) {
   s.run();
 
   const ccm::CacheLine cache_line = a0->cache_line(addr);
-  EXPECT_EQ(cache_line.state(), _g(ccm::MesiAgentLineState::E));
+  EXPECT_EQ(cache_line.state(), _g(ccm::MosiAgentLineState::S));
 
   ccm::SnoopFilter * sf = p.snoop_filter();
   const ccm::DirectoryEntry directory_entry = sf->directory_entry(addr);
-  EXPECT_EQ(directory_entry.state(), _g(ccm::MesiDirectoryLineState::E));
+  EXPECT_EQ(directory_entry.state(), _g(ccm::MosiDirectoryLineState::S));
 }
 
 int main(int argc, char ** argv) {
