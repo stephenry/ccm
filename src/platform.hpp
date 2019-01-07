@@ -25,56 +25,54 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "message.hpp"
-#include <sstream>
+#ifndef __SRC_PLATFORM_HPP__
+#define __SRC_PLATFORM_HPP__
+
+#include <set>
+#include <map>
+#include <memory>
 
 namespace ccm {
 
-const char * to_string(MessageType t) {
-  switch (t) {
-#define __to_str(__e)                        \
-    case MessageType::__e: return #__e; break;
-    MESSAGE_CLASSES(__to_str)
-#undef __to_str
-    default: return "Unknown";
+using id_t = std::size_t;
+using addr_t = std::size_t;
+
+struct AddressRegion {
+  virtual bool is_valid(addr_t addr) const = 0;
+};
+
+struct DefaultAddressRegion : AddressRegion {
+  bool is_valid(addr_t addr) const override { return true; }
+};
+
+struct ContiguousAddressRegion : AddressRegion {
+  ContiguousAddressRegion(addr_t lo, addr_t hi)
+    : lo_(lo), hi_(hi)
+  {}
+
+  bool is_valid(addr_t addr) const override {
+    return (addr >= lo_) && (addr < hi_);
   }
-}
-
-void Message::set_invalid() {
-#define __declare_invalid(__name, __type, __default)    \
-  __name ## _ = __default;
-  MESSAGE_FIELDS(__declare_invalid)
-#undef __declare_invalid
-}
   
-std::string to_string(const Message & m) {
-  using namespace std;
-  
-  StructRenderer sr;
-  sr.add("type", to_string(m.type()));
-  sr.add("src_id", std::to_string(m.src_id()));
-  sr.add("dst_id", std::to_string(m.dst_id()));
-  //  sr.add("transaction", m.transaction());
-  sr.add("is_ack", to_string(m.is_ack()));
-  switch (m.type()) {
-    case MessageType::Data:
-      sr.add("ack_count", std::to_string(m.ack_count()));
-      sr.add("is_exclusive", to_string(m.is_exclusive()));
-      break;
-    default:
-      break;
-  }
-  return sr.str();
-}
+private:
+  addr_t lo_, hi_;
+};
 
-MessageDirector::MessageDirector(const ActorOptions & opts)
-    : opts_(opts) {
-  src_id_ = opts.id();
-}
+class Platform {
+public:
 
-MessageBuilder MessageDirector::builder() {
-  return MessageBuilder{pool_.alloc(), src_id_};
-}
+  void add_agent(id_t id);
+  void add_snoop_filter(id_t id, std::shared_ptr<AddressRegion> && ar);
+
+  bool is_valid_agent_id(id_t id) const;
+  bool is_valid_snoop_filter_id(id_t id) const;
+  id_t get_snoop_filter_id(addr_t addr) const;
+
+private:
+  std::set<id_t> agent_ids_;
+  std::map<id_t, std::shared_ptr<AddressRegion> > snoop_filters_;
+};
 
 } // namespace ccm
 
+#endif

@@ -389,10 +389,21 @@ private:
   void handle__Data(
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    const bool is_exclusive_data_from_dir = m->is_exclusive(); // TODO
-    const bool is_data_from_dir_ack_zero = false; // TODO
-    const bool is_data_from_dir_ack_non_zero = false; // TODO
-    const bool is_data_from_owner = false; // TODO
+    const Platform platform = opts_.platform();
+
+    const bool is_from_dir =
+      platform.is_valid_snoop_filter_id(m->src_id());
+    
+    const bool is_exclusive_data_from_dir =
+      is_from_dir && m->is_exclusive(); // TODO
+    
+    const bool is_data_from_dir_ack_zero =
+      is_from_dir && (m->ack_count() == 0); // TODO
+    
+    const bool is_data_from_dir_ack_non_zero =
+      is_from_dir && (m->ack_count() != 0); // TODO
+    
+    const bool is_data_from_owner = !is_from_dir && m->was_owner();
 
     if (is_exclusive_data_from_dir) {
 
@@ -457,6 +468,7 @@ private:
 
 MesiCoherentAgentModel::MesiCoherentAgentModel(const CoherentAgentOptions & opts)
     : CoherentAgentModel(opts) {
+  impl_ = std::make_unique<MesiCoherentAgentModelImpl>(opts);
 }
 
 MesiCoherentAgentModel::~MesiCoherentAgentModel() {
@@ -682,7 +694,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
   void handle__PutM(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    const bool is_from_owner = false; // TODO
+    const bool is_from_owner = (m->src_id() == dir_entry.owner()); // TODO
 
     switch (_d(dir_entry.state())) {
       case MesiDirectoryLineState::I:
@@ -731,7 +743,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
   void handle__PutE(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    const bool is_from_owner = false; // TODO
+    const bool is_from_owner = (m->src_id() == dir_entry.owner()); // TODO
 
     switch (_d(dir_entry.state())) {
       case MesiDirectoryLineState::I:
@@ -788,6 +800,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
 
 MesiSnoopFilterModel::MesiSnoopFilterModel(const SnoopFilterOptions & opts)
     : SnoopFilterModel(opts) {
+  impl_ = std::make_unique<MesiSnoopFilterModelImpl>(opts);
 }
 
 MesiSnoopFilterModel::~MesiSnoopFilterModel() {

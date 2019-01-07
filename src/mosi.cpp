@@ -523,6 +523,7 @@ private:
 
 MosiCoherentAgentModel::MosiCoherentAgentModel(const CoherentAgentOptions & opts)
     : CoherentAgentModel(opts) {
+  impl_ = std::make_unique<MosiCoherentAgentModelImpl>(opts);
 }
 
 MosiCoherentAgentModel::~MosiCoherentAgentModel() {
@@ -826,6 +827,7 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
 
 MosiSnoopFilterModel::MosiSnoopFilterModel(const SnoopFilterOptions & opts)
     : SnoopFilterModel(opts) {
+  impl_ = std::make_unique<MosiSnoopFilterModelImpl>(opts);
 }
 
 MosiSnoopFilterModel::~MosiSnoopFilterModel() {

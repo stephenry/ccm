@@ -53,6 +53,58 @@ TEST(MESI, SimpleLoad) {
   EXPECT_EQ(directory_entry.state(), _g(ccm::MesiDirectoryLineState::E));
 }
 
+TEST(MESI, SimpleLoadPromotion) {
+  // Perform a load followed by a store to the same address in the
+  // same agent. Upon completion of the first transaction, the line
+  // should be installed in the shared state. Upon completion of the
+  // second instruction, the line should be promoted to the modified
+  // state. As no other agents hold the line, no invalidation requests
+  // should be passed to any other agent.
+  //
+  
+  const std::size_t addr = 0;
+
+  ccm::Sim s;
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
+
+  ccm::Agent * a0 = p.agent(0);
+  a0->add_transaction(100, new ccm::Transaction{addr, ccm::TransactionType::Load});
+  a0->add_transaction(200, new ccm::Transaction{addr, ccm::TransactionType::Store});
+
+  s.run();
+
+  const ccm::CacheLine cache_line = a0->cache_line(addr);
+  EXPECT_EQ(cache_line.state(), _g(ccm::MesiAgentLineState::M));
+
+  ccm::SnoopFilter * sf = p.snoop_filter();
+  const ccm::DirectoryEntry directory_entry = sf->directory_entry(addr);
+  EXPECT_EQ(directory_entry.state(), _g(ccm::MesiDirectoryLineState::M));
+}
+
+TEST(MESI, SimpleStore) {
+  // Perform a single store to one agent in the system. At the end of
+  // the simulation, the line should be installed in the requester in the
+  // modified state, and installed in the directory in the modified state.
+  //
+  
+  const std::size_t addr = 0;
+
+  ccm::Sim s;
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
+
+  ccm::Agent * a0 = p.agent(0);
+  a0->add_transaction(10, new ccm::Transaction{addr, ccm::TransactionType::Store});
+
+  s.run();
+
+  const ccm::CacheLine cache_line = a0->cache_line(addr);
+  EXPECT_EQ(cache_line.state(), _g(ccm::MesiAgentLineState::M));
+
+  ccm::SnoopFilter * sf = p.snoop_filter();
+  const ccm::DirectoryEntry directory_entry = sf->directory_entry(addr);
+  EXPECT_EQ(directory_entry.state(), _g(ccm::MesiDirectoryLineState::M));
+}
+
 int main(int argc, char ** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

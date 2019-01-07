@@ -25,56 +25,33 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "message.hpp"
-#include <sstream>
+#include "platform.hpp"
 
 namespace ccm {
 
-const char * to_string(MessageType t) {
-  switch (t) {
-#define __to_str(__e)                        \
-    case MessageType::__e: return #__e; break;
-    MESSAGE_CLASSES(__to_str)
-#undef __to_str
-    default: return "Unknown";
+void Platform::add_agent(id_t id) {
+  agent_ids_.insert(id);
+}
+
+void Platform::add_snoop_filter(id_t id, std::shared_ptr<AddressRegion> && ar) {
+  snoop_filters_.insert(std::make_pair(id, std::move(ar)));
+}
+
+bool Platform::is_valid_agent_id(id_t id) const {
+  return (agent_ids_.find(id) != agent_ids_.end());
+}
+
+bool Platform::is_valid_snoop_filter_id(id_t id) const {
+  return (snoop_filters_.count(id) != 0);
+}
+
+id_t Platform::get_snoop_filter_id(addr_t addr) const {
+  for (auto & [id, address_region] : snoop_filters_) {
+    if (address_region->is_valid(addr))
+      return id;
   }
-}
-
-void Message::set_invalid() {
-#define __declare_invalid(__name, __type, __default)    \
-  __name ## _ = __default;
-  MESSAGE_FIELDS(__declare_invalid)
-#undef __declare_invalid
-}
-  
-std::string to_string(const Message & m) {
-  using namespace std;
-  
-  StructRenderer sr;
-  sr.add("type", to_string(m.type()));
-  sr.add("src_id", std::to_string(m.src_id()));
-  sr.add("dst_id", std::to_string(m.dst_id()));
-  //  sr.add("transaction", m.transaction());
-  sr.add("is_ack", to_string(m.is_ack()));
-  switch (m.type()) {
-    case MessageType::Data:
-      sr.add("ack_count", std::to_string(m.ack_count()));
-      sr.add("is_exclusive", to_string(m.is_exclusive()));
-      break;
-    default:
-      break;
-  }
-  return sr.str();
-}
-
-MessageDirector::MessageDirector(const ActorOptions & opts)
-    : opts_(opts) {
-  src_id_ = opts.id();
-}
-
-MessageBuilder MessageDirector::builder() {
-  return MessageBuilder{pool_.alloc(), src_id_};
+  // Otherwise, throw exception.
+  throw std::invalid_argument("SnoopFilter for address not found.");
 }
 
 } // namespace ccm
-

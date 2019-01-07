@@ -27,6 +27,7 @@
 
 add_library(ccm STATIC
   ccm.cpp
+  platform.cpp
   coherence.cpp
   actors.cpp
   utility.cpp

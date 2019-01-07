@@ -34,6 +34,10 @@ BasicPlatform::BasicPlatform(Sim & sim, Protocol protocol, std::size_t agents_n)
   top_ = logger_.top();
 
   for (std::size_t i = 0; i < agents_n; i++)
+    platform_.add_agent(i);
+  platform_.add_snoop_filter(4, std::make_shared<DefaultAddressRegion>());
+
+  for (std::size_t i = 0; i < agents_n; i++)
     construct_agent(i);
   construct_snoop_filter(4);
 }
@@ -44,7 +48,7 @@ BasicPlatform::~BasicPlatform() {
 }
 
 void BasicPlatform::construct_snoop_filter(std::size_t id) {
-  SnoopFilterOptions opts(4, protocol(), CacheOptions());
+  SnoopFilterOptions opts(4, protocol(), CacheOptions(), platform_);
   opts.set_logger_scope(top_->child_scope("SnoopFilter"));
     
   snoop_filter_ = new SnoopFilter(opts);
@@ -52,7 +56,7 @@ void BasicPlatform::construct_snoop_filter(std::size_t id) {
 }
   
 void BasicPlatform::construct_agent(std::size_t id) {
-  AgentOptions opts(id, protocol(), CacheOptions());
+  AgentOptions opts(id, protocol(), CacheOptions(), platform_);
 
   std::stringstream ss;
   ss << "Agent" << id;

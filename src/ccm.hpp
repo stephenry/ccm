@@ -29,6 +29,7 @@
 #include "log.hpp"
 #include "actors.hpp"
 #include "interconnect.hpp"
+#include "platform.hpp"
 #include "sim.hpp"
 #include "coherence.hpp"
 #include "agent.hpp"

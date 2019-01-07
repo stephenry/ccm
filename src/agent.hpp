@@ -34,8 +34,8 @@
 namespace ccm {
 
 struct AgentOptions : CoherentAgentOptions {
-  AgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options)
-      : CoherentAgentOptions(id, protocol, cache_options)
+  AgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options, Platform platform)
+    : CoherentAgentOptions(id, protocol, cache_options, platform)
   {}
 };
 

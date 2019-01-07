@@ -69,7 +69,8 @@ struct Message : ccm::Poolable {
   __func(is_ack, bool, false)                           \
   __func(transaction, const Transaction *, nullptr)     \
   __func(ack_count, std::size_t, 0)                     \
-  __func(is_exclusive, bool, false)
+  __func(is_exclusive, bool, false)                     \
+  __func(was_owner, bool, false)
 
 #define __declare_getter(__name, __type, __default)     \
   __type __name() const { return __name ## _; }

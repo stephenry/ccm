@@ -53,6 +53,7 @@ struct BasicPlatform {
   std::vector<Agent *> agents_;
   std::vector<CoherentActor *> actors_;
   Protocol protocol_;
+  Platform platform_;
 };
 
 } // namespace ccm::test

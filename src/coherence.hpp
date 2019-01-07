@@ -31,6 +31,7 @@
 #include "genericcache.hpp"
 #include "message.hpp"
 #include "actors.hpp"
+#include "platform.hpp"
 #include <memory>
 #include <optional>
 
@@ -52,25 +53,29 @@ using result_t = uint8_t;
 using command_t = uint8_t;
 
 struct CoherentAgentOptions : ActorOptions {
-  CoherentAgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options)
-      : ActorOptions(id), protocol_(protocol), cache_options_(cache_options)
+  CoherentAgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options, Platform platform)
+    : ActorOptions(id), protocol_(protocol), cache_options_(cache_options), platform_(platform)
   {}
   Protocol protocol() const { return protocol_; }
   CacheOptions cache_options() const { return cache_options_; }
+  Platform platform() const { return platform_; }
  private:
   Protocol protocol_;
   CacheOptions cache_options_;
+  Platform platform_;
 };
 
 struct SnoopFilterOptions : ActorOptions {
-  SnoopFilterOptions(std::size_t id, Protocol protocol, CacheOptions cache_options)
-      : ActorOptions(id), protocol_(protocol), cache_options_(cache_options)
+  SnoopFilterOptions(std::size_t id, Protocol protocol, CacheOptions cache_options, Platform platform)
+    : ActorOptions(id), protocol_(protocol), cache_options_(cache_options), platform_(platform)
   {}
   Protocol protocol() const { return protocol_; }
   CacheOptions cache_options() const { return cache_options_; }
+  Platform platform() const { return platform_; }
  private:
   Protocol protocol_;
   CacheOptions cache_options_;
+  Platform platform_;
 };
 
 #define AGENT_COMMANDS(__func)                  \
@@ -206,6 +211,7 @@ enum class MessageResult : result_t {
   __func(commands, std::vector<command_t>)
 
 struct CoherenceActions {
+  CoherenceActions() { reset(); }
 #define __declare_getter_setter(__name, __type) \
   using __name ## _type = __type;               \
   __type __name() const { return __name ## _; } \
@@ -222,6 +228,11 @@ struct CoherenceActions {
   }
   
  private:
+  void reset() {
+    is_exclusive_ = false;
+    error_ = false;
+    ack_count_ = 0;
+  }
 #define __declare_field(__name, __type)         \
   __type __name ## _;
   ACTION_FIELDS(__declare_field)
