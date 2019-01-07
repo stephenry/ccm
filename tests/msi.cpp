@@ -25,60 +25,8 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "ccm.hpp"
+#include "common.hpp"
 #include <gtest/gtest.h>
-
-struct BasicPlatform {
-  BasicPlatform(ccm::Sim & sim, std::size_t agents_n) : sim_(sim) {
-    top_ = logger_.top();
-
-    for (std::size_t i = 0; i < agents_n; i++)
-      construct_agent(i);
-    construct_snoop_filter(4);
-  }
-  ~BasicPlatform() {
-    for (ccm::CoherentActor * actor : actors_)
-      delete actor;
-  }
-  std::size_t agents() const { return agents_.size(); }
-  
-
-  ccm::Agent * agent(std::size_t id) { return agents_[id]; }
-  ccm::SnoopFilter * snoop_filter() { return snoop_filter_; }
-  
- private:
-  void construct_snoop_filter(std::size_t id) {
-    ccm::SnoopFilterOptions opts(4, ccm::Protocol::MSI, ccm::CacheOptions());
-    opts.set_logger_scope(top_->child_scope("SnoopFilter"));
-    
-    snoop_filter_ = new ccm::SnoopFilter(opts);
-    add_actor(snoop_filter_);
-  }
-  
-  void construct_agent(std::size_t id) {
-    ccm::AgentOptions opts(id, ccm::Protocol::MSI, ccm::CacheOptions());
-
-    std::stringstream ss;
-    ss << "Agent" << id;
-    opts.set_logger_scope(top_->child_scope(ss.str()));
-
-    ccm::Agent * agent = new ccm::Agent(opts);
-    agents_.push_back(agent);
-    add_actor(agent);
-  }
-
-  void add_actor(ccm::CoherentActor * actor) {
-    actors_.push_back(actor);
-    sim_.add_actor(actor);
-  }
-
-  ccm::Logger logger_;
-  ccm::LoggerScope * top_;
-  ccm::SnoopFilter * snoop_filter_;
-  ccm::Sim & sim_;
-  std::vector<ccm::Agent *> agents_;
-  std::vector<ccm::CoherentActor *> actors_;
-};
 
 TEST(MSI, SimpleLoad) {
   // Perform a single load to one agent in the system. At the end of
@@ -90,7 +38,7 @@ TEST(MSI, SimpleLoad) {
   const std::size_t addr = 0;
 
   ccm::Sim s;
-  BasicPlatform p{s, 4};
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
   ccm::Agent * a0 = p.agent(0);
   a0->add_transaction(10, new ccm::Transaction{addr, ccm::TransactionType::Load});
@@ -118,7 +66,7 @@ TEST(MSI, SimpleLoadPromotion) {
   const std::size_t addr = 0;
 
   ccm::Sim s;
-  BasicPlatform p{s, 4};
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
   ccm::Agent * a0 = p.agent(0);
   a0->add_transaction(100, new ccm::Transaction{addr, ccm::TransactionType::Load});
@@ -144,7 +92,7 @@ TEST(MSI, SimpleStore) {
   const std::size_t addr = 0;
 
   ccm::Sim s;
-  BasicPlatform p{s, 4};
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
   ccm::Agent * a0 = p.agent(0);
   a0->add_transaction(10, new ccm::Transaction{addr, ccm::TransactionType::Store});
@@ -171,7 +119,7 @@ TEST(MSI, MultipleSharers) {
   const std::size_t addr = 0;
 
   ccm::Sim s;
-  BasicPlatform p{s, 4};
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
   for (std::size_t i = 0; i < p.agents(); i++) {
     const std::size_t time = (i + 1) * 100;
@@ -207,7 +155,7 @@ TEST(MSI, MultipleSharersThenPromotion) {
   const std::size_t addr = 0;
 
   ccm::Sim s;
-  BasicPlatform p{s, 4};
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
   for (std::size_t i = 0; i < p.agents(); i++) {
     const std::size_t time = (i + 1) * 100;
