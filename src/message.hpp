@@ -61,37 +61,35 @@ struct Message : ccm::Poolable {
 
   Message() : type_(MessageType::Invalid) { set_invalid(); }
 
-  MessageType type() const { return type_; }
-  std::size_t src_id() const { return src_id_; }
-  std::size_t dst_id() const { return dst_id_; }
-  uint64_t addr() const { return addr_; }
-  bool is_ack() const { return is_ack_; }
-  const Transaction * transaction() const { return transaction_; }
-  std::size_t ack_count() const { return ack_count_; }
-  bool is_exclusive() const { return is_exclusive_; }
+#define MESSAGE_FIELDS(__func)                          \
+  __func(type, MessageType, MessageType::Invalid)       \
+  __func(src_id, std::size_t, 1000)                     \
+  __func(dst_id, std::size_t, 1000)                     \
+  __func(addr, uint64_t, 0)                             \
+  __func(is_ack, bool, false)                           \
+  __func(transaction, const Transaction *, nullptr)     \
+  __func(ack_count, std::size_t, 0)                     \
+  __func(is_exclusive, bool, false)
+
+#define __declare_getter(__name, __type, __default)     \
+  __type __name() const { return __name ## _; }
+  MESSAGE_FIELDS(__declare_getter)
+#undef __declare_getter
 
   void reset() { set_invalid(); }
 
  private:
   void set_invalid();
-  
-  void set_type(MessageType type) { type_ = type; }
-  void set_src_id(std::size_t id) { src_id_ = id; }
-  void set_dst_id(std::size_t id) { dst_id_ = id; }
-  void set_addr(uint64_t addr) { addr_ = addr; }
-  void set_is_ack(bool is_ack = true) { is_ack_ = is_ack; }
-  void set_transaction(const Transaction * t) { transaction_ = t; }
-  void set_ack_count(std::size_t ack_count) { ack_count_ = ack_count; }
-  void set_is_exclusive(bool is_exclusive) { is_exclusive_ = is_exclusive; }
 
-  MessageType type_;
-  std::size_t src_id_;
-  std::size_t dst_id_;
-  uint64_t addr_;
-  bool is_ack_;
-  const Transaction * transaction_;
-  std::size_t ack_count_;
-  bool is_exclusive_;
+#define __declare_setter(__name, __type, __default)             \
+  void set_ ## __name(__type __name) { __name ## _ = __name; }
+  MESSAGE_FIELDS(__declare_setter)
+#undef __declare_setter
+
+#define __declare_field(__name, __type, __default)      \
+  __type __name ## _;
+  MESSAGE_FIELDS(__declare_field)
+#undef __declare_field
 };
 
 std::string to_string(const Message & m);
@@ -109,13 +107,11 @@ class MessageBuilder {
     std::swap(m, msg_);
     return m;
   }
-  
-  void set_type(MessageType type) { msg_->set_type(type); }
-  void set_dst_id(std::size_t id) { msg_->set_dst_id(id); }
-  void set_is_ack(bool is_ack = true) { msg_->set_is_ack(is_ack); }
-  void set_transaction(const Transaction * t) { msg_->set_transaction(t); }
-  void set_ack_count(std::size_t ack_count) { msg_->set_ack_count(ack_count); }
-  void set_is_exclusive(bool is_exclusive) { msg_->set_is_exclusive(is_exclusive); }
+
+#define __declare_setter(__name, __type, __default)     \
+  void set_ ## __name(__type __name) { msg_->set_ ## __name(__name); }
+  MESSAGE_FIELDS(__declare_setter)
+#undef __declare_setter
  private:
   void set_src_id() { msg_->set_src_id(src_id_); }
   std::size_t src_id_;

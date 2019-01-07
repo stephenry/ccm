@@ -41,13 +41,10 @@ const char * to_string(MessageType t) {
 }
 
 void Message::set_invalid() {
-  type_ = MessageType::Invalid;
-  src_id_ = 1000;
-  dst_id_ = 1000;
-  addr_ = 0;
-  is_ack_ = false;
-  transaction_ = nullptr;
-  ack_count_ = 0;
+#define __declare_invalid(__name, __type, __default)    \
+  __name ## _ = __default;
+  MESSAGE_FIELDS(__declare_invalid)
+#undef __declare_invalid
 }
   
 std::string to_string(const Message & m) {
