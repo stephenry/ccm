@@ -60,10 +60,6 @@ struct Transaction : ccm::Poolable {
 
   TRANSACTION_FIELDS(__declare_getter_setter)
 #undef __declare_getter_setter
-  
-  Transaction(uint64_t addr, TransactionType type = TransactionType::Load)
-      : addr_(addr), type_(type)
-  {}
 
   //
   void reset() { set_invalid(); }
