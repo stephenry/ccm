@@ -93,7 +93,7 @@ template<typename T>
 class TimeStamped {
  public:
   TimeStamped() {}
-  TimeStamped(std::size_t time, T & t) : t_(t), time_(time) {}
+  TimeStamped(std::size_t time, const T & t) : t_(t), time_(time) {}
   
   std::size_t time() const { return time_; }
   T t() const { return t_; }

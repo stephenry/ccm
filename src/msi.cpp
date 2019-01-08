@@ -88,7 +88,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
   }
 
   CoherenceActions get_actions(
-      const Transaction * t, const CacheLine & cache_line) const {
+      Transaction * t, const CacheLine & cache_line) const {
     CoherenceActions actions;
     switch (t->type()) {
       case TransactionType::Load:
@@ -138,7 +138,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
   }
 
   void handle__Load(
-      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
+      Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
 
     switch (_s(cache_line.state())) {
       case MsiAgentLineState::I:
@@ -170,7 +170,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
   }
   
   void handle__Store(
-      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
+      Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
     switch (_s(cache_line.state())) {
       case MsiAgentLineState::I:
         a.append_command(CoherentAgentCommand::EmitGetM);
@@ -356,6 +356,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
         case MsiAgentLineState::IS_D:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::S);
+          a.set_transaction_done(true);
           a.set_result(MessageResult::Commit);
           break;
           
@@ -425,7 +426,7 @@ std::string MsiCoherentAgentModel::to_string(CacheLine::state_type s) const {
 }
 
 CoherenceActions MsiCoherentAgentModel::get_actions(
-    const Transaction * t, const CacheLine & cache_line) const {
+    Transaction * t, const CacheLine & cache_line) const {
   return impl_->get_actions(t, cache_line);
 }
 

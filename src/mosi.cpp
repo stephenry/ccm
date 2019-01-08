@@ -121,7 +121,7 @@ struct MosiCoherentAgentModel::MosiCoherentAgentModelImpl {
   }
 
   CoherenceActions get_actions(
-      const Transaction * t, const CacheLine & cache_line) const {
+      Transaction * t, const CacheLine & cache_line) const {
     CoherenceActions actions;
     switch (t->type()) {
       case TransactionType::Load:
@@ -176,7 +176,7 @@ struct MosiCoherentAgentModel::MosiCoherentAgentModelImpl {
 
 private:
   void handle__Load(
-      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
+      Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
 
     switch (_s(cache_line.state())) {
       case MosiAgentLineState::I:
@@ -222,7 +222,7 @@ private:
   }
   
   void handle__Store(
-      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
+      Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
 
     switch (_s(cache_line.state())) {
       case MosiAgentLineState::I:
@@ -543,7 +543,7 @@ std::string MosiCoherentAgentModel::to_string(CacheLine::state_type s) const {
   
 //
 CoherenceActions MosiCoherentAgentModel::get_actions(
-    const Transaction * t, const CacheLine & cache_line) const {
+    Transaction * t, const CacheLine & cache_line) const {
   return impl_->get_actions(t, cache_line);
 }
 

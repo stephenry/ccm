@@ -96,6 +96,7 @@ class LoggerScope {
 
 class Loggable {
  public:
+  LoggerScope * logger_scope() const { return scope_; }
   void set_logger_scope(LoggerScope * scope) { scope_ = scope; }
 
 #define __declare_handler(__level)                              \

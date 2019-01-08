@@ -84,7 +84,7 @@ CacheLine CoherentAgentCommandInvoker::cache_line(std::size_t addr) const {
 
 void CoherentAgentCommandInvoker::execute(
     Frontier & f, const CoherenceActions & actions,
-    CacheLine & cache_line, const Transaction * t) {
+    CacheLine & cache_line, Transaction * t) {
 
   for (const command_t c : actions.commands()) {
 
@@ -133,7 +133,7 @@ void CoherentAgentCommandInvoker::execute_update_state(
 }
 
 void CoherentAgentCommandInvoker::execute_emit_gets(
-    Frontier & f, const Transaction * t) {
+    Frontier & f, Transaction * t) {
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::GetS);
   b.set_dst_id(4);
@@ -146,7 +146,7 @@ void CoherentAgentCommandInvoker::execute_emit_gets(
 }
 
 void CoherentAgentCommandInvoker::execute_emit_getm(
-    Frontier & f, const Transaction * t) {
+    Frontier & f, Transaction * t) {
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::GetM);
   b.set_dst_id(4);
@@ -159,7 +159,7 @@ void CoherentAgentCommandInvoker::execute_emit_getm(
 }
 
 void CoherentAgentCommandInvoker::execute_emit_data_to_req(
-    Frontier & f, const Transaction * t) {
+    Frontier & f, Transaction * t) {
   log_debug("Emit Data To Requester.");
   
   MessageBuilder b = msgd_.builder();
@@ -168,7 +168,7 @@ void CoherentAgentCommandInvoker::execute_emit_data_to_req(
 }
 
 void CoherentAgentCommandInvoker::execute_emit_data_to_dir(
-    Frontier & f, const Transaction * t) {
+    Frontier & f, Transaction * t) {
   log_debug("Emit Data To Directory.");
 
   MessageBuilder b = msgd_.builder();
@@ -177,7 +177,7 @@ void CoherentAgentCommandInvoker::execute_emit_data_to_dir(
 }
 
 void CoherentAgentCommandInvoker::execute_emit_inv_ack(
-    Frontier & f, const Transaction * t) {
+    Frontier & f, Transaction * t) {
   log_debug("Emit Invalidation Acknowledgement.");
 
   MessageBuilder b = msgd_.builder();

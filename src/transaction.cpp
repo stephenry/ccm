@@ -27,6 +27,7 @@
 
 #include "transaction.hpp"
 #include "utility.hpp"
+#include <algorithm>
 
 namespace ccm {
 
@@ -46,6 +47,47 @@ std::string to_string(const Transaction & t) {
   sr.add("addr", std::to_string(t.addr()));
   sr.add("tid", std::to_string(t.tid()));
   return sr.str();
+}
+
+TimeStamped<Transaction *> NullTransactionSource::get_transaction() {
+  return TimeStamped<Transaction *>{0, nullptr};
+}
+  
+void ProgrammaticTransactionSource::add_transaction(
+        TransactionType type, std::size_t time, uint64_t addr) {
+  Transaction * t = pool_.alloc();
+  t->set_type(type);
+  t->set_addr(addr);
+  pending_.push_back(TimeStamped<Transaction *>{time, t});
+}
+
+TimeStamped<Transaction *> ProgrammaticTransactionSource::get_transaction() {
+  TimeStamped<Transaction *> ret{0, nullptr};
+  if (pending_.size() != 0) {
+    ret = pending_.front();
+    pending_.pop_front();
+
+    Transaction * t = ret.t();
+    t->set_tid(in_flight_.size());
+    in_flight_.push_back(t);
+  }
+  return ret;
+}
+
+void ProgrammaticTransactionSource::event_start(TimeStamped<Transaction *> ts) {
+  const Transaction * t = ts.t();
+  log_info("Transaction starts: ", t->tid());
+}
+
+void ProgrammaticTransactionSource::event_finish(TimeStamped<Transaction *> ts) {
+  const Transaction * t = ts.t();
+  log_info("Transaction ends: ", t->tid());
+  
+  auto it = std::find(in_flight_.begin(), in_flight_.end(), t);
+  if (it != in_flight_.end()) {
+    (*it)->release();
+    in_flight_.erase(it);
+  }
 }
 
 } // namespace ccm

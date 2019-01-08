@@ -28,68 +28,105 @@
 #ifndef __SRC_TRANSACTION_HPP__
 #define __SRC_TRANSACTION_HPP__
 
-#include <vector>
+#include "utility.hpp"
+#include "log.hpp"
+#include <deque>
 #include <string>
+#include <list>
 
 namespace ccm {
 
 enum class TransactionType {
   Load,
-  Store
+  Store,
+  Invalid
 };
 
 const char * to_string(TransactionType t);
 
-class Transaction {
- public:
-  using tid_type = std::size_t;
+#define TRANSACTION_FIELDS(__func)                              \
+  __func(TransactionType, type, TransactionType::Invalid)       \
+  __func(uint64_t, addr, 0)                                     \
+  __func(std::size_t, tid, 0)
+  
+  
+struct Transaction : ccm::Poolable {
+  Transaction() {}
 
+#define __declare_getter_setter(__type, __name, __default)              \
+  using __name ## _type = __type;                                       \
+  __type __name() const { return __name ## _; }                         \
+  void set_ ## __name(const __type & __name) { __name ## _ = __name; }
+
+  TRANSACTION_FIELDS(__declare_getter_setter)
+#undef __declare_getter_setter
   
   Transaction(uint64_t addr, TransactionType type = TransactionType::Load)
       : addr_(addr), type_(type)
   {}
 
   //
-  TransactionType type() const { return type_; }
-  uint64_t addr() const { return addr_; }
-  tid_type tid() const { return tid_; }
-
-  //
-  void set_tid(std::size_t tid) { tid_ = tid; }
+  void reset() { set_invalid(); }
 
  private:
-  TransactionType type_;
-  uint64_t addr_;
-  tid_type tid_;
+  void set_invalid() {
+#define __declare_defaults(__type, __name, __default)   \
+    __name ## _ = __default;
+
+    TRANSACTION_FIELDS(__declare_defaults)
+#undef __declare_defaults
+  }
+
+#define __declare_fields(__type, __name, __default)     \
+  __type __name ## _;
+
+  TRANSACTION_FIELDS(__declare_fields)
+#undef __declare_fields
 };
 
 std::string to_string(const Transaction & t);
 
-struct TransactionTable {
+struct TransactionSource : Loggable {
+  virtual ~TransactionSource() {}
+  
+  //
+  std::size_t time() const override { return 0; }
+  
+  //
+  virtual TimeStamped<Transaction *> get_transaction() = 0;
 
-  TransactionTable()
-      : is_fixed_(false)
-  {}
+  //
+  virtual void event_start(TimeStamped<Transaction *> ts) = 0;
+  virtual void event_finish(TimeStamped<Transaction *> ts) = 0;
+};
 
-  TransactionTable(std::size_t sz)
-      : sz_(sz), is_fixed_(true)
-  {}
+struct NullTransactionSource : TransactionSource {
+  //
+  virtual TimeStamped<Transaction *> get_transaction() override;
 
-  bool is_empty() const { return ts_.empty(); }
-  bool is_full() const { return !is_fixed_ || (ts_.size() == sz_); }
+  //
+  virtual void event_start(TimeStamped<Transaction *> ts) override {}
+  virtual void event_finish(TimeStamped<Transaction *> ts) override {}
+};
+  
+struct ProgrammaticTransactionSource : TransactionSource {
+  //
+  ProgrammaticTransactionSource() {}
 
-  std::size_t allocate(Transaction * t) {
-    const std::size_t tid = ts_.size();
-    
-    t->set_tid(tid);
-    ts_.push_back(t);
+  //
+  void add_transaction(TransactionType type, std::size_t time, uint64_t addr);
 
-    return tid;
-  }
+  //
+  virtual TimeStamped<Transaction *> get_transaction() override;
+
+  //
+  virtual void event_start(TimeStamped<Transaction *> ts) override;
+  virtual void event_finish(TimeStamped<Transaction *> ts) override;
+
  private:
-  bool is_fixed_;
-  std::size_t sz_;
-  std::vector<Transaction *> ts_;
+  Pool<Transaction> pool_;
+  std::deque<TimeStamped<Transaction *> > pending_;
+  std::list<Transaction *> in_flight_;
 };
 
 } // namespace ccm

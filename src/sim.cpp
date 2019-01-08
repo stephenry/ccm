@@ -37,7 +37,7 @@ void Sim::run() {
   FixedLatencyInterconnectModel interconnect_model{10};
 
   Frontier f;
-  while (has_active_actors()) {
+  do {
 
     // Evaluate all actors in the platform
     //
@@ -57,7 +57,8 @@ void Sim::run() {
         actors_[t->dst_id()]->apply(time(), t);
       }
     }
-  }
+  } while (has_active_actors());
+  
   // All actors are inactive
 }
 

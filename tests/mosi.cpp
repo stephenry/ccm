@@ -40,16 +40,15 @@ TEST(MOSI, SimpleLoad) {
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MOSI, 4};
 
-  ccm::Agent * a0 = p.agent(0);
-  a0->add_transaction(10, new ccm::Transaction{addr, ccm::TransactionType::Load});
+  p.ts(0)->add_transaction(ccm::TransactionType::Load,  100, addr);
 
   s.run();
 
-  const ccm::CacheLine cache_line = a0->cache_line(addr);
+  const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
   EXPECT_EQ(cache_line.state(), _g(ccm::MosiAgentLineState::S));
 
-  ccm::SnoopFilter * sf = p.snoop_filter();
-  const ccm::DirectoryEntry directory_entry = sf->directory_entry(addr);
+  const ccm::DirectoryEntry directory_entry =
+    p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), _g(ccm::MosiDirectoryLineState::S));
 }
 

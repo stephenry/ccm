@@ -35,9 +35,9 @@ Agent::Agent(const AgentOptions & opts)
   set_logger_scope(opts.logger_scope());
 }
 
-void Agent::add_transaction(std::size_t time, Transaction * t) {
-  pending_transactions_.push_back(make_time_stamped(time, t));
-}
+// void Agent::add_transaction(std::size_t time, Transaction * t) {
+//   pending_transactions_.push_back(make_time_stamped(time, t));
+// }
 
 bool Agent::eval(Frontier & f) {
   if (!pending_messages_.empty()) {
@@ -52,15 +52,26 @@ bool Agent::eval(Frontier & f) {
           cc_model_->get_actions(t.t(), cache_line);
 
       execute(f, actions, cache_line, msg->transaction());
+      if (actions.transaction_done())
+        ts_->event_finish(TimeStamped<Transaction *>{0, msg->transaction()});
       msg->release();
     }
     pending_messages_.clear();
   }
+
+  if (pending_transactions_.empty()) {
+    TimeStamped<Transaction *> t = ts_->get_transaction();
+    if (t.t() != nullptr)
+      pending_transactions_.push_back(t);
+  }
+  
   if (!pending_transactions_.empty()) {
 
     while (!pending_transactions_.empty()) {
       TimeStamped<Transaction *> & head = pending_transactions_.front();
-      const Transaction * t = head.t();
+      Transaction * t = head.t();
+
+      ts_->event_start(TimeStamped<Transaction *>{0, t});
       
       set_time(head.time());
 

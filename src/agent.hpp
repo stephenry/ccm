@@ -33,6 +33,8 @@
 
 namespace ccm {
 
+struct TransactionSource;
+
 struct AgentOptions : CoherentAgentOptions {
   AgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options, Platform platform)
     : CoherentAgentOptions(id, protocol, cache_options, platform)
@@ -45,17 +47,20 @@ struct Agent : CoherentAgentCommandInvoker {
   bool is_active() const override;
   Protocol protocol() const { return opts_.protocol(); }
   CacheOptions cache_options() const { return opts_.cache_options(); }
-  bool can_accept() const { return !tt_.is_full(); }
+  bool can_accept() const { return true; }
+
+  void set_transaction_source(TransactionSource * ts) { ts_ = ts; }
+  TransactionSource * transaction_source() const { return ts_; }
   
-  void add_transaction(std::size_t time, Transaction * t);
+  //  void add_transaction(std::size_t time, Transaction * t);
 
   void apply(std::size_t t, const Message * m) override;
   bool eval(Frontier & f) override;
   
  private:
-  TransactionTable tt_;
   std::deque<TimeStamped<Transaction *> > pending_transactions_;
   std::vector<TimeStamped<const Message *> > pending_messages_;
+  TransactionSource * ts_;
   const AgentOptions opts_;
 };
 

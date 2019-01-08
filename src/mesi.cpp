@@ -103,7 +103,7 @@ struct MesiCoherentAgentModel::MesiCoherentAgentModelImpl {
   
   //
   CoherenceActions get_actions(
-      const Transaction * t, const CacheLine & cache_line) const {
+      Transaction * t, const CacheLine & cache_line) const {
     CoherenceActions actions;
     switch (t->type()) {
       case TransactionType::Load:
@@ -154,7 +154,7 @@ struct MesiCoherentAgentModel::MesiCoherentAgentModelImpl {
 
 private:
   void handle__Load(
-      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
+      Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
 
     switch (_s(cache_line.state())) {
     case MesiAgentLineState::I:
@@ -192,7 +192,7 @@ private:
   }
 
   void handle__Store(
-      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
+      Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
 
     switch (_s(cache_line.state())) {
       case MesiAgentLineState::I:
@@ -487,7 +487,7 @@ std::string MesiCoherentAgentModel::to_string(CacheLine::state_type s) const {
 }
 
 CoherenceActions MesiCoherentAgentModel::get_actions(
-    const Transaction * t, const CacheLine & cache_line) const {
+    Transaction * t, const CacheLine & cache_line) const {
   return impl_->get_actions(t, cache_line);
 }
 

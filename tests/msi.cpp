@@ -40,17 +40,15 @@ TEST(MSI, SimpleLoad) {
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
-  ccm::Agent * a0 = p.agent(0);
-  a0->add_transaction(10, new ccm::Transaction{addr, ccm::TransactionType::Load});
-
-  ccm::SnoopFilter * sf = p.snoop_filter();
+  p.ts(0)->add_transaction(ccm::TransactionType::Load, 10, addr);
 
   s.run();
 
-  const ccm::CacheLine cache_line = a0->cache_line(addr);
+  const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
   EXPECT_EQ(cache_line.state(), _g(ccm::MsiAgentLineState::S));
 
-  const ccm::DirectoryEntry directory_entry = sf->directory_entry(addr);
+  const ccm::DirectoryEntry directory_entry =
+    p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), _g(ccm::MsiDirectoryLineState::S));
 }
 
@@ -68,18 +66,16 @@ TEST(MSI, SimpleLoadPromotion) {
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
-  ccm::Agent * a0 = p.agent(0);
-  a0->add_transaction(100, new ccm::Transaction{addr, ccm::TransactionType::Load});
-  a0->add_transaction(200, new ccm::Transaction{addr, ccm::TransactionType::Store});
-
-  ccm::SnoopFilter * sf = p.snoop_filter();
+  p.ts(0)->add_transaction(ccm::TransactionType::Load,  100, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 200, addr);
 
   s.run();
 
-  const ccm::CacheLine cache_line = a0->cache_line(addr);
+  const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
   EXPECT_EQ(cache_line.state(), _g(ccm::MsiAgentLineState::M));
 
-  const ccm::DirectoryEntry directory_entry = sf->directory_entry(addr);
+  const ccm::DirectoryEntry directory_entry =
+    p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), _g(ccm::MsiDirectoryLineState::M));
 }
 
@@ -94,17 +90,15 @@ TEST(MSI, SimpleStore) {
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
-  ccm::Agent * a0 = p.agent(0);
-  a0->add_transaction(10, new ccm::Transaction{addr, ccm::TransactionType::Store});
-
-  ccm::SnoopFilter * sf = p.snoop_filter();
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 10, addr);
 
   s.run();
 
-  const ccm::CacheLine cache_line = a0->cache_line(addr);
+  const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
   EXPECT_EQ(cache_line.state(), _g(ccm::MsiAgentLineState::M));
 
-  const ccm::DirectoryEntry directory_entry = sf->directory_entry(addr);
+  const ccm::DirectoryEntry directory_entry =
+    p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), _g(ccm::MsiDirectoryLineState::M));
 }
 
@@ -123,12 +117,9 @@ TEST(MSI, MultipleSharers) {
 
   for (std::size_t i = 0; i < p.agents(); i++) {
     const std::size_t time = (i + 1) * 100;
-    
-    p.agent(i)->add_transaction(
-        time, new ccm::Transaction{addr, ccm::TransactionType::Load});
-  }
 
-  ccm::SnoopFilter * sf = p.snoop_filter();
+    p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
+  }
 
   s.run();
 
@@ -138,7 +129,8 @@ TEST(MSI, MultipleSharers) {
     EXPECT_EQ(cache_line.state(), _g(ccm::MsiAgentLineState::S));
   }
 
-  const ccm::DirectoryEntry directory_entry = sf->directory_entry(addr);
+  const ccm::DirectoryEntry directory_entry =
+    p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), _g(ccm::MsiDirectoryLineState::S));
 }
 
@@ -160,11 +152,9 @@ TEST(MSI, MultipleSharersThenPromotion) {
   for (std::size_t i = 0; i < p.agents(); i++) {
     const std::size_t time = (i + 1) * 100;
     
-    p.agent(i)->add_transaction(
-        time, new ccm::Transaction{addr, ccm::TransactionType::Load});
+    p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
   }
-  p.agent(0)->add_transaction(
-      1000, new ccm::Transaction{addr, ccm::TransactionType::Store});
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 1000, addr);
 
   s.run();
 
@@ -177,8 +167,8 @@ TEST(MSI, MultipleSharersThenPromotion) {
       EXPECT_EQ(cache_line.state(), _g(ccm::MsiAgentLineState::I));
   }
 
-  ccm::SnoopFilter * sf = p.snoop_filter();
-  const ccm::DirectoryEntry directory_entry = sf->directory_entry(addr);
+  const ccm::DirectoryEntry directory_entry =
+    p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), _g(ccm::MsiDirectoryLineState::M));
 }
 

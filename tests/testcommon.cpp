@@ -45,6 +45,8 @@ BasicPlatform::BasicPlatform(Sim & sim, Protocol protocol, std::size_t agents_n)
 BasicPlatform::~BasicPlatform() {
   for (CoherentActor * actor : actors_)
     delete actor;
+  for (TransactionSource * ts : ts_)
+    delete ts;
 }
 
 void BasicPlatform::construct_snoop_filter(std::size_t id) {
@@ -62,9 +64,14 @@ void BasicPlatform::construct_agent(std::size_t id) {
   ss << "Agent" << id;
   opts.set_logger_scope(top_->child_scope(ss.str()));
 
-  Agent * agent = new Agent(opts);
-  agents_.push_back(agent);
-  add_actor(agent);
+  agents_.push_back(new Agent(opts));
+  ts_.push_back(new ProgrammaticTransactionSource());
+
+  ss << "Src";
+  ts_.back()->set_logger_scope(top_->child_scope(ss.str()));
+  
+  agents_.back()->set_transaction_source(ts_.back());
+  add_actor(agents_.back());
 }
 
 void BasicPlatform::add_actor(CoherentActor * actor) {

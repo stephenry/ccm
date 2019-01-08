@@ -203,6 +203,7 @@ enum class MessageResult : result_t {
 };
 
 #define ACTION_FIELDS(__func)                   \
+  __func(transaction_done, bool)                \
   __func(next_state, state_t)                   \
   __func(is_exclusive, bool)                    \
   __func(error, bool)                           \
@@ -232,6 +233,7 @@ struct CoherenceActions {
     is_exclusive_ = false;
     error_ = false;
     ack_count_ = 0;
+    transaction_done_ = false;
   }
 #define __declare_field(__name, __type)         \
   __type __name ## _;
@@ -260,7 +262,7 @@ class CoherentAgentModel : public CoherentActorBase {
   virtual CoherenceActions get_actions(
       const Message * t, const CacheLine & cache_line) const = 0;
   virtual CoherenceActions get_actions(
-      const Transaction * t, const CacheLine & cache_line) const = 0;
+      Transaction * t, const CacheLine & cache_line) const = 0;
 };
 
 struct CoherentAgentCommandInvoker : CoherentActor {
@@ -273,7 +275,7 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   
   void execute(
       Frontier & f, const CoherenceActions & actions,
-      CacheLine & cache_line, const Transaction * t);
+      CacheLine & cache_line, Transaction * t);
   void set_time(std::size_t time) { time_ = time; }
 
  protected:
@@ -284,11 +286,11 @@ struct CoherentAgentCommandInvoker : CoherentActor {
       Frontier & f, CacheLine & cache_line, state_t state_next);
   void execute_set_ack_count(
       CacheLine & cache_line, ack_count_type ack_count);
-  void execute_emit_gets(Frontier & f, const Transaction * t);
-  void execute_emit_getm(Frontier & f, const Transaction * t);
-  void execute_emit_data_to_req(Frontier & f, const Transaction * t);
-  void execute_emit_data_to_dir(Frontier & f, const Transaction * t);
-  void execute_emit_inv_ack(Frontier & f, const Transaction * t);
+  void execute_emit_gets(Frontier & f, Transaction * t);
+  void execute_emit_getm(Frontier & f, Transaction * t);
+  void execute_emit_data_to_req(Frontier & f, Transaction * t);
+  void execute_emit_data_to_dir(Frontier & f, Transaction * t);
+  void execute_emit_inv_ack(Frontier & f, Transaction * t);
   
   MessageDirector msgd_;
   std::size_t id_;

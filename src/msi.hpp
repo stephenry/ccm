@@ -88,7 +88,7 @@ class MsiCoherentAgentModel : public CoherentAgentModel {
   
   //
   CoherenceActions get_actions(
-      const Transaction * t, const CacheLine & cache_line) const override;
+      Transaction * t, const CacheLine & cache_line) const override;
   CoherenceActions get_actions(
       const Message * m, const CacheLine & cache_line) const override;
 
