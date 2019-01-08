@@ -29,6 +29,22 @@
 
 namespace ccm {
 
+Epoch::Epoch(Time start, Time end, Time step)
+  : start_(start), end_(end), step_(step), now_(start)
+{}
+
+bool Epoch::in_interval(Time t) const {
+  return (start_ <= t) && (t < end_);
+}
+
+Epoch Epoch::advance() const {
+  return Epoch{end_, end_ + step_, step_};
+}
+
+void Epoch::step() {
+  now_ += step_;
+}
+
 void Sim::add_actor(CoherentActor * a) {
   actors_.insert(std::make_pair(a->id(), a));
 }
@@ -36,30 +52,20 @@ void Sim::add_actor(CoherentActor * a) {
 void Sim::run() {
   FixedLatencyInterconnectModel interconnect_model{10};
 
-  Frontier f;
+  Epoch current_epoch{0, 100, 10};
   do {
-
-    // Evaluate all actors in the platform
-    //
+    Context ctxt{current_epoch};
     for (auto [t, actor] : actors_)
-      actor->eval(f);
+      actor->eval(ctxt);
 
-    // Forward all resultant transaction to target actors.
-    //
-    if (f.pending_transactions()) {
-      interconnect_model.apply(f);
- 
-      TimeStamped<const Message *> head;
-      while (f.pop(head)) {
-        set_time(head.time());
-          
-        const Message * t = head.t();
-        actors_[t->dst_id()]->apply(time(), t);
-      }
+    for (TimeStamped<const Message *> ts : ctxt.msgs_) {
+      interconnect_model.apply(ts);
+        
+      const Message * msg = ts.t();
+      actors_[msg->dst_id()]->apply(ts);
     }
+    current_epoch = current_epoch.advance();
   } while (has_active_actors());
-  
-  // All actors are inactive
 }
 
 bool Sim::has_active_actors() const {

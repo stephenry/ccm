@@ -30,10 +30,8 @@
 
 namespace ccm {
 
-void InterconnectModel::apply(Frontier & f) {
-  for (TimeStamped<const Message *> & ts : f.ts())
-    update_time(ts);
-  f.heapify();
+void InterconnectModel::apply(TimeStamped<const Message *> & ts) {
+  update_time(ts);
 }
 
 void InterconnectModel::update_time(TimeStamped<const Message *> & ts) {

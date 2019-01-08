@@ -36,8 +36,8 @@ struct SnoopFilter : SnoopFilterCommandInvoker {
   SnoopFilter(const SnoopFilterOptions & opts);
   
   bool is_active() const override { return !pending_messages_.empty(); }
-  void apply(std::size_t t, const Message * m) override;
-  bool eval(Frontier & f) override;
+  void apply(TimeStamped<const Message *> ts) override;
+  void eval(Context & context) override;
  private:
   Heap<TimeStamped<const Message *> > pending_messages_;
   const SnoopFilterOptions & opts_;

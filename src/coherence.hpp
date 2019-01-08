@@ -274,7 +274,7 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   CacheLine cache_line(std::size_t addr) const;
   
   void execute(
-      Frontier & f, const CoherenceActions & actions,
+      Context & ctxt, const CoherenceActions & actions,
       CacheLine & cache_line, Transaction * t);
   void set_time(std::size_t time) { time_ = time; }
 
@@ -283,14 +283,14 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   std::unique_ptr<GenericCache<CacheLine> > cache_;
  private:
   void execute_update_state(
-      Frontier & f, CacheLine & cache_line, state_t state_next);
+      Context & ctxt, CacheLine & cache_line, state_t state_next);
   void execute_set_ack_count(
       CacheLine & cache_line, ack_count_type ack_count);
-  void execute_emit_gets(Frontier & f, Transaction * t);
-  void execute_emit_getm(Frontier & f, Transaction * t);
-  void execute_emit_data_to_req(Frontier & f, Transaction * t);
-  void execute_emit_data_to_dir(Frontier & f, Transaction * t);
-  void execute_emit_inv_ack(Frontier & f, Transaction * t);
+  void execute_emit_gets(Context & ctxt, Transaction * t);
+  void execute_emit_getm(Context & ctxt, Transaction * t);
+  void execute_emit_data_to_req(Context & ctxt, Transaction * t);
+  void execute_emit_data_to_dir(Context & ctxt, Transaction * t);
+  void execute_emit_inv_ack(Context & ctxt, Transaction * t);
   
   MessageDirector msgd_;
   std::size_t id_;
@@ -322,7 +322,7 @@ struct SnoopFilterCommandInvoker : CoherentActor {
   DirectoryEntry directory_entry(std::size_t addr) const;
   
   void execute(
-      Frontier & f, const CoherenceActions & actions,
+      Context & ctxt, const CoherenceActions & actions,
       const Message * msg, DirectoryEntry & d);
   void set_time(std::size_t time) { time_ = time; }
  protected:
@@ -330,31 +330,31 @@ struct SnoopFilterCommandInvoker : CoherentActor {
   std::unique_ptr<GenericCache<DirectoryEntry> > cache_;
 private:
   void execute_update_state(
-      Frontier & f, DirectoryEntry & d, state_t state_next);
+      Context & ctxt, DirectoryEntry & d, state_t state_next);
   void execute_set_owner_to_req(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
+      const Message * msg, Context & ctxt, DirectoryEntry & d);
   void execute_send_data_to_req(
-      const Message * msg, Frontier & f, DirectoryEntry & d, const CoherenceActions & act);
+      const Message * msg, Context & ctxt, DirectoryEntry & d, const CoherenceActions & act);
   void execute_send_inv_to_sharers(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
+      const Message * msg, Context & ctxt, DirectoryEntry & d);
   void execute_clear_sharers(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
+      const Message * msg, Context & ctxt, DirectoryEntry & d);
   void execute_add_req_to_sharers(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
+      const Message * msg, Context & ctxt, DirectoryEntry & d);
   void execute_del_req_from_sharers(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
+      const Message * msg, Context & ctxt, DirectoryEntry & d);
   void execute_del_owner(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
+      const Message * msg, Context & ctxt, DirectoryEntry & d);
   void execute_add_owner_to_sharers(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
+      const Message * msg, Context & ctxt, DirectoryEntry & d);
   void execute_cpy_data_to_memory(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
+      const Message * msg, Context & ctxt, DirectoryEntry & d);
   void execute_send_put_sack_to_req(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
+      const Message * msg, Context & ctxt, DirectoryEntry & d);
   void execute_send_put_mack_to_req(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
+      const Message * msg, Context & ctxt, DirectoryEntry & d);
   void execute_send_fwd_gets_to_owner(
-      const Message * msg, Frontier & f, DirectoryEntry & d);
+      const Message * msg, Context & ctxt, DirectoryEntry & d);
 
   MessageDirector msgd_;
   std::size_t id_;

@@ -36,6 +36,8 @@ namespace ccm {
 
 class Frontier;
 class Message;
+class Epoch;
+class Context;
 
 struct ActorOptions {
   ActorOptions(std::size_t id)
@@ -62,8 +64,8 @@ struct CoherentActor : Loggable {
   std::size_t time() const override { return time_; }
   std::size_t id() const { return opts_.id(); }
 
-  virtual void apply(std::size_t t, const Message * m) = 0;
-  virtual bool eval(Frontier & f) = 0;
+  virtual void apply(TimeStamped<const Message *> ts) = 0;
+  virtual void eval(Context & ctxt) = 0;
   virtual bool is_active() const = 0;
 
   void set_time(std::size_t time) { time_ = time; }

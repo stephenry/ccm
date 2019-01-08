@@ -52,10 +52,8 @@ struct Agent : CoherentAgentCommandInvoker {
   void set_transaction_source(TransactionSource * ts) { ts_ = ts; }
   TransactionSource * transaction_source() const { return ts_; }
   
-  //  void add_transaction(std::size_t time, Transaction * t);
-
-  void apply(std::size_t t, const Message * m) override;
-  bool eval(Frontier & f) override;
+  void apply(TimeStamped<const Message *> ts) override;
+  void eval(Context & ctxt) override;
   
  private:
   std::deque<TimeStamped<Transaction *> > pending_transactions_;

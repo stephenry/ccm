@@ -35,11 +35,7 @@ Agent::Agent(const AgentOptions & opts)
   set_logger_scope(opts.logger_scope());
 }
 
-// void Agent::add_transaction(std::size_t time, Transaction * t) {
-//   pending_transactions_.push_back(make_time_stamped(time, t));
-// }
-
-bool Agent::eval(Frontier & f) {
+void Agent::eval(Context & context) {
   if (!pending_messages_.empty()) {
 
     for (TimeStamped<const Message *> t : pending_messages_) {
@@ -51,7 +47,7 @@ bool Agent::eval(Frontier & f) {
       const CoherenceActions actions =
           cc_model_->get_actions(t.t(), cache_line);
 
-      execute(f, actions, cache_line, msg->transaction());
+      execute(context, actions, cache_line, msg->transaction());
       if (actions.transaction_done())
         ts_->event_finish(TimeStamped<Transaction *>{0, msg->transaction()});
       msg->release();
@@ -92,7 +88,7 @@ bool Agent::eval(Frontier & f) {
           [[fallthrough]];
           
         case TransactionResult::Miss:
-          execute(f, actions, cache_line, t);
+          execute(context, actions, cache_line, t);
           pending_transactions_.pop_front();
           break;
           
@@ -105,11 +101,10 @@ bool Agent::eval(Frontier & f) {
         break;
     }
   }
-  return is_active();
 }
 
-void Agent::apply(std::size_t t, const Message * m) {
-  pending_messages_.push_back(make_time_stamped(t, m));
+void Agent::apply(TimeStamped<const Message *> ts) {
+  pending_messages_.push_back(ts);
 }
 
 bool Agent::is_active() const {

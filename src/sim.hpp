@@ -37,32 +37,40 @@
 #include <map>
 
 namespace ccm {
+  
+using Time = std::size_t;
 
-class Frontier {
- public:
+struct Epoch {
+  Epoch(Time start, Time end, Time step);
 
-  std::vector<TimeStamped<const Message *>> & ts() { return msgs_.ts(); }
+  bool in_interval(Time t) const;
+  Epoch advance() const;
+  void step();
 
-  void add_to_frontier(std::size_t t, const Message * msg) {
-    msgs_.push(make_time_stamped(t, msg));
+  Time now() const { return now_; }
+  Time start() const { return start_; }
+  Time end() const { return end_; }
+  Time step() const { return step_; }
+
+private:
+  Time start_, end_, step_, now_;
+};
+  
+struct Context {
+
+  Context(const Epoch & epoch)
+    : epoch_(epoch)
+  {}
+
+  Epoch epoch() const { return epoch_; }
+
+  void emit_message(Time t, const Message * m) {
+    msgs_.push_back(TimeStamped{t, m});
   }
 
-  bool pending_transactions() const {
-    return !msgs_.empty();
-  }
-
-  bool pop(TimeStamped<const Message *> & msg) {
-    return msgs_.pop(msg);
-  }
-
-  void clear() { msgs_.clear(); }
-
-  void heapify() {
-    msgs_.heapify();
-  }
-
- private:
-  Heap<TimeStamped<const Message *> > msgs_;
+  //private:
+  std::vector<TimeStamped<const Message *> > msgs_;
+  Epoch epoch_;
 };
 
 struct Sim {

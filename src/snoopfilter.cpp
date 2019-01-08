@@ -35,11 +35,11 @@ SnoopFilter::SnoopFilter(const SnoopFilterOptions & opts)
   set_logger_scope(opts.logger_scope());
 }
 
-void SnoopFilter::apply(std::size_t t, const Message * m) {
-  pending_messages_.push(make_time_stamped(t, m));
+void SnoopFilter::apply(TimeStamped<const Message *> ts) {
+  pending_messages_.push(ts);
 }
 
-bool SnoopFilter::eval(Frontier & f) {
+void SnoopFilter::eval(Context & context) {
   if (!pending_messages_.empty()) {
 
     TimeStamped<const Message *> head;
@@ -58,10 +58,9 @@ bool SnoopFilter::eval(Frontier & f) {
       DirectoryEntry & directory_entry = cache_->lookup(transaction->addr());
       const CoherenceActions actions =
           cc_model_->get_actions(head.t(), directory_entry);
-      execute(f, actions, head.t(), directory_entry);
+      execute(context, actions, head.t(), directory_entry);
     }
   }
-  return is_active();
 }
 
 } // namespace ccm
