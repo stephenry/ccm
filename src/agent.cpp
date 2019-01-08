@@ -60,8 +60,8 @@ bool Agent::eval(Frontier & f) {
   }
 
   if (pending_transactions_.empty()) {
-    TimeStamped<Transaction *> t = ts_->get_transaction();
-    if (t.t() != nullptr)
+    TimeStamped<Transaction *> t;
+    if (ts_->get_transaction(t))
       pending_transactions_.push_back(t);
   }
   

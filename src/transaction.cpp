@@ -49,8 +49,8 @@ std::string to_string(const Transaction & t) {
   return sr.str();
 }
 
-TimeStamped<Transaction *> NullTransactionSource::get_transaction() {
-  return TimeStamped<Transaction *>{0, nullptr};
+bool NullTransactionSource::get_transaction(TimeStamped<Transaction *> & ts) {
+  return false;
 }
   
 void ProgrammaticTransactionSource::add_transaction(
@@ -61,17 +61,18 @@ void ProgrammaticTransactionSource::add_transaction(
   pending_.push_back(TimeStamped<Transaction *>{time, t});
 }
 
-TimeStamped<Transaction *> ProgrammaticTransactionSource::get_transaction() {
-  TimeStamped<Transaction *> ret{0, nullptr};
-  if (pending_.size() != 0) {
-    ret = pending_.front();
-    pending_.pop_front();
+bool ProgrammaticTransactionSource::get_transaction(TimeStamped<Transaction *> & ts) {
+  if (pending_.size() == 0)
+    return false;
 
-    Transaction * t = ret.t();
-    t->set_tid(in_flight_.size());
-    in_flight_.push_back(t);
-  }
-  return ret;
+  ts = pending_.front();
+  pending_.pop_front();
+  
+  Transaction * t = ts.t();
+  t->set_tid(in_flight_.size());
+  in_flight_.push_back(t);
+
+  return true;
 }
 
 void ProgrammaticTransactionSource::event_start(TimeStamped<Transaction *> ts) {

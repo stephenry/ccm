@@ -93,7 +93,7 @@ struct TransactionSource : Loggable {
   std::size_t time() const override { return 0; }
   
   //
-  virtual TimeStamped<Transaction *> get_transaction() = 0;
+  virtual bool get_transaction(TimeStamped<Transaction *> & ts) = 0;
 
   //
   virtual void event_start(TimeStamped<Transaction *> ts) = 0;
@@ -102,7 +102,7 @@ struct TransactionSource : Loggable {
 
 struct NullTransactionSource : TransactionSource {
   //
-  virtual TimeStamped<Transaction *> get_transaction() override;
+  virtual bool get_transaction(TimeStamped<Transaction *> & ts) override;
 
   //
   virtual void event_start(TimeStamped<Transaction *> ts) override {}
@@ -117,7 +117,7 @@ struct ProgrammaticTransactionSource : TransactionSource {
   void add_transaction(TransactionType type, std::size_t time, uint64_t addr);
 
   //
-  virtual TimeStamped<Transaction *> get_transaction() override;
+  virtual bool get_transaction(TimeStamped<Transaction *> & ts) override;
 
   //
   virtual void event_start(TimeStamped<Transaction *> ts) override;
