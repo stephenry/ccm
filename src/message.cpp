@@ -30,13 +30,23 @@
 
 namespace ccm {
 
-const char * to_string(MessageType t) {
-  switch (t) {
-#define __to_str(__e)                        \
-    case MessageType::__e: return #__e; break;
+const char * MessageType::to_string(base_type e) {
+  switch (e) {
+#define __to_str(__name, __cost)                \
+    case __name: return #__name; break;
     MESSAGE_CLASSES(__to_str)
 #undef __to_str
     default: return "Unknown";
+  }
+}
+
+int MessageType::to_cost(base_type b) {
+  switch (b) {
+#define __to_str(__name, __cost)                \
+    case __name: return __cost; break;
+    MESSAGE_CLASSES(__to_str)
+#undef __to_str
+    default: return 0;
   }
 }
 
@@ -51,10 +61,10 @@ std::string to_string(const Message & m) {
   using namespace std;
   
   StructRenderer sr;
-  sr.add("type", to_string(m.type()));
-  sr.add("src_id", std::to_string(m.src_id()));
-  sr.add("dst_id", std::to_string(m.dst_id()));
-  //  sr.add("transaction", m.transaction());
+  sr.add("type", MessageType::to_string(m.type()));
+  sr.add("src_id", to_string(m.src_id()));
+  sr.add("dst_id", to_string(m.dst_id()));
+  sr.add("transaction", to_string(*m.transaction()));
   sr.add("is_ack", to_string(m.is_ack()));
   switch (m.type()) {
     case MessageType::Data:

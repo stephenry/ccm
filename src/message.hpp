@@ -35,41 +35,46 @@
 namespace ccm {
 
 #define MESSAGE_CLASSES(__func)                 \
-  __func(GetS)                                  \
-  __func(GetM)                                  \
-  __func(PutS)                                  \
-  __func(PutM)                                  \
-  __func(PutE)                                  \
-  __func(PutO)                                  \
-  __func(FwdGetS)                               \
-  __func(FwdGetM)                               \
-  __func(Inv)                                   \
-  __func(AckCount)                              \
-  __func(Data)
+  __func(GetS, 1)                               \
+  __func(GetM, 1)                               \
+  __func(PutS, 1)                               \
+  __func(PutM, 1)                               \
+  __func(PutE, 1)                               \
+  __func(PutO, 1)                               \
+  __func(FwdGetS, 1)                            \
+  __func(FwdGetM, 1)                            \
+  __func(Inv, 1)                                \
+  __func(AckCount, 1)                           \
+  __func(Data, 4)
 
-enum class MessageType {
-#define __declare_enum(e) e,
-  MESSAGE_CLASSES(__declare_enum)
+struct MessageType {
+  using base_type = std::uint8_t;
+  
+  enum : base_type {
+#define __declare_enum(__name, __cost) __name,
+    MESSAGE_CLASSES(__declare_enum)
 #undef __declare_enum
-  Invalid
-};
+    Invalid
+  };
 
-const char * to_string(MessageType t);
+  static const char * to_string(base_type b);
+  static int to_cost(base_type b);
+};
 
 struct Message : ccm::Poolable {
   friend class MessageBuilder;
 
-  Message() : type_(MessageType::Invalid) { set_invalid(); }
+  Message() { set_invalid(); }
 
-#define MESSAGE_FIELDS(__func)                          \
-  __func(type, MessageType, MessageType::Invalid)       \
-  __func(src_id, std::size_t, 1000)                     \
-  __func(dst_id, std::size_t, 1000)                     \
-  __func(addr, uint64_t, 0)                             \
-  __func(is_ack, bool, false)                           \
-  __func(transaction, Transaction *, nullptr)           \
-  __func(ack_count, std::size_t, 0)                     \
-  __func(is_exclusive, bool, false)                     \
+#define MESSAGE_FIELDS(__func)                                  \
+  __func(type, MessageType::base_type, MessageType::Invalid)    \
+  __func(src_id, std::size_t, 1000)                             \
+  __func(dst_id, std::size_t, 1000)                             \
+  __func(addr, uint64_t, 0)                                     \
+  __func(is_ack, bool, false)                                   \
+  __func(transaction, Transaction *, nullptr)                   \
+  __func(ack_count, std::size_t, 0)                             \
+  __func(is_exclusive, bool, false)                             \
   __func(was_owner, bool, false)
 
 #define __declare_getter(__name, __type, __default)     \
