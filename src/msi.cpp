@@ -669,25 +669,9 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   const SnoopFilterOptions opts_;
 };
 
-struct MsiSnoopFilterModel::MsiSnoopFilterModelNullFilterImpl
-    : MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
-
-  MsiSnoopFilterModelNullFilterImpl(const SnoopFilterOptions & opts)
-      : MsiSnoopFilterModelImpl(opts)
-  {}
-};
-
-struct MsiSnoopFilterModel::MsiSnoopFilterModelDirectoryImpl
-    : MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
-
-  MsiSnoopFilterModelDirectoryImpl(const SnoopFilterOptions & opts)
-      : MsiSnoopFilterModelImpl(opts)
-  {}
-};
-
 MsiSnoopFilterModel::MsiSnoopFilterModel(const SnoopFilterOptions & opts)
     : SnoopFilterModel(opts) {
-  impl_ = std::make_unique<MsiSnoopFilterModelDirectoryImpl>(opts);
+  impl_ = std::make_unique<MsiSnoopFilterModelImpl>(opts);
 }
 
 MsiSnoopFilterModel::~MsiSnoopFilterModel() {}

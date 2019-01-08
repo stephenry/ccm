@@ -118,8 +118,6 @@ class MsiSnoopFilterModel : public SnoopFilterModel {
 
  private:
   struct MsiSnoopFilterModelImpl;
-  struct MsiSnoopFilterModelNullFilterImpl;
-  struct MsiSnoopFilterModelDirectoryImpl;
 
   std::unique_ptr<MsiSnoopFilterModelImpl> impl_;
 };

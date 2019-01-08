@@ -40,7 +40,7 @@ struct SnoopFilter : SnoopFilterCommandInvoker {
   void eval(Context & context) override;
  private:
   Heap<TimeStamped<const Message *> > pending_messages_;
-  const SnoopFilterOptions & opts_;
+  const SnoopFilterOptions opts_;
 };
 
 } // namespace ccm
