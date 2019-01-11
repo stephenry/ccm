@@ -28,6 +28,7 @@
 #ifndef __SRC_COHERENCE_HPP__
 #define __SRC_COHERENCE_HPP__
 
+#include "sim.hpp"
 #include "genericcache.hpp"
 #include "message.hpp"
 #include "actors.hpp"
@@ -223,6 +224,9 @@ struct CoherenceActions {
   ACTION_FIELDS(__declare_getter_setter)
 #undef __declare_getter_setter
 
+  // TODO
+  Time duration() const { return 10; }
+  
   template<typename T>
   void append_command(const T & cmd) {
     commands_.push_back(static_cast<command_t>(cmd));

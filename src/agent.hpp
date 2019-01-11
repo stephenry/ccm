@@ -29,6 +29,8 @@
 #define __SRC_AGENT_HPP__
 
 #include "coherence.hpp"
+#include "message.hpp"
+#include "sim.hpp"
 #include <deque>
 
 namespace ccm {
@@ -36,7 +38,8 @@ namespace ccm {
 struct TransactionSource;
 
 struct AgentOptions : CoherentAgentOptions {
-  AgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options, Platform platform)
+  AgentOptions(std::size_t id, Protocol protocol,
+               CacheOptions cache_options, Platform platform)
     : CoherentAgentOptions(id, protocol, cache_options, platform)
   {}
 };
@@ -47,18 +50,24 @@ struct Agent : CoherentAgentCommandInvoker {
   bool is_active() const override;
   Protocol protocol() const { return opts_.protocol(); }
   CacheOptions cache_options() const { return opts_.cache_options(); }
-  bool can_accept() const { return true; }
 
-  void set_transaction_source(TransactionSource * ts) { ts_ = ts; }
-  TransactionSource * transaction_source() const { return ts_; }
+  void set_transaction_source(TransactionSource * trns) { trns_ = trns; }
+  TransactionSource * transaction_source() const { return trns_; }
   
   void apply(TimeStamped<const Message *> ts) override;
   void eval(Context & ctxt) override;
   
  private:
-  std::deque<TimeStamped<Transaction *> > pending_transactions_;
-  std::vector<TimeStamped<const Message *> > pending_messages_;
-  TransactionSource * ts_;
+  void fetch_transactions(std::size_t n = 10);
+  
+  void handle_msg(Context & ctxt, Cursor & cursor,
+                  TimeStamped<const Message *> ts);
+  
+  void handle_trn(Context & ctxt, Cursor & cursor,
+                  TimeStamped<Transaction *> ts);
+  
+  QueueManager qmgr_;
+  TransactionSource * trns_;
   const AgentOptions opts_;
 };
 

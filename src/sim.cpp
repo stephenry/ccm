@@ -26,23 +26,108 @@
 //========================================================================== //
 
 #include "sim.hpp"
+#include "message.hpp"
+#include "interconnect.hpp"
 
 namespace ccm {
 
-Epoch::Epoch(Time start, Time end, Time step)
-  : start_(start), end_(end), step_(step), now_(start)
+Epoch::Epoch(Time start, Time duration, Time step)
+  : start_(start), duration_(duration), step_(step), cursor_(start)
 {}
 
 bool Epoch::in_interval(Time t) const {
-  return (start_ <= t) && (t < end_);
+  return (t < end());
 }
 
 Epoch Epoch::advance() const {
-  return Epoch{end_, end_ + step_, step_};
+  return Epoch{end(), duration(), step()};
 }
 
-void Epoch::step() {
-  now_ += step_;
+QueueEntry::QueueEntry()
+  : type_(QueueEntryType::Invalid)
+{}
+  
+QueueEntry::QueueEntry(message_queue_type * msgq)
+  : type_(QueueEntryType::Message), msgq_(msgq)
+{}
+
+QueueEntry::QueueEntry(transaction_queue_type * trnq)
+  : type_(QueueEntryType::Transaction), trnq_(trnq)
+{}
+
+bool operator<(const QueueEntry & lhs, const QueueEntry & rhs) {
+  return lhs.time() < lhs.time();
+}
+
+std::size_t QueueEntry::time() const {
+  switch (type_) {
+  case QueueEntryType::Message: {
+    typename message_queue_type::value_type ts = msgq_->top();
+    return ts.time();
+  } break;
+
+  case QueueEntryType::Transaction: {
+    typename transaction_queue_type::value_type ts = trnq_->top();
+    return ts.time();
+  } break;
+  }
+}
+  
+typename message_queue_type::value_type QueueEntry::as_msg() const {
+  return msgq_->top();
+}
+
+typename transaction_queue_type::value_type QueueEntry::as_trn() const {
+  return trnq_->top();
+}
+
+QueueManager::QueueManager() {
+  messages_.resize(CLASS_COUNT);
+}
+
+bool QueueManager::empty() {
+  if (!transactions_.empty())
+    return false;
+  
+  for (std::size_t i = 0; i < CLASS_COUNT; i++)
+    if (!messages_[i].empty())
+      return false;
+  
+  return true;
+}
+
+void QueueManager::push(TimeStamped<const Message *> ts) {
+  messages_[ts.t()->cls()].push(ts);
+}
+  
+void QueueManager::push(TimeStamped<Transaction *> ts) {
+  transactions_.push(ts);
+}
+
+QueueEntry QueueManager::next() {
+  std::priority_queue<QueueEntry> pq;
+
+  if (!transactions_.empty()) {
+    const Transaction * trn = transactions_.top().t();
+    if (!tac_ || tac_->can_be_issued(trn))
+      pq.push(QueueEntry{std::addressof(transactions_)});
+  }
+
+  for (std::size_t i = 0; i < CLASS_COUNT; i++) {
+    if (!messages_[i].empty()) {
+      const Message * msg = messages_[i].top().t();
+      if (!mac_ || mac_->can_be_issued(msg))
+        pq.push(QueueEntry{std::addressof(messages_[i])});
+    }
+  }
+  return !pq.empty() ? pq.top() : QueueEntry{};
+}
+
+void QueueEntry::consume() const {
+  switch (type()) {
+  case QueueEntryType::Message: msgq_->pop(); break;
+  case QueueEntryType::Transaction: trnq_->pop(); break;
+  }
 }
 
 void Sim::add_actor(CoherentActor * a) {

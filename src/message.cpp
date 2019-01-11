@@ -34,7 +34,7 @@ const char * MessageType::to_string(base_type e) {
   switch (e) {
 #define __to_str(__name, __cost)                \
     case __name: return #__name; break;
-    MESSAGE_CLASSES(__to_str)
+    MESSAGE_TYPES(__to_str)
 #undef __to_str
     default: return "Unknown";
   }
@@ -44,10 +44,26 @@ int MessageType::to_cost(base_type b) {
   switch (b) {
 #define __to_str(__name, __cost)                \
     case __name: return __cost; break;
-    MESSAGE_CLASSES(__to_str)
+    MESSAGE_TYPES(__to_str)
 #undef __to_str
     default: return 0;
   }
+}
+
+MessageClass Message::cls() const {
+  if (is_ack())
+    return MessageClass::Response;
+
+  MessageClass cls;
+  switch (type()) {
+  case MessageType::Data:
+    cls = MessageClass::Data;
+    break;
+  default:
+    cls = MessageClass::Request;
+    break;
+  }
+  return cls;
 }
 
 void Message::set_invalid() {

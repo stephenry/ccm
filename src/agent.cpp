@@ -27,84 +27,144 @@
 
 #include "agent.hpp"
 #include "msi.hpp"
+#include "common.hpp"
+#include <queue>
 
 namespace ccm {
+
+class AgentMessageAdmissionControl : public MessageAdmissionControl {
+public:
+  AgentMessageAdmissionControl(Agent * agent)
+    : agent_(agent)
+  {}
+
+  bool can_be_issued(const Message * msg) const override {
+    return true;
+  }
+  
+private:
+  Agent * agent_{nullptr};
+};
+
+class AgentTransactionAdmissionControl : public TransactionAdmissionControl {
+public:
+  AgentTransactionAdmissionControl(Agent * agent)
+    : agent_(agent)
+  {}
+
+  bool can_be_issued(const Transaction * trn) const override {
+  }
+  
+private:
+  Agent * agent_{nullptr};
+};
+  
 
 Agent::Agent(const AgentOptions & opts)
     : CoherentAgentCommandInvoker(opts), opts_(opts) {
   set_logger_scope(opts.logger_scope());
+
+  qmgr_.set_ac(std::make_unique<AgentMessageAdmissionControl>(this));
+  qmgr_.set_ac(std::make_unique<AgentTransactionAdmissionControl>(this));
 }
 
 void Agent::eval(Context & context) {
-  if (!pending_messages_.empty()) {
+  const Epoch epoch = context.epoch();
+  Cursor cursor = epoch.cursor();
 
-    for (TimeStamped<const Message *> t : pending_messages_) {
-      const Message * msg = t.t();
-      set_time(t.time());
+  // The agent is present at 'time()'; execute Agent actions iff the
+  // time is present in the current Epoch, otherwise, sleep until the
+  // next interval.
+  //
+  if (!epoch.in_interval(time()))
+    return;
 
-      const Transaction * transaction = msg->transaction();
-      CacheLine & cache_line = cache_->lookup(transaction->addr());
-      const CoherenceActions actions =
-          cc_model_->get_actions(t.t(), cache_line);
+  // As the current time may not fall on a Epoch boundary, advance to
+  // the 'time' location within the current Epoch and proceed from
+  // there.
+  //
+  cursor.set_time(std::max(time(), cursor.time()));
 
-      execute(context, actions, cache_line, msg->transaction());
-      if (actions.transaction_done())
-        ts_->event_finish(TimeStamped<Transaction *>{0, msg->transaction()});
-      msg->release();
-    }
-    pending_messages_.clear();
-  }
+  if (!qmgr_.pending_transactions())
+    fetch_transactions(10);
 
-  if (pending_transactions_.empty()) {
-    TimeStamped<Transaction *> t;
-    if (ts_->get_transaction(t))
-      pending_transactions_.push_back(t);
-  }
-  
-  if (!pending_transactions_.empty()) {
+  do {
+    const QueueEntry next = qmgr_.next();
+    if (next.type() == QueueEntryType::Invalid)
+      break;
+    
+    if (!epoch.in_interval(next.time()))
+      break;
 
-    while (!pending_transactions_.empty()) {
-      TimeStamped<Transaction *> & head = pending_transactions_.front();
-      Transaction * t = head.t();
-
-      ts_->event_start(TimeStamped<Transaction *>{0, t});
+    CoherenceActions actions;
+    switch (next.type()) {
+    case QueueEntryType::Message:
+      handle_msg(context, cursor, next.as_msg());
+      break;
       
-      set_time(head.time());
-
-      if (!cache_->is_hit(t->addr())) {
-        CacheLine cache_line;
-        cc_model_->init(cache_line);
-        cache_->install(t->addr(), cache_line);
-      }
-
-      CacheLine & cache_line = cache_->lookup(t->addr());
-      const CoherenceActions actions =
-          cc_model_->get_actions(head.t(), cache_line);
-
-      bool advance = true;
-      switch (static_cast<TransactionResult>(actions.result())) {
-        case TransactionResult::Hit:
-          // Transaction completes;
-          [[fallthrough]];
-          
-        case TransactionResult::Miss:
-          execute(context, actions, cache_line, t);
-          pending_transactions_.pop_front();
-          break;
-          
-        case TransactionResult::Blocked:
-          advance = false;
-          break;
-      }
-      
-      if (!advance)
-        break;
+    case QueueEntryType::Transaction:
+      handle_trn(context, cursor, next.as_trn());
+      break;
     }
+    next.consume();
+  } while (epoch.in_interval(cursor.time()));
+
+  set_time(cursor.time());
+}
+
+void Agent::fetch_transactions(std::size_t n) {
+  TimeStamped<Transaction *> ts;
+  for (int i = 0; i < n; i++) {
+    if (trns_->get_transaction(ts))
+      qmgr_.push(ts);
   }
 }
 
+void Agent::handle_msg(Context & context, Cursor & cursor,
+                       TimeStamped<const Message *> ts) {
+  const Message * msg = ts.t();
+  const Transaction * trn = msg->transaction();
+
+  CacheLine & cache_line = cache_->lookup(trn->addr());
+  const CoherenceActions actions = cc_model_->get_actions(msg, cache_line);
+  execute(context, actions, cache_line, msg->transaction());
+  // TODO: assertion that confirms commital
+
+  if (actions.transaction_done()) {
+    Transaction * trn = msg->transaction();
+
+    trns_->event_finish(TimeStamped{time(), trn});
+  }
+  msg->release();
+
+  cursor.set_time(cursor.time() + actions.duration());
+}
+
+void Agent::handle_trn(Context & context, Cursor & cursor,
+                       TimeStamped<Transaction *> ts) {
+  Transaction * trn = ts.t();
+  
+  trns_->event_start(TimeStamped{time(), trn});
+
+  if (trn->type() != TransactionType::Replacement)
+    CCM_ASSERT(!cache_->requires_eviction(trn->addr()));
+                       
+  if (!cache_->is_hit(trn->addr())) {
+    CacheLine cache_line;
+    cc_model_->init(cache_line);
+    cache_->install(trn->addr(), cache_line);
+  }
+
+  CacheLine & cache_line = cache_->lookup(trn->addr());
+  const CoherenceActions actions = cc_model_->get_actions(trn, cache_line);
+  
+  execute(context, actions, cache_line, trn);
+  
+  cursor.set_time(cursor.time() + actions.duration());
+}
+
 void Agent::apply(TimeStamped<const Message *> ts) {
-  pending_messages_.push_back(ts);
+  qmgr_.push(ts);
 }
 
 bool Agent::is_active() const {
@@ -112,7 +172,7 @@ bool Agent::is_active() const {
   // Transaction Table, or if there are transaction awaiting to be
   // issued.
   //
-  return (!pending_messages_.empty() || !pending_transactions_.empty());
+  return qmgr_.pending_transactions();
 }
 
 } // namespace ccm

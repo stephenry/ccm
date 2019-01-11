@@ -25,6 +25,9 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
+#ifndef __SRC_CCM_HPP__
+#define __SRC_CCM_HPP__
+
 #include "utility.hpp"
 #include "log.hpp"
 #include "actors.hpp"
@@ -38,3 +41,5 @@
 #include "msi.hpp"
 #include "mesi.hpp"
 #include "mosi.hpp"
+
+#endif

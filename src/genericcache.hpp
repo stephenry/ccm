@@ -107,6 +107,7 @@ class GenericCache {
 
   CacheOptions cache_options() const { return opts_; }
 
+  virtual bool requires_eviction(addr_t addr) const = 0;
   virtual bool is_hit(addr_t addr) const = 0;
 
   virtual T & lookup(addr_t addr) = 0;
@@ -124,6 +125,11 @@ class FullyAssociativeCache : public GenericCache<T> {
   FullyAssociativeCache(const CacheOptions & opts)
       : GenericCache<T>(opts)
   {}
+
+  bool requires_eviction(addr_t addr) const override {
+    // TODO
+    return false;
+  }
 
   bool is_hit(addr_t addr) const override {
     return (cache_.find(addr) != cache_.end());

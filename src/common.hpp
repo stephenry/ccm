@@ -46,7 +46,7 @@ namespace ccm {
   CCM_MACRO_END
 
 using addr_t = uint64_t;
-
+  
 } // namespace ccm
 
 #endif

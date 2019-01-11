@@ -90,32 +90,6 @@ class Pool : public PoolBase {
 };
 
 template<typename T>
-class TimeStamped {
- public:
-  TimeStamped() {}
-  TimeStamped(std::size_t time, const T & t) : t_(t), time_(time) {}
-  
-  std::size_t time() const { return time_; }
-  T t() const { return t_; }
-
-  void set_time(std::size_t time) { time_ = time; }
- private:
-  std::size_t time_;
-  T t_;
-};
-
-template<typename T>
-bool operator<(const TimeStamped<T> & lhs, const TimeStamped<T> & rhs) {
-  return (lhs.time() < lhs.time());
-}
-
-template<typename T>
-auto make_time_stamped(std::size_t time, T & t) -> TimeStamped<T> {
-  return TimeStamped<T>(time, t);
-}
-
-
-template<typename T>
 class Heap {
  public:
   Heap() : is_heap_(true) {}

@@ -27,6 +27,7 @@
 
 #include "interconnect.hpp"
 #include "sim.hpp"
+#include "message.hpp"
 
 namespace ccm {
 

@@ -34,7 +34,22 @@
 
 namespace ccm {
 
+struct Transaction;
+
 #define MESSAGE_CLASSES(__func)                 \
+  __func(Request)                               \
+  __func(Response)                              \
+  __func(Data)
+
+enum MessageClass {
+#define __declare_class(__class)                \
+  __class,
+  MESSAGE_CLASSES(__declare_class)
+#undef __declare_class
+  CLASS_COUNT
+};
+
+#define MESSAGE_TYPES(__func)                   \
   __func(GetS, 1)                               \
   __func(GetM, 1)                               \
   __func(PutS, 1)                               \
@@ -52,7 +67,7 @@ struct MessageType {
   
   enum : base_type {
 #define __declare_enum(__name, __cost) __name,
-    MESSAGE_CLASSES(__declare_enum)
+    MESSAGE_TYPES(__declare_enum)
 #undef __declare_enum
     Invalid
   };
@@ -77,6 +92,7 @@ struct Message : ccm::Poolable {
   __func(is_exclusive, bool, false)                             \
   __func(was_owner, bool, false)
 
+  MessageClass cls() const;
 #define __declare_getter(__name, __type, __default)     \
   __type __name() const { return __name ## _; }
   MESSAGE_FIELDS(__declare_getter)

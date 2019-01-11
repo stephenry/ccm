@@ -29,6 +29,7 @@
 #define __SRC_INTERCONNECT_HPP__
 
 #include "utility.hpp"
+#include "sim.hpp"
 
 namespace ccm {
 

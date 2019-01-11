@@ -29,31 +29,152 @@
 #define __SRC_SIM_HPP__
 
 #include "utility.hpp"
-#include "message.hpp"
-#include "transaction.hpp"
-#include "actors.hpp"
-#include "interconnect.hpp"
 #include <vector>
 #include <map>
+#include <queue>
 
 namespace ccm {
+
+class Message;
+class Transaction;
+class CoherentActor;
   
 using Time = std::size_t;
 
+class Cursor {
+  friend class Epoch;
+
+  Cursor(Time time)
+    : time_(time)
+  {}
+
+public:
+  void set_time(Time time) { time_ = time; }
+
+  Time time() const { return time_; }
+  
+private:
+  Time time_;
+};
+
 struct Epoch {
-  Epoch(Time start, Time end, Time step);
+  Epoch(Time start, Time duration, Time step);
+
+  void set_cursor(Time cursor) { cursor_ = cursor; }
 
   bool in_interval(Time t) const;
   Epoch advance() const;
   void step();
 
-  Time now() const { return now_; }
+  Cursor cursor() const { return Cursor{start()}; }
   Time start() const { return start_; }
-  Time end() const { return end_; }
+  Time end() const { return start_ + duration_; }
+  Time duration() const { return duration_; }
   Time step() const { return step_; }
 
 private:
-  Time start_, end_, step_, now_;
+  Time start_, duration_, step_, cursor_;
+};
+
+template<typename T>
+class TimeStamped {
+public:
+  TimeStamped() {}
+  TimeStamped(Time time, const T & t) : t_(t), time_(time) {}
+  
+  Time time() const { return time_; }
+  T t() const { return t_; }
+
+  void set_time(Time time) { time_ = time; }
+private:
+  Time time_;
+  T t_;
+};
+
+template<typename T>
+auto make_time_stamped(std::size_t time, T & t) -> TimeStamped<T> {
+  return TimeStamped<T>(time, t);
+}
+
+template<typename T>
+bool operator<(const TimeStamped<T> & lhs, const TimeStamped<T> & rhs) {
+  return (lhs.time() < lhs.time());
+}
+
+enum class QueueEntryType { Message, Transaction, Invalid };
+
+using message_queue_type =
+  std::priority_queue<TimeStamped<const Message *>>;
+  
+using transaction_queue_type =
+  std::priority_queue<TimeStamped<Transaction *>>;
+
+class MessageAdmissionControl {
+public:
+  MessageAdmissionControl() {}
+
+  virtual bool can_be_issued(const Message * msg) const = 0;
+};
+
+class TransactionAdmissionControl {
+public:
+  TransactionAdmissionControl() {}
+
+  virtual bool can_be_issued(const Transaction * trn) const = 0;
+};
+
+struct QueueEntry {
+  QueueEntry();
+  QueueEntry(message_queue_type * msgq);
+  QueueEntry(transaction_queue_type * trnq);
+
+  QueueEntryType type() const { return type_; }
+  Time time() const;
+  
+  typename message_queue_type::value_type as_msg() const;
+  typename transaction_queue_type::value_type as_trn() const;
+
+  void consume() const;
+
+private:
+  QueueEntryType type_;
+  
+  union {
+    message_queue_type * msgq_;
+    transaction_queue_type * trnq_;
+  };
+};
+
+bool operator<(const QueueEntry & lhs, const QueueEntry & rhs);
+
+class QueueManager {
+public:
+  QueueManager();
+
+  bool empty();
+  bool pending_transactions() const { return !transactions_.empty(); }
+
+  void set_ac(std::unique_ptr<MessageAdmissionControl> && mac) {
+    mac_ = std::move(mac);
+  }
+
+  void set_ac(std::unique_ptr<TransactionAdmissionControl> && tac) {
+    tac_ = std::move(tac);
+  }
+
+  void push(TimeStamped<const Message *> ts);
+  void push(TimeStamped<Transaction *> ts);
+
+  QueueEntry next();
+
+private:
+  //
+  std::vector<message_queue_type> messages_;
+  transaction_queue_type transactions_;
+
+  //
+  std::unique_ptr<MessageAdmissionControl> mac_;
+  std::unique_ptr<TransactionAdmissionControl> tac_;
 };
   
 struct Context {

@@ -30,6 +30,7 @@
 
 #include "utility.hpp"
 #include "log.hpp"
+#include "sim.hpp"
 #include <deque>
 #include <string>
 #include <list>
@@ -39,6 +40,7 @@ namespace ccm {
 enum class TransactionType {
   Load,
   Store,
+  Replacement,
   Invalid
 };
 
