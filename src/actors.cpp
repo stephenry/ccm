@@ -26,7 +26,23 @@
 //========================================================================== //
 
 #include "actors.hpp"
+#include "message.hpp"
 
 namespace ccm {
+
+void CoherentActor::emit_message(Context & context,
+                                 Cursor & cursor, MessageBuilder & b) {
+  b.set_src_id(id());
+
+  Message * msg = b.msg();
+  context.emit_message(TimeStamped{cursor.time(), msg});
+
+  const Time message_delay = (cursor.step() * MessageType::to_cost(msg->type()));
+  cursor.set_time(cursor.time() + message_delay);
+
+  log_debug("Emit ", MessageType::to_string(msg->type()),
+            msg->is_ack() ? "Ack: " : ": ", to_string(*msg));
+  set_time(cursor.time());
+}
 
 } // namespace ccm

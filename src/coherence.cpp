@@ -67,7 +67,6 @@ const char * to_string(TransactionResult r) {
 
 CoherentAgentCommandInvoker::CoherentAgentCommandInvoker(
     const CoherentAgentOptions & opts) : CoherentActor(opts), msgd_(opts) {
-  id_ = opts.id();
   cc_model_ = coherent_agent_factory(opts);
   cache_ = cache_factory<CacheLine>(opts.cache_options());
 }
@@ -82,30 +81,8 @@ CacheLine CoherentAgentCommandInvoker::cache_line(std::size_t addr) const {
   return cl;
 }
 
-ExecutionContext::ExecutionContext(CoherentActor * coherent_actor,
-                                   Context & context, Cursor & cursor)
-  : coherent_actor_(coherent_actor), context_(context), cursor_(cursor) {
-}
-
-id_t ExecutionContext::self_id() const { return coherent_actor_->id(); }
-
-void ExecutionContext::emit_message(MessageBuilder & b) {
-  b.set_src_id(self_id());
-
-  Message * msg = b.msg();
-  context_.emit_message(TimeStamped{cursor_.time(), msg});
-
-  const Time message_delay = (cursor_.step() * MessageType::to_cost(msg->type()));
-  cursor_.set_time(cursor_.time() + message_delay);
-
-  coherent_actor_->log_debug("Emit ", MessageType::to_string(msg->type()),
-                             msg->is_ack() ? "Ack: " : ": ",
-                             to_string(*msg));
-  coherent_actor_->set_time(cursor_.time());
-}
-
 void CoherentAgentCommandInvoker::execute(
-    ExecutionContext & ctxt, const CoherenceActions & actions,
+    Context & context, Cursor & cursor, const CoherenceActions & actions,
     CacheLine & cache_line, Transaction * t) {
 
   for (const command_t c : actions.commands()) {
@@ -116,27 +93,27 @@ void CoherentAgentCommandInvoker::execute(
     switch (cmd) {
       
       case CoherentAgentCommand::UpdateState:
-        execute_update_state(ctxt, cache_line, actions.next_state());
+        execute_update_state(context, cursor, cache_line, actions.next_state());
         break;
 
       case CoherentAgentCommand::EmitGetS:
-        execute_emit_gets(ctxt, t);
+        execute_emit_gets(context, cursor, t);
         break;
       
       case CoherentAgentCommand::EmitGetM:
-        execute_emit_getm(ctxt, t);
+        execute_emit_getm(context, cursor, t);
         break;
       
       case CoherentAgentCommand::EmitDataToReq:
-        execute_emit_data_to_req(ctxt, t);
+        execute_emit_data_to_req(context, cursor, t);
         break;
       
       case CoherentAgentCommand::EmitDataToDir:
-        execute_emit_data_to_dir(ctxt, t);
+        execute_emit_data_to_dir(context, cursor, t);
         break;
       
       case CoherentAgentCommand::EmitInvAck:
-        execute_emit_inv_ack(ctxt, t);
+        execute_emit_inv_ack(context, cursor, t);
         break;
 
       case CoherentAgentCommand::SetAckCount:
@@ -147,7 +124,7 @@ void CoherentAgentCommandInvoker::execute(
 }
 
 void CoherentAgentCommandInvoker::execute_update_state(
-    ExecutionContext & ctxt, CacheLine & cache_line, state_t state_next) {
+    Context & context, Cursor & cursor, CacheLine & cache_line, state_t state_next) {
   log_debug("Update state; current: ", cc_model_->to_string(state_next),
             " previous: ", cc_model_->to_string(cache_line.state()));
   
@@ -155,27 +132,27 @@ void CoherentAgentCommandInvoker::execute_update_state(
 }
 
 void CoherentAgentCommandInvoker::execute_emit_gets(
-    ExecutionContext & ctxt, Transaction * t) {
+    Context & context, Cursor & cursor, Transaction * t) {
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::GetS);
   b.set_dst_id(4);
   b.set_transaction(t);
   log_debug("Sending GetS to home directory.");
-  ctxt.emit_message(b);
+  emit_message(context, cursor, b);
 }
 
 void CoherentAgentCommandInvoker::execute_emit_getm(
-    ExecutionContext & ctxt, Transaction * t) {
+    Context & context, Cursor & cursor, Transaction * t) {
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::GetM);
   b.set_dst_id(4);
   b.set_transaction(t);
   log_debug("Sending GetM to home directory.");
-  ctxt.emit_message(b);
+  emit_message(context, cursor, b);
 }
 
 void CoherentAgentCommandInvoker::execute_emit_data_to_req(
-    ExecutionContext & ctxt, Transaction * t) {
+    Context & context, Cursor & cursor, Transaction * t) {
   log_debug("Emit Data To Requester.");
   
   MessageBuilder b = msgd_.builder();
@@ -184,7 +161,7 @@ void CoherentAgentCommandInvoker::execute_emit_data_to_req(
 }
 
 void CoherentAgentCommandInvoker::execute_emit_data_to_dir(
-    ExecutionContext & ctxt, Transaction * t) {
+    Context & context, Cursor & cursor, Transaction * t) {
   log_debug("Emit Data To Directory.");
 
   MessageBuilder b = msgd_.builder();
@@ -193,7 +170,7 @@ void CoherentAgentCommandInvoker::execute_emit_data_to_dir(
 }
 
 void CoherentAgentCommandInvoker::execute_emit_inv_ack(
-    ExecutionContext & ctxt, Transaction * t) {
+    Context & context, Cursor & cursor, Transaction * t) {
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::Inv);
   b.set_is_ack(true);
@@ -201,7 +178,7 @@ void CoherentAgentCommandInvoker::execute_emit_inv_ack(
   b.set_transaction(t);
 
   log_debug("Sending invalidation acknowledgement.");
-  ctxt.emit_message(b);
+  emit_message(context, cursor, b);
 }
 
 void CoherentAgentCommandInvoker::execute_set_ack_count(
@@ -247,7 +224,6 @@ const char * to_string(SnoopFilterCommand command) {
 SnoopFilterCommandInvoker::SnoopFilterCommandInvoker(
     const SnoopFilterOptions & opts)
     : opts_(opts), msgd_(opts), CoherentActor(opts) {
-  id_ = opts.id();
   cc_model_ = snoop_filter_factory(opts);
   cache_ = cache_factory<DirectoryEntry>(opts.cache_options());
 }
@@ -263,7 +239,7 @@ DirectoryEntry SnoopFilterCommandInvoker::directory_entry(std::size_t addr) cons
 }
 
 void SnoopFilterCommandInvoker::execute(
-    ExecutionContext & ctxt, const CoherenceActions & actions,
+    Context & context, Cursor & cursor, const CoherenceActions & actions,
     const Message * msg, DirectoryEntry & d) {
 
   for (const command_t c : actions.commands()) {
@@ -273,55 +249,55 @@ void SnoopFilterCommandInvoker::execute(
 
     switch (cmd) {
       case SnoopFilterCommand::UpdateState:
-        execute_update_state(ctxt, d, actions.next_state());
+        execute_update_state(context, cursor, d, actions.next_state());
         break;
 
       case SnoopFilterCommand::SetOwnerToReq:
-        execute_set_owner_to_req(msg, ctxt, d);
+        execute_set_owner_to_req(msg, context, cursor, d);
         break;
 
       case SnoopFilterCommand::SendDataToReq:
-        execute_send_data_to_req(msg, ctxt, d, actions);
+        execute_send_data_to_req(msg, context, cursor, d, actions);
         break;
 
       case SnoopFilterCommand::SendInvToSharers:
-        execute_send_inv_to_sharers(msg, ctxt, d);
+        execute_send_inv_to_sharers(msg, context, cursor, d);
         break;
 
       case SnoopFilterCommand::ClearSharers:
-        execute_clear_sharers(msg, ctxt, d);
+        execute_clear_sharers(msg, context, cursor, d);
         break;
 
       case SnoopFilterCommand::AddReqToSharers:
-        execute_add_req_to_sharers(msg, ctxt, d);
+        execute_add_req_to_sharers(msg, context, cursor, d);
         break;
 
       case SnoopFilterCommand::DelReqFromSharers:
-        execute_del_req_from_sharers(msg, ctxt, d);
+        execute_del_req_from_sharers(msg, context, cursor, d);
         break;
 
       case SnoopFilterCommand::DelOwner:
-        execute_del_owner(msg, ctxt, d);
+        execute_del_owner(msg, context, cursor, d);
         break;
 
       case SnoopFilterCommand::AddOwnerToSharers:
-        execute_add_owner_to_sharers(msg, ctxt, d);
+        execute_add_owner_to_sharers(msg, context, cursor, d);
         break;
 
       case SnoopFilterCommand::CpyDataToMemory:
-        execute_cpy_data_to_memory(msg, ctxt, d);
+        execute_cpy_data_to_memory(msg, context, cursor, d);
         break;
 
       case SnoopFilterCommand::SendPutSAckToReq:
-        execute_send_put_sack_to_req(msg, ctxt, d);
+        execute_send_put_sack_to_req(msg, context, cursor, d);
         break;
 
       case SnoopFilterCommand::SendPutMAckToReq:
-        execute_send_put_mack_to_req(msg, ctxt, d);
+        execute_send_put_mack_to_req(msg, context, cursor, d);
         break;
 
       case SnoopFilterCommand::SendFwdGetSToOwner:
-        execute_send_fwd_gets_to_owner(msg, ctxt, d);
+        execute_send_fwd_gets_to_owner(msg, context, cursor, d);
         break;
 
       case SnoopFilterCommand::SendPutEAckToReq:
@@ -335,7 +311,7 @@ void SnoopFilterCommandInvoker::execute(
 }
 
 void SnoopFilterCommandInvoker::execute_update_state(
-    ExecutionContext & ctxt, DirectoryEntry & d, state_t state_next) {
+    Context & context, Cursor & cursor, DirectoryEntry & d, state_t state_next) {
   log_debug("Update state; current: ", cc_model_->to_string(state_next),
             " previous: ", cc_model_->to_string(d.state()));
   
@@ -343,14 +319,15 @@ void SnoopFilterCommandInvoker::execute_update_state(
 }
 
 void SnoopFilterCommandInvoker::execute_set_owner_to_req(
-    const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d) {
+    const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
   log_debug("Set Owner To Requester: Owner = ", msg->src_id());
   
   d.set_owner(msg->src_id());
 }
 
 void SnoopFilterCommandInvoker::execute_send_data_to_req(
-    const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d, const CoherenceActions & a) {
+    const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d,
+    const CoherenceActions & a) {
   
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::Data);
@@ -362,11 +339,11 @@ void SnoopFilterCommandInvoker::execute_send_data_to_req(
   b.set_is_exclusive(a.is_exclusive());
   
   log_debug("Sending data to requester.");
-  ctxt.emit_message(b);
+  emit_message(context, cursor, b);
 }
 
 void SnoopFilterCommandInvoker::execute_send_inv_to_sharers(
-    const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d) {
+    const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
   log_debug("Send Invalidation(s) to sharers.");
   
   std::size_t time_start = 1 + time();
@@ -384,12 +361,12 @@ void SnoopFilterCommandInvoker::execute_send_inv_to_sharers(
     b.set_transaction(msg->transaction());
 
     log_debug("Sending invalidation to agent ", sharer);
-    ctxt.emit_message(b);
+    emit_message(context, cursor, b);
   }
 }
 
 void SnoopFilterCommandInvoker::execute_clear_sharers(
-    const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d) {
+    const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
   StateUpdateLogger l;
 
   l.add(d.sharers(), " before = ");
@@ -399,7 +376,7 @@ void SnoopFilterCommandInvoker::execute_clear_sharers(
 }
 
 void SnoopFilterCommandInvoker::execute_add_req_to_sharers(
-    const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d) {
+    const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
   StateUpdateLogger l;
 
   l.add(d.sharers(), " before = ");
@@ -410,7 +387,7 @@ void SnoopFilterCommandInvoker::execute_add_req_to_sharers(
 }
 
 void SnoopFilterCommandInvoker::execute_del_req_from_sharers(
-    const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d) {
+    const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
   StateUpdateLogger l;
 
   l.add(d.sharers(), " before = ");
@@ -421,28 +398,28 @@ void SnoopFilterCommandInvoker::execute_del_req_from_sharers(
 }
 
 void SnoopFilterCommandInvoker::execute_del_owner(
-    const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d) {
+    const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
   log_debug("Delete owner.");
   
   d.clear_owner();
 }
 
 void SnoopFilterCommandInvoker::execute_add_owner_to_sharers(
-    const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d) {
+    const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
   log_debug("Add owner to sharers.");
   
   d.add_sharer(d.owner());
 }
 
 void SnoopFilterCommandInvoker::execute_cpy_data_to_memory(
-    const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d) {
+    const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
   log_debug("Copy Data to Memory.");
   
   // NOP
 }
 
 void SnoopFilterCommandInvoker::execute_send_put_sack_to_req(
-    const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d) {
+    const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
   
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::PutS);
@@ -451,11 +428,11 @@ void SnoopFilterCommandInvoker::execute_send_put_sack_to_req(
   b.set_transaction(msg->transaction());
   
   log_debug("Sending PutS acknowledgement to requester.");
-  ctxt.emit_message(b);
+  emit_message(context, cursor, b);
 }
 
 void SnoopFilterCommandInvoker::execute_send_put_mack_to_req(
-    const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d) {
+    const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::PutM);
   b.set_dst_id(msg->src_id());
@@ -463,11 +440,11 @@ void SnoopFilterCommandInvoker::execute_send_put_mack_to_req(
   b.set_transaction(msg->transaction());
 
   log_debug("Sending PutM acknowledgement to requester.");
-  ctxt.emit_message(b);
+  emit_message(context, cursor, b);
 }
 
 void SnoopFilterCommandInvoker::execute_send_fwd_gets_to_owner(
-    const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d) {
+    const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::FwdGetS);
   b.set_dst_id(d.owner());
@@ -475,7 +452,7 @@ void SnoopFilterCommandInvoker::execute_send_fwd_gets_to_owner(
   b.set_transaction(msg->transaction());
 
   log_debug("Sending FwdGetS to owner.");
-  ctxt.emit_message(b);
+  emit_message(context, cursor, b);
 }
 
 const char * to_string(EvictionPolicy p) {

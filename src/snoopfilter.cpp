@@ -81,8 +81,7 @@ void SnoopFilter::handle_msg(
   const CoherenceActions actions =
       cc_model_->get_actions(msg, directory_entry);
 
-  ExecutionContext ectxt{this, context, cursor};
-  execute(ectxt, actions, msg, directory_entry);
+  execute(context, cursor, actions, msg, directory_entry);
 }
 
 } // namespace ccm

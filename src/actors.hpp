@@ -35,10 +35,11 @@
 
 namespace ccm {
 
-class Frontier;
 class Message;
 class Epoch;
 class Context;
+class Cursor;
+class MessageBuilder;
 
 struct ActorOptions {
   ActorOptions(std::size_t id)
@@ -70,7 +71,7 @@ struct CoherentActor : Loggable {
   virtual bool is_active() const = 0;
 
   void set_time(Time time) { time_ = time; }
-  
+  void emit_message(Context & context, Cursor & cursor, MessageBuilder & b);
  private:
   const ActorOptions opts_;
   Time time_;
