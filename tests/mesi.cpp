@@ -66,8 +66,8 @@ TEST(MESI, SimpleLoadPromotion) {
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Load,  100, addr);
-  p.ts(0)->add_transaction(ccm::TransactionType::Store, 200, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Load,  1000, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 2000, addr);
 
   s.run();
 
@@ -76,7 +76,7 @@ TEST(MESI, SimpleLoadPromotion) {
 
   const ccm::DirectoryEntry directory_entry =
     p.snoop_filter()->directory_entry(addr);
-  EXPECT_EQ(directory_entry.state(), _g(ccm::MesiDirectoryLineState::M));
+  EXPECT_EQ(directory_entry.state(), _g(ccm::MesiDirectoryLineState::E));
 }
 
 TEST(MESI, SimpleStore) {

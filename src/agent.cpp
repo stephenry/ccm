@@ -64,6 +64,7 @@ private:
 
 Agent::Agent(const AgentOptions & opts)
     : CoherentAgentCommandInvoker(opts), opts_(opts) {
+  set_time(0);
   set_logger_scope(opts.logger_scope());
 
   qmgr_.set_ac(std::make_unique<AgentMessageAdmissionControl>(this));

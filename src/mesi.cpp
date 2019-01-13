@@ -412,6 +412,7 @@ private:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MesiAgentLineState::E);
           a.set_result(MessageResult::Commit);
+          a.set_transaction_done(true);
           break;
           
         default:
@@ -426,6 +427,7 @@ private:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MesiAgentLineState::S);
           a.set_result(MessageResult::Commit);
+          a.set_transaction_done(true);
           break;
 
         case MesiAgentLineState::IM_AD:
@@ -433,6 +435,7 @@ private:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MesiAgentLineState::M);
           a.set_result(MessageResult::Commit);
+          a.set_transaction_done(true);
           break;
         
         default:
