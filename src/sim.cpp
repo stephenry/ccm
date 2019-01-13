@@ -31,6 +31,12 @@
 
 namespace ccm {
 
+std::string to_string(const Time & t) {
+  std::stringstream ss;
+  ss << static_cast<unsigned>(t);
+  return ss.str();
+}
+
 Epoch::Epoch(Time start, Time duration, Time step)
   : start_(start), duration_(duration), step_(step), cursor_(start)
 {}
@@ -41,6 +47,16 @@ bool Epoch::in_interval(Time t) const {
 
 Epoch Epoch::advance() const {
   return Epoch{end(), duration(), step()};
+}
+
+std::string to_string(const Epoch & epoch) {
+  using namespace std;
+  
+  StructRenderer sr;
+  sr.add("start", to_string(epoch.start()));
+  sr.add("end", to_string(epoch.end()));
+  sr.add("step", to_string(epoch.step()));
+  return sr.str();
 }
 
 QueueEntry::QueueEntry()
@@ -55,11 +71,33 @@ QueueEntry::QueueEntry(transaction_queue_type * trnq)
   : type_(QueueEntryType::Transaction), trnq_(trnq)
 {}
 
-bool operator<(const QueueEntry & lhs, const QueueEntry & rhs) {
-  return lhs.time() < lhs.time();
+std::string to_string(const QueueEntry & eq) {
+  using namespace std;
+  
+  StructRenderer sr;
+  sr.add("type", (eq.type() == QueueEntryType::Message)
+          ? "Message" : "Transaction");
+  sr.add("time", to_string(eq.time()));
+  switch (eq.type()) {
+    case QueueEntryType::Message:
+      sr.add("msg", to_string(eq.as_msg()));
+      break;
+    case QueueEntryType::Transaction:
+      sr.add("msg", to_string(eq.as_trn()));
+      break;
+  }
+  return sr.str();
 }
 
-std::size_t QueueEntry::time() const {
+bool operator<(const QueueEntry & lhs, const QueueEntry & rhs) {
+  return lhs.time() < rhs.time();
+}
+
+bool operator>(const QueueEntry & lhs, const QueueEntry & rhs) {
+  return lhs.time() > rhs.time();
+}
+
+Time QueueEntry::time() const {
   switch (type_) {
   case QueueEntryType::Message: {
     typename message_queue_type::value_type ts = msgq_->top();
@@ -85,7 +123,7 @@ QueueManager::QueueManager() {
   messages_.resize(CLASS_COUNT);
 }
 
-bool QueueManager::empty() {
+bool QueueManager::empty() const {
   if (!transactions_.empty())
     return false;
   
@@ -105,7 +143,7 @@ void QueueManager::push(TimeStamped<Transaction *> ts) {
 }
 
 QueueEntry QueueManager::next() {
-  std::priority_queue<QueueEntry> pq;
+  MinHeap<QueueEntry> pq;
 
   if (!transactions_.empty()) {
     const Transaction * trn = transactions_.top().t();

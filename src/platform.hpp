@@ -28,6 +28,7 @@
 #ifndef __SRC_PLATFORM_HPP__
 #define __SRC_PLATFORM_HPP__
 
+#include "common.hpp"
 #include <set>
 #include <map>
 #include <memory>
@@ -35,7 +36,6 @@
 namespace ccm {
 
 using id_t = std::size_t;
-using addr_t = std::size_t;
 
 struct AddressRegion {
   virtual bool is_valid(addr_t addr) const = 0;

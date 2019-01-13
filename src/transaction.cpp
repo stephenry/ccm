@@ -54,7 +54,7 @@ bool NullTransactionSource::get_transaction(TimeStamped<Transaction *> & ts) {
 }
   
 void ProgrammaticTransactionSource::add_transaction(
-        TransactionType type, std::size_t time, uint64_t addr) {
+        TransactionType type, Time time, uint64_t addr) {
   Transaction * t = pool_.alloc();
   t->set_type(type);
   t->set_addr(addr);

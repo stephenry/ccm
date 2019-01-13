@@ -31,7 +31,6 @@
 #include "utility.hpp"
 #include <vector>
 #include <map>
-#include <queue>
 
 namespace ccm {
 
@@ -39,7 +38,9 @@ class Message;
 class Transaction;
 class CoherentActor;
   
-using Time = std::size_t;
+using Time = unsigned long long;
+
+std::string to_string(const Time & t);
 
 class Cursor {
   friend class Epoch;
@@ -76,6 +77,8 @@ private:
   Time start_, duration_, step_, cursor_;
 };
 
+std::string to_string(const Epoch & epoch);
+
 template<typename T>
 class TimeStamped {
 public:
@@ -92,8 +95,13 @@ private:
 };
 
 template<typename T>
-auto make_time_stamped(std::size_t time, T & t) -> TimeStamped<T> {
-  return TimeStamped<T>(time, t);
+std::string to_string(const TimeStamped<T> & ts) {
+  using namespace std;
+
+  StructRenderer sr;
+  sr.add("time", to_string(ts.time()));
+  sr.add("t", to_string(*ts.t()));
+  return sr.str();
 }
 
 template<typename T>
@@ -101,27 +109,28 @@ bool operator<(const TimeStamped<T> & lhs, const TimeStamped<T> & rhs) {
   return (lhs.time() < lhs.time());
 }
 
+template<typename T>
+bool operator>(const TimeStamped<T> & lhs, const TimeStamped<T> & rhs) {
+  return (lhs.time() > lhs.time());
+}
+
 enum class QueueEntryType { Message, Transaction, Invalid };
 
-using message_queue_type =
-  std::priority_queue<TimeStamped<const Message *>>;
+using message_queue_type = MinHeap<TimeStamped<const Message *> >;
   
-using transaction_queue_type =
-  std::priority_queue<TimeStamped<Transaction *>>;
+using transaction_queue_type = MinHeap<TimeStamped<Transaction *> >;
 
-class MessageAdmissionControl {
+template<typename T>
+class AdmissionControl {
 public:
-  MessageAdmissionControl() {}
+  AdmissionControl() {}
+  virtual ~AdmissionControl() {}
 
-  virtual bool can_be_issued(const Message * msg) const = 0;
+  virtual bool can_be_issued(const T * t) const = 0;
 };
 
-class TransactionAdmissionControl {
-public:
-  TransactionAdmissionControl() {}
-
-  virtual bool can_be_issued(const Transaction * trn) const = 0;
-};
+using MessageAdmissionControl = AdmissionControl<Message>;
+using TransactionAdmissionControl = AdmissionControl<Transaction>;
 
 struct QueueEntry {
   QueueEntry();
@@ -144,14 +153,16 @@ private:
     transaction_queue_type * trnq_;
   };
 };
+std::string to_string(const QueueEntry & eq);
 
 bool operator<(const QueueEntry & lhs, const QueueEntry & rhs);
+bool operator>(const QueueEntry & lhs, const QueueEntry & rhs);
 
 class QueueManager {
 public:
   QueueManager();
 
-  bool empty();
+  bool empty() const;
   bool pending_transactions() const { return !transactions_.empty(); }
 
   void set_ac(std::unique_ptr<MessageAdmissionControl> && mac) {

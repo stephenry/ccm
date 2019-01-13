@@ -31,6 +31,7 @@
 #include "log.hpp"
 #include "transaction.hpp"
 #include "genericcache.hpp"
+#include "sim.hpp"
 
 namespace ccm {
 
@@ -61,18 +62,18 @@ struct CoherentActor : Loggable {
   {}
   virtual ~CoherentActor() {}
 
-  std::size_t time() const override { return time_; }
+  Time time() const override { return time_; }
   std::size_t id() const { return opts_.id(); }
 
   virtual void apply(TimeStamped<const Message *> ts) = 0;
   virtual void eval(Context & ctxt) = 0;
   virtual bool is_active() const = 0;
 
-  void set_time(std::size_t time) { time_ = time; }
+  void set_time(Time time) { time_ = time; }
   
  private:
   const ActorOptions & opts_;
-  std::size_t time_;
+  Time time_;
 };
 
 } // namespace ccm

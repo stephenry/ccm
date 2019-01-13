@@ -35,11 +35,13 @@ namespace ccm {
 struct SnoopFilter : SnoopFilterCommandInvoker {
   SnoopFilter(const SnoopFilterOptions & opts);
   
-  bool is_active() const override { return !pending_messages_.empty(); }
+  bool is_active() const override { return !qmgr_.empty(); }
   void apply(TimeStamped<const Message *> ts) override;
   void eval(Context & context) override;
  private:
-  Heap<TimeStamped<const Message *> > pending_messages_;
+  void handle_msg(
+      Context & context, Cursor & cursor, TimeStamped<const Message *> ts);
+  QueueManager qmgr_;
   const SnoopFilterOptions opts_;
 };
 

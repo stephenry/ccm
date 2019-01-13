@@ -34,6 +34,7 @@
 #include <sstream>
 #include <memory>
 #include <algorithm>
+#include <queue>
 
 namespace ccm {
 
@@ -90,61 +91,10 @@ class Pool : public PoolBase {
 };
 
 template<typename T>
-class Heap {
- public:
-  Heap() : is_heap_(true) {}
+using MinHeap = std::priority_queue<T, std::vector<T>, std::greater<T>>;
 
-  std::vector<T> & ts() { return ts_; }
-  const std::vector<T> & ts() const { return ts_; }
-  
-  void clear() {
-    ts_.clear();
-    is_heap_ = true;
-  }
-
-  bool empty() const {
-    return ts_.empty();
-  }
-
-  bool peak_head(T & t) {
-    bool ret = false;
-    if (!empty()) {
-
-      if (!is_heap_)
-        heapify();
-
-      t = ts_.front();
-    }
-    return ret;
-  }
-
-  void push(const T & t) {
-    ts_.push_back(t);
-    is_heap_ = false;
-  }
-
-  bool pop(T & t) {
-    bool ret = false;
-    if (!empty()) {
-
-      if (!is_heap_)
-        heapify();
-        
-      t = ts_.front();
-      ts_.erase(ts_.begin());
-      ret = true;
-    }
-    return ret;
-  }
-  
-  void heapify() {
-    std::make_heap(ts_.begin(), ts_.end());
-    is_heap_ = true;
-  }
- private:
-  bool is_heap_;
-  std::vector<T> ts_;
-};
+template<typename T>
+using MaxHeap = std::priority_queue<T>;
 
 namespace detail {
 
@@ -179,8 +129,6 @@ std::string join(FwdIt begin, FwdIt end, const char * SEP = ", ") {
   }
   return ss.str();
 }
-
-const char * to_string(bool b);
 
 class StructRenderer {
  public:

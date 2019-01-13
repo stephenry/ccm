@@ -28,6 +28,7 @@
 #ifndef __SRC_LOG_HPP__
 #define __SRC_LOG_HPP__
 
+#include "sim.hpp"
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -107,7 +108,7 @@ class Loggable {
   LOGLEVELS(__declare_handler)
 #undef __declare_handler
 
-  virtual std::size_t time() const = 0;
+  virtual Time time() const = 0;
   
  private:
 

@@ -37,7 +37,7 @@
 
 namespace ccm {
 
-using addr_t = uint64_t;
+using addr_t = std::size_t;
 
 #define EVICTION_POLICIES(__func)               \
   __func(Fixed)                                 \

@@ -274,7 +274,7 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   
   CoherentAgentCommandInvoker(const CoherentAgentOptions & opts);
 
-  std::size_t time() const { return time_; }
+  Time time() const { return time_; }
   CacheLine cache_line(std::size_t addr) const;
   
   void execute(
@@ -298,7 +298,7 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   
   MessageDirector msgd_;
   std::size_t id_;
-  std::size_t time_;
+  Time time_;
 };
 
 std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
@@ -322,13 +322,13 @@ class SnoopFilterModel : public CoherentActorBase {
 struct SnoopFilterCommandInvoker : CoherentActor {
   SnoopFilterCommandInvoker(const SnoopFilterOptions & opts);
   
-  std::size_t time() const { return time_; }
+  Time time() const { return time_; }
   DirectoryEntry directory_entry(std::size_t addr) const;
   
   void execute(
       Context & ctxt, const CoherenceActions & actions,
       const Message * msg, DirectoryEntry & d);
-  void set_time(std::size_t time) { time_ = time; }
+  void set_time(Time time) { time_ = time; }
  protected:
   std::unique_ptr<SnoopFilterModel> cc_model_;
   std::unique_ptr<GenericCache<DirectoryEntry> > cache_;
@@ -362,7 +362,7 @@ private:
 
   MessageDirector msgd_;
   std::size_t id_;
-  std::size_t time_;
+  Time time_;
   const SnoopFilterOptions opts_;
 };
 

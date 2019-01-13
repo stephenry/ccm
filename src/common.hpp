@@ -45,7 +45,7 @@ namespace ccm {
   }                                                             \
   CCM_MACRO_END
 
-using addr_t = uint64_t;
+using addr_t = std::size_t;
   
 } // namespace ccm
 

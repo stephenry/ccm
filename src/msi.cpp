@@ -98,6 +98,10 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       case TransactionType::Store:
         handle__Store(t, cache_line, actions);
         break;
+
+      case TransactionType::Replacement:
+      case TransactionType::Invalid:
+        break;
     }
     return actions;
   }

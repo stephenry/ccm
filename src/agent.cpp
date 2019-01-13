@@ -33,6 +33,7 @@
 namespace ccm {
 
 class AgentMessageAdmissionControl : public MessageAdmissionControl {
+    
 public:
   AgentMessageAdmissionControl(Agent * agent)
     : agent_(agent)
@@ -53,6 +54,7 @@ public:
   {}
 
   bool can_be_issued(const Transaction * trn) const override {
+    return true;
   }
   
 private:
@@ -96,6 +98,8 @@ void Agent::eval(Context & context) {
     if (!epoch.in_interval(next.time()))
       break;
 
+    set_time(next.time());
+
     CoherenceActions actions;
     switch (next.type()) {
     case QueueEntryType::Message:
@@ -104,6 +108,9 @@ void Agent::eval(Context & context) {
       
     case QueueEntryType::Transaction:
       handle_trn(context, cursor, next.as_trn());
+      break;
+
+    default:
       break;
     }
     next.consume();
@@ -115,8 +122,10 @@ void Agent::eval(Context & context) {
 void Agent::fetch_transactions(std::size_t n) {
   TimeStamped<Transaction *> ts;
   for (int i = 0; i < n; i++) {
-    if (trns_->get_transaction(ts))
-      qmgr_.push(ts);
+    if (!trns_->get_transaction(ts))
+      break;
+    
+    qmgr_.push(ts);
   }
 }
 
@@ -167,12 +176,6 @@ void Agent::apply(TimeStamped<const Message *> ts) {
   qmgr_.push(ts);
 }
 
-bool Agent::is_active() const {
-  // Agent is active if there are pending transction in the
-  // Transaction Table, or if there are transaction awaiting to be
-  // issued.
-  //
-  return qmgr_.pending_transactions();
-}
+bool Agent::is_active() const { return !qmgr_.empty(); }
 
 } // namespace ccm

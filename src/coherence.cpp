@@ -310,6 +310,13 @@ void SnoopFilterCommandInvoker::execute(
       case SnoopFilterCommand::SendFwdGetSToOwner:
         execute_send_fwd_gets_to_owner(msg, ctxt, d);
         break;
+
+      case SnoopFilterCommand::SendPutEAckToReq:
+      case SnoopFilterCommand::SendPutOAckToReq:
+      case SnoopFilterCommand::SendAckCountToReq:
+      case SnoopFilterCommand::SendFwdGetMToOwner:
+        // TODO
+        break;
     }
   }
 }
@@ -462,7 +469,7 @@ void SnoopFilterCommandInvoker::execute_send_fwd_gets_to_owner(
   const Message * out_msg = b.msg();
   
   ctxt.emit_message(1 + time(), out_msg);
-  log_debug("Send FwdGetS to owner: ", to_string(out_msg));
+  log_debug("Send FwdGetS to owner: ", to_string(*out_msg));
 }
 
 const char * to_string(EvictionPolicy p) {

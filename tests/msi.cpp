@@ -28,6 +28,7 @@
 #include "testcommon.hpp"
 #include <gtest/gtest.h>
 
+
 TEST(MSI, SimpleLoad) {
   // Perform a single load to one agent in the system. At the end of
   // the simulation, the line should be installed in the requestor in
@@ -40,7 +41,7 @@ TEST(MSI, SimpleLoad) {
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Load, 10, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Load, 1000, addr);
 
   s.run();
 
@@ -66,8 +67,8 @@ TEST(MSI, SimpleLoadPromotion) {
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Load,  100, addr);
-  p.ts(0)->add_transaction(ccm::TransactionType::Store, 200, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Load,  1000, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 2000, addr);
 
   s.run();
 
@@ -90,7 +91,7 @@ TEST(MSI, SimpleStore) {
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Store, 10, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 1000, addr);
 
   s.run();
 
@@ -116,7 +117,7 @@ TEST(MSI, MultipleSharers) {
   ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
   for (std::size_t i = 0; i < p.agents(); i++) {
-    const std::size_t time = (i + 1) * 100;
+    const std::size_t time = (i + 1) * 1000;
 
     p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
   }
@@ -150,11 +151,11 @@ TEST(MSI, MultipleSharersThenPromotion) {
   ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
   for (std::size_t i = 0; i < p.agents(); i++) {
-    const std::size_t time = (i + 1) * 100;
+    const std::size_t time = (i + 1) * 1000;
     
     p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
   }
-  p.ts(0)->add_transaction(ccm::TransactionType::Store, 1000, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 10000, addr);
 
   s.run();
 

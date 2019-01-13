@@ -26,7 +26,6 @@
 //========================================================================== //
 
 #include "snoopfilter.hpp"
-#include "msi.hpp"
 
 namespace ccm {
 
@@ -36,31 +35,52 @@ SnoopFilter::SnoopFilter(const SnoopFilterOptions & opts)
 }
 
 void SnoopFilter::apply(TimeStamped<const Message *> ts) {
-  pending_messages_.push(ts);
+  qmgr_.push(ts);
 }
 
 void SnoopFilter::eval(Context & context) {
-  if (!pending_messages_.empty()) {
+  const Epoch epoch = context.epoch();
+  Cursor cursor = epoch.cursor();
 
-    TimeStamped<const Message *> head;
-    while (pending_messages_.pop(head)) {
-      set_time(head.time());
+  do {
+    const QueueEntry next = qmgr_.next();
+    if (next.type() == QueueEntryType::Invalid)
+      break;
 
-      const Message * message = head.t();
-      const Transaction * transaction = message->transaction();
-      
-      if (!cache_->is_hit(transaction->addr())) {
-        DirectoryEntry directory_entry;
-        cc_model_->init(directory_entry);
-        cache_->install(transaction->addr(), directory_entry);
-      }
-      
-      DirectoryEntry & directory_entry = cache_->lookup(transaction->addr());
-      const CoherenceActions actions =
-          cc_model_->get_actions(head.t(), directory_entry);
-      execute(context, actions, head.t(), directory_entry);
+    if (!epoch.in_interval(next.time()))
+        break;
+
+    set_time(next.time());
+    
+    CoherenceActions actions;
+    switch (next.type()) {
+    case QueueEntryType::Message:
+      handle_msg(context, cursor, next.as_msg());
+      break;
+    default:
+      ; // TODO: unexpected
     }
+    next.consume();
+  } while (epoch.in_interval(cursor.time()));
+
+  set_time(cursor.time());
+}
+
+void SnoopFilter::handle_msg(
+    Context & context, Cursor & cursor, TimeStamped<const Message *> ts) {
+  const Message * msg = ts.t();
+  const Transaction * transaction = msg->transaction();
+      
+  if (!cache_->is_hit(transaction->addr())) {
+    DirectoryEntry directory_entry;
+    cc_model_->init(directory_entry);
+    cache_->install(transaction->addr(), directory_entry);
   }
+      
+  DirectoryEntry & directory_entry = cache_->lookup(transaction->addr());
+  const CoherenceActions actions =
+      cc_model_->get_actions(msg, directory_entry);
+  execute(context, actions, msg, directory_entry);
 }
 
 } // namespace ccm
