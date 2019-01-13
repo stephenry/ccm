@@ -40,6 +40,25 @@ public:
   {}
 
   bool can_be_issued(const Message * msg) const override {
+    const Transaction * trn = msg->transaction();
+    CacheLine & cache_line = agent_->cache_->lookup(trn->addr());
+    const CoherenceActions actions =
+      agent_->cc_model_->get_actions(msg, cache_line);
+
+    switch (actions.result()) {
+    case MessageResult::Stall:
+      return false;
+      break;
+
+    case MessageResult::Commit:
+      return true;
+      break;
+
+    default:
+      // TODO: Error
+      break;
+    }
+    
     return true;
   }
   
@@ -54,7 +73,39 @@ public:
   {}
 
   bool can_be_issued(const Transaction * trn) const override {
-    return true;
+
+    // TODO: variety of agent related issue conditions (max in flight count,
+    // credits, etc..)
+
+    // The coherence protocol cannot block if (by definition) the
+    // transaction address is not present in the agents cache.
+    //
+    if (!agent_->cache_->is_hit(trn->addr()))
+      return true;
+
+    // If the address is present in the agents cache, explicitly
+    // derive the set of actions to be applied and verify that the
+    // protocol may advance.
+    //
+    // This is an expensive operation.
+    //
+    CacheLine & cache_line = agent_->cache_->lookup(trn->addr());
+    const CoherenceActions actions =
+      agent_->cc_model_->get_actions(trn, cache_line);
+    switch (actions.result()) {
+    case TransactionResult::Blocked:
+      return false;
+      break;
+      
+    case TransactionResult::Hit:
+    case TransactionResult::Miss:
+      return true;
+      break;
+
+    default:
+      // Error
+      return false;
+    }
   }
   
 private:

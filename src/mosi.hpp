@@ -49,16 +49,17 @@ namespace ccm {
   __func(SI_A)                                  \
   __func(II_A)
 
-enum MosiAgentLineState : CacheLine::state_type {
+struct MosiAgentLineState {
+  enum : state_t {
 #define __declare_state(__state)                \
   __state,
   MOSI_LINE_STATES(__declare_state)
 #undef __declare_state
-};
+  };
 
-const char * to_string(const MosiAgentLineState state);
-CacheLine::state_type _g(MosiAgentLineState s);
-bool is_stable(const MosiAgentLineState state);
+  static const char * to_string(state_t state);
+  static bool is_stable(state_t state);
+};
 
 #define MOSI_DIRECTORY_STATES(__func)           \
   __func(I)                                     \
@@ -66,16 +67,17 @@ bool is_stable(const MosiAgentLineState state);
   __func(O)                                     \
   __func(M)
 
-enum class MosiDirectoryLineState : DirectoryEntry::state_type {
+struct MosiDirectoryLineState  {
+  enum : state_t {
 #define __declare_state(__state)                \
   __state,
   MOSI_DIRECTORY_STATES(__declare_state)
 #undef __declare_state
-};
+  };
 
-const char * to_string(const MosiDirectoryLineState state);
-DirectoryEntry::state_type _g(MosiDirectoryLineState s);
-bool is_stable(const MosiDirectoryLineState state);
+  static const char * to_string(state_t state);
+  static bool is_stable(state_t state);
+};
 
 class MosiCoherentAgentModel : public CoherentAgentModel {
  public:
@@ -92,7 +94,7 @@ class MosiCoherentAgentModel : public CoherentAgentModel {
   
   //
   CoherenceActions get_actions(
-      Transaction * t, const CacheLine & cache_line) const override;
+      const Transaction * t, const CacheLine & cache_line) const override;
   CoherenceActions get_actions(
       const Message * m, const CacheLine & cache_line) const override;
 

@@ -46,17 +46,18 @@ namespace ccm {
   __func(SI_A)                                  \
   __func(II_A)
 
-enum class MsiAgentLineState : state_t {
+struct MsiAgentLineState {
+
+  enum : state_t {
 #define __declare_state(__state)                \
   __state,
   MSI_LINE_STATES(__declare_state)
 #undef __declare_state
+  };
+    
+  static const char * to_string(state_t s);
+  static bool is_stable(state_t s);
 };
-
-const char * to_string(MsiAgentLineState s);
-bool is_stable(MsiAgentLineState s);
-
-CacheLine::state_type _g(MsiAgentLineState s);
 
 #define MSI_DIRECTORY_STATES(__func)            \
   __func(I)                                     \
@@ -64,14 +65,16 @@ CacheLine::state_type _g(MsiAgentLineState s);
   __func(M)                                     \
   __func(S_D)
 
-enum class MsiDirectoryLineState : state_t {
+struct MsiDirectoryLineState {
+  enum : state_t {
 #define __declare_state(__state)                \
   __state,
   MSI_DIRECTORY_STATES(__declare_state)
 #undef __declare_state
+  };
+  
+  static const char * to_string(state_t s);
 };
-const char * to_string(MsiDirectoryLineState s);
-CacheLine::state_type _g(MsiDirectoryLineState s);
 
 class MsiCoherentAgentModel : public CoherentAgentModel {
  public:
@@ -84,11 +87,11 @@ class MsiCoherentAgentModel : public CoherentAgentModel {
   //
   void init(CacheLine & l) const override;
   bool is_stable(const CacheLine & l) const override;
-  std::string to_string(CacheLine::state_type s) const override;
+  std::string to_string(state_t s) const override;
   
   //
   CoherenceActions get_actions(
-      Transaction * t, const CacheLine & cache_line) const override;
+      const Transaction * t, const CacheLine & cache_line) const override;
   CoherenceActions get_actions(
       const Message * m, const CacheLine & cache_line) const override;
 
@@ -110,7 +113,7 @@ class MsiSnoopFilterModel : public SnoopFilterModel {
   void init(DirectoryEntry & l) const override;
   bool is_stable(const DirectoryEntry & l) const override;
   std::string to_string(const DirectoryEntry & l) const override;
-  std::string to_string(CacheLine::state_type l) const override;
+  std::string to_string(state_t l) const override;
 
   //
   CoherenceActions get_actions(

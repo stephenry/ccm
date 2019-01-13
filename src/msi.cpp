@@ -37,7 +37,7 @@
 
 namespace ccm {
 
-const char * to_string(MsiAgentLineState s) {
+const char * MsiAgentLineState::to_string(state_t s) {
   switch (s) {
 #define __declare_to_string(__e)                \
     case MsiAgentLineState::__e: return #__e;
@@ -47,26 +47,14 @@ const char * to_string(MsiAgentLineState s) {
   }
 }
 
-CacheLine::state_type _g(MsiAgentLineState s) {
-  return static_cast<CacheLine::state_type>(s);
-}
-
-namespace {
-
-MsiAgentLineState _s(CacheLine::state_type s) {
-  return static_cast<MsiAgentLineState>(s);
-}
-
-} // namespace
-
-bool is_stable(MsiAgentLineState s) {
+bool MsiAgentLineState::is_stable(state_t s) {
   switch (s) {
-    case MsiAgentLineState::M:
-    case MsiAgentLineState::S:
-    case MsiAgentLineState::I:
-      return true;
-    default:
-      return false;
+  case MsiAgentLineState::M:
+  case MsiAgentLineState::S:
+  case MsiAgentLineState::I:
+    return true;
+  default:
+    return false;
   }
 }
 
@@ -80,15 +68,15 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
   }
   
   bool is_stable(const CacheLine & l) const {
-    return ::ccm::is_stable(_s(l.state()));
+    return MsiAgentLineState::is_stable(l.state());
   }
 
   std::string to_string(CacheLine::state_type s) const {
-    return ::ccm::to_string(static_cast<MsiAgentLineState>(s));
+    return MsiAgentLineState::to_string(s);
   }
 
   CoherenceActions get_actions(
-      Transaction * t, const CacheLine & cache_line) const {
+      const Transaction * t, const CacheLine & cache_line) const {
     CoherenceActions actions;
     switch (t->type()) {
       case TransactionType::Load:
@@ -142,9 +130,9 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
   }
 
   void handle__Load(
-      Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
+      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
       case MsiAgentLineState::I:
         a.append_command(CoherentAgentCommand::EmitGetS);
         a.append_command(CoherentAgentCommand::UpdateState);
@@ -174,8 +162,8 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
   }
   
   void handle__Store(
-      Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
-    switch (_s(cache_line.state())) {
+      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
+    switch (cache_line.state()) {
       case MsiAgentLineState::I:
         a.append_command(CoherentAgentCommand::EmitGetM);
         a.append_command(CoherentAgentCommand::UpdateState);
@@ -212,7 +200,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
 
   void handle__FwdGetS(
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
       case MsiAgentLineState::IM_AD:
       case MsiAgentLineState::IM_A:
       case MsiAgentLineState::SM_AD:
@@ -243,7 +231,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
 
   void handle__FwdGetM(
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
       case MsiAgentLineState::IM_AD:
       case MsiAgentLineState::IM_A:
       case MsiAgentLineState::SM_AD:
@@ -279,7 +267,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       a.set_ack_count(cache_line.ack_count() - 1);
       
       if (is_last_ack) {
-        switch (_s(cache_line.state())) {
+        switch (cache_line.state()) {
           case MsiAgentLineState::IM_A:
           case MsiAgentLineState::SM_A:
             a.append_command(CoherentAgentCommand::UpdateState);
@@ -296,7 +284,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       // Inbound invalidation request from the home directory. Update
       // line state accordingly.
       //
-      switch (_s(cache_line.state())) {
+      switch (cache_line.state()) {
         case MsiAgentLineState::IS_D:
           a.set_result(MessageResult::Stall);
           break;
@@ -330,7 +318,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
 
   void handle__PutAck(
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
       case MsiAgentLineState::MI_A:
       case MsiAgentLineState::SI_A:
       case MsiAgentLineState::II_A:
@@ -356,7 +344,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       // from the awaiting-ack state to the target stable state
       // (M or S).n
       //
-      switch (_s(cache_line.state())) {
+      switch (cache_line.state()) {
         case MsiAgentLineState::IS_D:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::S);
@@ -384,7 +372,7 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
       // Data has been received, but we are currently awaiting
       // pending responses from other agents in the system.
       //
-      switch (_s(cache_line.state())) {
+      switch (cache_line.state()) {
         case MsiAgentLineState::IM_AD:
           a.append_command(CoherentAgentCommand::SetAckCount);
           a.set_ack_count(m->ack_count());
@@ -430,7 +418,7 @@ std::string MsiCoherentAgentModel::to_string(CacheLine::state_type s) const {
 }
 
 CoherenceActions MsiCoherentAgentModel::get_actions(
-    Transaction * t, const CacheLine & cache_line) const {
+    const Transaction * t, const CacheLine & cache_line) const {
   return impl_->get_actions(t, cache_line);
 }
 
@@ -439,7 +427,7 @@ CoherenceActions MsiCoherentAgentModel::get_actions(
   return impl_->get_actions(m, cache_line);
 }
 
-const char * to_string(MsiDirectoryLineState s) {
+const char * MsiDirectoryLineState::to_string(state_t s) {
   switch (s) {
 #define __declare_to_string(__e)                \
     case MsiDirectoryLineState::__e: return #__e;
@@ -449,10 +437,6 @@ const char * to_string(MsiDirectoryLineState s) {
   return "<Invalid Directory State>";
 }
 
-CacheLine::state_type _g(MsiDirectoryLineState s) {
-  return static_cast<CacheLine::state_type>(s);
-}
-
 struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   
   MsiSnoopFilterModelImpl(const SnoopFilterOptions & opts)
@@ -460,8 +444,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   {}
 
   void init(DirectoryEntry & l) const {
-    l.set_state(
-        static_cast<DirectoryEntry::state_type>(MsiDirectoryLineState::I));
+    l.set_state(MsiDirectoryLineState::I);
   }
   
   bool is_stable(const DirectoryEntry & l) const {
@@ -470,13 +453,12 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   
   std::string to_string(const DirectoryEntry & l) const {
     std::stringstream ss;
-    ss << ::ccm::to_string(static_cast<MsiDirectoryLineState>(l.state()));
+    ss << MsiDirectoryLineState::to_string(l.state());
     return ss.str();
   }
   
-  std::string to_string(const MsiDirectoryLineState l) const {
-    return ::ccm::to_string(l);
-    
+  std::string to_string(state_t l) const {
+    return MsiDirectoryLineState::to_string(l);
   }
 
   CoherenceActions get_actions(
@@ -512,7 +494,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   
   void handle__GetS(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
-    switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MsiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendDataToReq);
         a.set_ack_count(0);
@@ -546,7 +528,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
 
   void handle__GetM(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
-    switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MsiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendDataToReq);
         a.set_ack_count(0);
@@ -580,7 +562,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   void handle__PutS(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
     const bool is_last = false; // TODO
-    switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MsiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
@@ -612,7 +594,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   void handle__PutM(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
     const bool is_data_from_owner = false;
-    switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MsiDirectoryLineState::I:
         if (!is_data_from_owner) {
           a.append_command(SnoopFilterCommand::SendPutMAckToReq);
@@ -650,7 +632,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
 
   void handle__Data(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
-    switch (static_cast<MsiDirectoryLineState>(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MsiDirectoryLineState::S_D:
         a.append_command(SnoopFilterCommand::CpyDataToMemory);
         a.append_command(SnoopFilterCommand::UpdateState);
@@ -692,8 +674,8 @@ std::string MsiSnoopFilterModel::to_string(const DirectoryEntry & l) const {
   return impl_->to_string(l);
 }
 
-std::string MsiSnoopFilterModel::to_string(CacheLine::state_type l) const {
-  return impl_->to_string(static_cast<MsiDirectoryLineState>(l));
+std::string MsiSnoopFilterModel::to_string(state_t l) const {
+  return impl_->to_string(l);
 }
 
 CoherenceActions MsiSnoopFilterModel::get_actions(

@@ -45,11 +45,11 @@ TEST(MOSI, SimpleLoad) {
   s.run();
 
   const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
-  EXPECT_EQ(cache_line.state(), _g(ccm::MosiAgentLineState::S));
+  EXPECT_EQ(cache_line.state(), ccm::MosiAgentLineState::S);
 
   const ccm::DirectoryEntry directory_entry =
     p.snoop_filter()->directory_entry(addr);
-  EXPECT_EQ(directory_entry.state(), _g(ccm::MosiDirectoryLineState::S));
+  EXPECT_EQ(directory_entry.state(), ccm::MosiDirectoryLineState::S);
 }
 
 int main(int argc, char ** argv) {

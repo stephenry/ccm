@@ -45,11 +45,11 @@ TEST(MESI, SimpleLoad) {
   s.run();
 
   const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
-  EXPECT_EQ(cache_line.state(), _g(ccm::MesiAgentLineState::E));
+  EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::E);
 
   const ccm::DirectoryEntry directory_entry =
     p.snoop_filter()->directory_entry(addr);
-  EXPECT_EQ(directory_entry.state(), _g(ccm::MesiDirectoryLineState::E));
+  EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::E);
 }
 
 TEST(MESI, SimpleLoadPromotion) {
@@ -72,11 +72,11 @@ TEST(MESI, SimpleLoadPromotion) {
   s.run();
 
   const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
-  EXPECT_EQ(cache_line.state(), _g(ccm::MesiAgentLineState::M));
+  EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::M);
 
   const ccm::DirectoryEntry directory_entry =
     p.snoop_filter()->directory_entry(addr);
-  EXPECT_EQ(directory_entry.state(), _g(ccm::MesiDirectoryLineState::E));
+  EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::E);
 }
 
 TEST(MESI, SimpleStore) {
@@ -95,11 +95,11 @@ TEST(MESI, SimpleStore) {
   s.run();
 
   const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
-  EXPECT_EQ(cache_line.state(), _g(ccm::MesiAgentLineState::M));
+  EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::M);
 
   const ccm::DirectoryEntry directory_entry =
     p.snoop_filter()->directory_entry(addr);
-  EXPECT_EQ(directory_entry.state(), _g(ccm::MesiDirectoryLineState::M));
+  EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::M);
 }
 
 int main(int argc, char ** argv) {

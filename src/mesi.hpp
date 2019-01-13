@@ -47,15 +47,16 @@ namespace ccm {
   __func(SI_A)                                  \
   __func(II_A)
 
-enum class MesiAgentLineState : state_t {
+struct MesiAgentLineState {
+  enum : state_t {
 #define __declare_state(__state)                \
   __state,
   MESI_LINE_STATES(__declare_state)
 #undef __declare_state
-};
+  };
 
-const char * to_string(const MesiAgentLineState state);
-CacheLine::state_type _g(MesiAgentLineState s);
+  static const char * to_string(state_t state);
+};
 
 #define MESI_DIRECTORY_STATES(__func)           \
   __func(I)                                     \
@@ -64,15 +65,16 @@ CacheLine::state_type _g(MesiAgentLineState s);
   __func(M)                                     \
   __func(S_D)
 
-enum class MesiDirectoryLineState : state_t {
+struct MesiDirectoryLineState {
+  enum : state_t {
 #define __declare_state(__state)                \
   __state,
   MESI_DIRECTORY_STATES(__declare_state)
 #undef __declare_state
-};
+  };
 
-const char * to_string(const MesiDirectoryLineState state);
-DirectoryEntry::state_type _g(MesiDirectoryLineState s);
+  static const char * to_string(state_t state);  
+};
 
 class MesiCoherentAgentModel : public CoherentAgentModel {
  public:
@@ -89,7 +91,7 @@ class MesiCoherentAgentModel : public CoherentAgentModel {
   
   //
   CoherenceActions get_actions(
-      Transaction * t, const CacheLine & cache_line) const override;
+      const Transaction * t, const CacheLine & cache_line) const override;
   CoherenceActions get_actions(
       const Message * m, const CacheLine & cache_line) const override;
 

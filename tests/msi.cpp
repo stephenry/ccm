@@ -46,11 +46,11 @@ TEST(MSI, SimpleLoad) {
   s.run();
 
   const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
-  EXPECT_EQ(cache_line.state(), _g(ccm::MsiAgentLineState::S));
+  EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::S);
 
   const ccm::DirectoryEntry directory_entry =
     p.snoop_filter()->directory_entry(addr);
-  EXPECT_EQ(directory_entry.state(), _g(ccm::MsiDirectoryLineState::S));
+  EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::S);
 }
 
 TEST(MSI, SimpleLoadPromotion) {
@@ -67,17 +67,17 @@ TEST(MSI, SimpleLoadPromotion) {
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Load,  1000, addr);
-  p.ts(0)->add_transaction(ccm::TransactionType::Store, 2000, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Load,  100, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 200, addr);
 
   s.run();
 
   const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
-  EXPECT_EQ(cache_line.state(), _g(ccm::MsiAgentLineState::M));
+  EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::M);
 
   const ccm::DirectoryEntry directory_entry =
     p.snoop_filter()->directory_entry(addr);
-  EXPECT_EQ(directory_entry.state(), _g(ccm::MsiDirectoryLineState::M));
+  EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::M);
 }
 
 TEST(MSI, SimpleStore) {
@@ -96,11 +96,11 @@ TEST(MSI, SimpleStore) {
   s.run();
 
   const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
-  EXPECT_EQ(cache_line.state(), _g(ccm::MsiAgentLineState::M));
+  EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::M);
 
   const ccm::DirectoryEntry directory_entry =
     p.snoop_filter()->directory_entry(addr);
-  EXPECT_EQ(directory_entry.state(), _g(ccm::MsiDirectoryLineState::M));
+  EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::M);
 }
 
 TEST(MSI, MultipleSharers) {
@@ -127,12 +127,12 @@ TEST(MSI, MultipleSharers) {
   for (std::size_t i = 0; i < p.agents(); i++) {
     const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
     
-    EXPECT_EQ(cache_line.state(), _g(ccm::MsiAgentLineState::S));
+    EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::S);
   }
 
   const ccm::DirectoryEntry directory_entry =
     p.snoop_filter()->directory_entry(addr);
-  EXPECT_EQ(directory_entry.state(), _g(ccm::MsiDirectoryLineState::S));
+  EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::S);
 }
 
 TEST(MSI, MultipleSharersThenPromotion) {
@@ -163,14 +163,14 @@ TEST(MSI, MultipleSharersThenPromotion) {
     const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
 
     if (i == 0) 
-      EXPECT_EQ(cache_line.state(), _g(ccm::MsiAgentLineState::M));
+      EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::M);
     else
-      EXPECT_EQ(cache_line.state(), _g(ccm::MsiAgentLineState::I));
+      EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::I);
   }
 
   const ccm::DirectoryEntry directory_entry =
     p.snoop_filter()->directory_entry(addr);
-  EXPECT_EQ(directory_entry.state(), _g(ccm::MsiDirectoryLineState::M));
+  EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::M);
 }
 
 int main(int argc, char ** argv) {

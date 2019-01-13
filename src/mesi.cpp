@@ -29,27 +29,7 @@
 
 namespace ccm {
 
-namespace {
-
-MesiAgentLineState _s(CacheLine::state_type s) {
-  return static_cast<MesiAgentLineState>(s);
-}
-
-MesiDirectoryLineState _d(DirectoryEntry::state_type s) {
-  return static_cast<MesiDirectoryLineState>(s);
-}
-
-} // namespace
-
-CacheLine::state_type _g(MesiAgentLineState s) {
-  return static_cast<CacheLine::state_type>(s);
-}
-
-DirectoryEntry::state_type _g(MesiDirectoryLineState s) {
-  return static_cast<CacheLine::state_type>(s);
-}
-
-const char * to_string(const MesiAgentLineState state) {
+const char * MesiAgentLineState::to_string(state_t state) {
   switch (state) {
 #define __to_str(__state)                                       \
     case MesiAgentLineState::__state: return #__state; break;
@@ -60,7 +40,7 @@ const char * to_string(const MesiAgentLineState state) {
   }
 }
 
-const char * to_string(const MesiDirectoryLineState state) {
+const char * MesiDirectoryLineState::to_string(state_t state) {
   switch (state) {
 #define __to_str(__state)                                               \
     case MesiDirectoryLineState::__state: return #__state; break;
@@ -82,7 +62,7 @@ struct MesiCoherentAgentModel::MesiCoherentAgentModelImpl {
 
   bool is_stable(const CacheLine & cache_line) const {
     bool ret;
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
     case MesiAgentLineState::I:
     case MesiAgentLineState::S:
     case MesiAgentLineState::M:
@@ -97,13 +77,13 @@ struct MesiCoherentAgentModel::MesiCoherentAgentModelImpl {
     return ret;
   }
 
-  std::string to_string(MesiAgentLineState s) const {
-    return ::ccm::to_string(s);
+  std::string to_string(state_t s) const {
+    return MesiAgentLineState::to_string(s);
   }
   
   //
   CoherenceActions get_actions(
-      Transaction * t, const CacheLine & cache_line) const {
+      const Transaction * t, const CacheLine & cache_line) const {
     CoherenceActions actions;
     switch (t->type()) {
       case TransactionType::Load:
@@ -154,9 +134,9 @@ struct MesiCoherentAgentModel::MesiCoherentAgentModelImpl {
 
 private:
   void handle__Load(
-      Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
+      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
     case MesiAgentLineState::I:
         a.append_command(CoherentAgentCommand::EmitGetS);
         a.append_command(CoherentAgentCommand::UpdateState);
@@ -192,9 +172,9 @@ private:
   }
 
   void handle__Store(
-      Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
+      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
       case MesiAgentLineState::I:
         a.append_command(CoherentAgentCommand::EmitGetM);
         a.append_command(CoherentAgentCommand::UpdateState);
@@ -244,7 +224,7 @@ private:
   void handle__FwdGetS(
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
       case MesiAgentLineState::IM_AD:
       case MesiAgentLineState::IM_A:
       case MesiAgentLineState::SM_AD:
@@ -279,7 +259,7 @@ private:
   void handle__FwdGetM(
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
       case MesiAgentLineState::IM_AD:
       case MesiAgentLineState::IM_A:
       case MesiAgentLineState::SM_AD:
@@ -319,7 +299,7 @@ private:
       a.set_ack_count(cache_line.ack_count() - 1);
 
       if (is_last_ack) {
-        switch (_s(cache_line.state())) {
+        switch (cache_line.state()) {
           case MesiAgentLineState::IM_A:
           case MesiAgentLineState::SM_A:
             a.append_command(CoherentAgentCommand::UpdateState);
@@ -334,7 +314,7 @@ private:
     } else {
       // Invalidation request
       //
-      switch (_s(cache_line.state())) {
+      switch (cache_line.state()) {
         case MesiAgentLineState::IS_D:
           a.set_result(MessageResult::Stall);
           break;
@@ -370,7 +350,7 @@ private:
   void handle__PutAck(
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
       case MesiAgentLineState::MI_A:
       case MesiAgentLineState::EI_A:
       case MesiAgentLineState::SI_A:
@@ -407,7 +387,7 @@ private:
 
     if (is_exclusive_data_from_dir) {
 
-      switch (_s(cache_line.state())) {
+      switch (cache_line.state()) {
         case MesiAgentLineState::IS_D:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MesiAgentLineState::E);
@@ -422,7 +402,7 @@ private:
       
     } else if (is_data_from_dir_ack_zero || is_data_from_owner) {
       
-      switch (_s(cache_line.state())) {
+      switch (cache_line.state()) {
         case MesiAgentLineState::IS_D:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MesiAgentLineState::S);
@@ -445,7 +425,7 @@ private:
       
     } else if (is_data_from_dir_ack_non_zero) {
       
-      switch (_s(cache_line.state())) {
+      switch (cache_line.state()) {
         case MesiAgentLineState::IM_AD:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MesiAgentLineState::IM_A);
@@ -485,12 +465,12 @@ bool MesiCoherentAgentModel::is_stable(const CacheLine & l) const {
   impl_->is_stable(l);
 }
 
-std::string MesiCoherentAgentModel::to_string(CacheLine::state_type s) const {
-  return impl_->to_string(static_cast<MesiAgentLineState>(s));
+std::string MesiCoherentAgentModel::to_string(state_t state) const {
+  return impl_->to_string(state);
 }
 
 CoherenceActions MesiCoherentAgentModel::get_actions(
-    Transaction * t, const CacheLine & cache_line) const {
+    const Transaction * t, const CacheLine & cache_line) const {
   return impl_->get_actions(t, cache_line);
 }
 
@@ -511,7 +491,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
   
   bool is_stable(const DirectoryEntry & dir_entry) {
     bool ret{false};
-    switch (_d(dir_entry.state())) {
+    switch (dir_entry.state()) {
     case MesiDirectoryLineState::I:
     case MesiDirectoryLineState::S:
     case MesiDirectoryLineState::E:
@@ -528,12 +508,12 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
 
   std::string to_string(const DirectoryEntry & dir_entry) const {
     std::stringstream ss;
-    ss << ::ccm::to_string(static_cast<MesiDirectoryLineState>(dir_entry.state()));
+    ss << MesiDirectoryLineState::to_string(dir_entry.state());
     return ss.str();
   }
 
-  std::string to_string(MesiDirectoryLineState s) const {
-    return ::ccm::to_string(s);
+  std::string to_string(state_t state) const {
+    return MesiDirectoryLineState::to_string(state);
   }
 
   CoherenceActions get_actions(
@@ -574,7 +554,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
   void handle__GetS(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    switch (_d(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendDataToReq);
         a.set_is_exclusive(true);
@@ -617,7 +597,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
   void handle__GetM(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    switch (_d(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendDataToReq);
         a.append_command(SnoopFilterCommand::SetOwnerToReq);
@@ -661,7 +641,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
 
     const bool is_last = false; // TODO
 
-    switch (_d(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
@@ -699,7 +679,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
 
     const bool is_from_owner = (m->src_id() == dir_entry.owner()); // TODO
 
-    switch (_d(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
         if (!is_from_owner)
           a.append_command(SnoopFilterCommand::SendPutMAckToReq);
@@ -748,7 +728,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
 
     const bool is_from_owner = (m->src_id() == dir_entry.owner()); // TODO
 
-    switch (_d(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendPutEAckToReq);
         break;
@@ -785,7 +765,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
   void handle__Data(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    switch (_d(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MesiDirectoryLineState::S_D:
         a.append_command(SnoopFilterCommand::CpyDataToMemory);
         a.append_command(SnoopFilterCommand::UpdateState);
@@ -821,8 +801,8 @@ std::string MesiSnoopFilterModel::to_string(const DirectoryEntry & l) const {
   return impl_->to_string(l);
 }
 
-std::string MesiSnoopFilterModel::to_string(CacheLine::state_type l) const {
-  return impl_->to_string(static_cast<MesiDirectoryLineState>(l));
+std::string MesiSnoopFilterModel::to_string(state_t state) const {
+  return impl_->to_string(state);
 }
 
 CoherenceActions MesiSnoopFilterModel::get_actions(

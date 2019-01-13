@@ -29,19 +29,7 @@
 
 namespace ccm {
 
-namespace {
-
-MosiAgentLineState _s(CacheLine::state_type s) {
-  return static_cast<MosiAgentLineState>(s);
-}
-
-MosiDirectoryLineState _d(DirectoryEntry::state_type s) {
-  return static_cast<MosiDirectoryLineState>(s);
-}
-
-} // namespace
-
-const char * to_string(const MosiAgentLineState state) {
+const char * MosiAgentLineState::to_string(state_t state) {
   switch (state) {
 #define __declare_state(__name)                                 \
     case MosiAgentLineState::__name: return #__name; break;
@@ -50,12 +38,8 @@ const char * to_string(const MosiAgentLineState state) {
     default: return "Invalid State";
   }
 }
-  
-CacheLine::state_type _g(MosiAgentLineState s) {
-  return static_cast<CacheLine::state_type>(s);
-}
 
-bool is_stable(const MosiAgentLineState state) {
+bool MosiAgentLineState::is_stable(state_t state) {
   bool ret{false};
   switch (state) {
   case MosiAgentLineState::I:
@@ -72,7 +56,7 @@ bool is_stable(const MosiAgentLineState state) {
   return ret;
 }
   
-const char * to_string(const MosiDirectoryLineState state) {
+const char * MosiDirectoryLineState::to_string(state_t state) {
   switch (state) {
 #define __declare_state(__name)                                 \
   case MosiDirectoryLineState::__name: return #__name; break;
@@ -82,7 +66,7 @@ const char * to_string(const MosiDirectoryLineState state) {
   }
 }
 
-bool is_stable(const MosiDirectoryLineState state) {
+bool MosiDirectoryLineState::is_stable(state_t state) {
   bool ret{false};
   switch (state) {
   case MosiDirectoryLineState::I:
@@ -98,10 +82,6 @@ bool is_stable(const MosiDirectoryLineState state) {
   }
   return ret;
 }
- 
-DirectoryEntry::state_type _g(MosiDirectoryLineState s) {
-  return static_cast<DirectoryEntry::state_type>(s);
-}
 
 struct MosiCoherentAgentModel::MosiCoherentAgentModelImpl {
   MosiCoherentAgentModelImpl(const CoherentAgentOptions & opts)
@@ -109,19 +89,19 @@ struct MosiCoherentAgentModel::MosiCoherentAgentModelImpl {
   {}
 
   void init(CacheLine & cache_line) const {
-    cache_line.set_state(static_cast<CacheLine::state_type>(MosiAgentLineState::I));
+    cache_line.set_state(MosiAgentLineState::I);
   }
 
-  bool is_stable(const MosiAgentLineState state) const {
-    return ::ccm::is_stable(state);
+  bool is_stable(state_t state) const {
+    return MosiAgentLineState::is_stable(state);
   }
 
-  std::string to_string(const MosiAgentLineState s) const {
-    return ::ccm::to_string(s);
+  std::string to_string(state_t state) const {
+    return MosiAgentLineState::to_string(state);
   }
 
   CoherenceActions get_actions(
-      Transaction * t, const CacheLine & cache_line) const {
+      const Transaction * t, const CacheLine & cache_line) const {
     CoherenceActions actions;
     switch (t->type()) {
       case TransactionType::Load:
@@ -176,9 +156,9 @@ struct MosiCoherentAgentModel::MosiCoherentAgentModelImpl {
 
 private:
   void handle__Load(
-      Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
+      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
       case MosiAgentLineState::I:
         a.append_command(CoherentAgentCommand::EmitGetS);
         a.append_command(CoherentAgentCommand::UpdateState);
@@ -222,9 +202,9 @@ private:
   }
   
   void handle__Store(
-      Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
+      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
       case MosiAgentLineState::I:
         a.append_command(CoherentAgentCommand::EmitGetM);
         a.append_command(CoherentAgentCommand::UpdateState);
@@ -282,7 +262,7 @@ private:
   void handle__FwdGetS(
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
       case MosiAgentLineState::IM_AD:
       case MosiAgentLineState::IM_A:
       case MosiAgentLineState::SM_AD:
@@ -322,7 +302,7 @@ private:
   void handle__FwdGetM(
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
       case MosiAgentLineState::IM_AD:
       case MosiAgentLineState::IM_A:
       case MosiAgentLineState::SM_AD:
@@ -386,7 +366,7 @@ private:
 
       if (is_last_ack) {
       
-        switch (_s(cache_line.state())) {
+        switch (cache_line.state()) {
           case MosiAgentLineState::IM_A:
           case MosiAgentLineState::SM_A:
           case MosiAgentLineState::OM_A:
@@ -403,7 +383,7 @@ private:
 
     } else {
       // Invalidation request
-      switch (_s(cache_line.state())) {
+      switch (cache_line.state()) {
         case MosiAgentLineState::IS_D:
           a.set_result(MessageResult::Stall);
           break;
@@ -440,7 +420,7 @@ private:
   void handle__PutAck(
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
       case MosiAgentLineState::MI_A:
       case MosiAgentLineState::OI_A:
       case MosiAgentLineState::SI_A:
@@ -465,7 +445,7 @@ private:
 
     if (is_data_from_dir_ack_zero || is_data_from_owner) {
 
-      switch (_s(cache_line.state())) {
+      switch (cache_line.state()) {
         case MosiAgentLineState::IS_D:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MosiAgentLineState::S);
@@ -484,7 +464,7 @@ private:
       
     } else if (is_data_from_dir_ack_non_zero) {
 
-      switch (_s(cache_line.state())) {
+      switch (cache_line.state()) {
         case MosiAgentLineState::IM_AD:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MosiAgentLineState::IM_A);
@@ -506,7 +486,7 @@ private:
   void handle__AckCount (
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    switch (_s(cache_line.state())) {
+    switch (cache_line.state()) {
       case MosiAgentLineState::OM_AC:
         a.append_command(CoherentAgentCommand::SetAckCount);
         a.set_ack_count(m->ack_count());
@@ -534,16 +514,16 @@ void MosiCoherentAgentModel::init(CacheLine & l) const {
 }
 
 bool MosiCoherentAgentModel::is_stable(const CacheLine & l) const {
-  return impl_->is_stable(static_cast<MosiAgentLineState>(l.state()));
+  return impl_->is_stable(l.state());
 }
 
-std::string MosiCoherentAgentModel::to_string(CacheLine::state_type s) const {
-  return impl_->to_string(static_cast<MosiAgentLineState>(s));
+std::string MosiCoherentAgentModel::to_string(state_t s) const {
+  return impl_->to_string(s);
 }
   
 //
 CoherenceActions MosiCoherentAgentModel::get_actions(
-    Transaction * t, const CacheLine & cache_line) const {
+    const Transaction * t, const CacheLine & cache_line) const {
   return impl_->get_actions(t, cache_line);
 }
 
@@ -559,21 +539,21 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
   {}
 
   void init(DirectoryEntry & l) const {
-    l.set_state(static_cast<DirectoryEntry::state_type>(MosiDirectoryLineState::I));
+    l.set_state(MosiDirectoryLineState::I);
   }
 
   bool is_stable(const DirectoryEntry & dir_entry) const {
-    return ::ccm::is_stable(static_cast<MosiDirectoryLineState>(dir_entry.state()));
+    return MosiDirectoryLineState::to_string(dir_entry.state());
   }
 
   std::string to_string(const DirectoryEntry & dir_entry) const {
     std::stringstream ss;
-    ss << ::ccm::to_string(static_cast<MosiDirectoryLineState>(dir_entry.state()));
+    ss << MosiDirectoryLineState::to_string(dir_entry.state());
     return ss.str();
   }
 
-  std::string to_string(MosiDirectoryLineState l) const {
-    return ::ccm::to_string(l);
+  std::string to_string(state_t state) const {
+    return MosiDirectoryLineState::to_string(state);
   }
 
   CoherenceActions get_actions(
@@ -610,7 +590,7 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
   void handle__GetS(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    switch (_d(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MosiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendDataToReq);
         a.append_command(SnoopFilterCommand::AddReqToSharers);
@@ -648,7 +628,7 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
 
     if (is_from_owner) {
     
-      switch (_d(dir_entry.state())) {
+      switch (dir_entry.state()) {
         case MosiDirectoryLineState::O:
           a.append_command(SnoopFilterCommand::SendAckCountToReq);
           a.append_command(SnoopFilterCommand::SendInvToSharers);
@@ -664,7 +644,7 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
 
     } else {
     
-      switch (_d(dir_entry.state())) {
+      switch (dir_entry.state()) {
         case MosiDirectoryLineState::I:
           a.append_command(SnoopFilterCommand::SendDataToReq);
           a.append_command(SnoopFilterCommand::SetOwnerToReq);
@@ -709,7 +689,7 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
 
     const bool is_last = false; // TODO
 
-    switch (_d(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MosiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
@@ -743,7 +723,7 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
 
     const bool data_is_from_owner = false; // TODO
 
-    switch (_d(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MosiDirectoryLineState::I:
         if (!data_is_from_owner)
           a.append_command(SnoopFilterCommand::SendPutMAckToReq);
@@ -786,7 +766,7 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
 
     const bool data_is_from_owner = false; // TODO
     
-    switch (_d(dir_entry.state())) {
+    switch (dir_entry.state()) {
       case MosiDirectoryLineState::I:
         if (!data_is_from_owner)
           a.append_command(SnoopFilterCommand::SendPutOAckToReq);
@@ -845,8 +825,8 @@ std::string MosiSnoopFilterModel::to_string(const DirectoryEntry & l) const {
   return impl_->to_string(l);
 }
 
-std::string MosiSnoopFilterModel::to_string(CacheLine::state_type l) const {
-  return impl_->to_string(static_cast<MosiDirectoryLineState>(l));
+std::string MosiSnoopFilterModel::to_string(state_t state) const {
+  return impl_->to_string(state);
 }
 
 CoherenceActions MosiSnoopFilterModel::get_actions(

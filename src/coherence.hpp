@@ -126,7 +126,7 @@ SNOOP_FILTER_COMMANDS(__declare_state)
 const char * to_string(SnoopFilterCommand command);
 
 struct CacheLine {
-  using state_type = uint8_t;
+  using state_type = state_t;
   using ack_count_type = uint8_t;
 
   ack_count_type ack_count() const { return ack_count_; }
@@ -183,7 +183,7 @@ std::string to_string(const DirectoryEntry & d);
   __func(Miss)                                  \
   __func(Blocked)
 
-enum class TransactionResult : result_t {
+enum TransactionResult : result_t {
 #define __declare_state(__state)                \
   __state,
   TRANSACTION_RESULT(__declare_state)
@@ -196,7 +196,7 @@ const char * to_string(TransactionResult r);
   __func(Commit)                                \
   __func(Stall)
 
-enum class MessageResult : result_t {
+enum MessageResult : result_t {
 #define __declare_state(__state)                \
   __state,
   MESSAGE_RESULT(__declare_state)
@@ -266,7 +266,7 @@ class CoherentAgentModel : public CoherentActorBase {
   virtual CoherenceActions get_actions(
       const Message * t, const CacheLine & cache_line) const = 0;
   virtual CoherenceActions get_actions(
-      Transaction * t, const CacheLine & cache_line) const = 0;
+      const Transaction * t, const CacheLine & cache_line) const = 0;
 };
 
 struct CoherentAgentCommandInvoker : CoherentActor {
@@ -282,7 +282,7 @@ struct CoherentAgentCommandInvoker : CoherentActor {
       CacheLine & cache_line, Transaction * t);
   void set_time(std::size_t time) { time_ = time; }
 
- protected:
+  // protected:
   std::unique_ptr<CoherentAgentModel> cc_model_;
   std::unique_ptr<GenericCache<CacheLine> > cache_;
  private:
@@ -329,7 +329,7 @@ struct SnoopFilterCommandInvoker : CoherentActor {
       Context & ctxt, const CoherenceActions & actions,
       const Message * msg, DirectoryEntry & d);
   void set_time(Time time) { time_ = time; }
- protected:
+  // protected:
   std::unique_ptr<SnoopFilterModel> cc_model_;
   std::unique_ptr<GenericCache<DirectoryEntry> > cache_;
 private:
