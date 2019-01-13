@@ -25,8 +25,8 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __SRC_GENERICCACHE_HPP__
-#define __SRC_GENERICCACHE_HPP__
+#ifndef __SRC_CACHE_HPP__
+#define __SRC_CACHE_HPP__
 
 #include "utility.hpp"
 #include <tuple>

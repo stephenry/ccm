@@ -25,7 +25,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "genericcache.hpp"
+#include "cache.hpp"
 
 namespace ccm {
 

@@ -29,7 +29,7 @@
 #define __SRC_COHERENCE_HPP__
 
 #include "sim.hpp"
-#include "genericcache.hpp"
+#include "cache.hpp"
 #include "message.hpp"
 #include "actors.hpp"
 #include "platform.hpp"

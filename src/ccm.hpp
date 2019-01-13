@@ -37,7 +37,7 @@
 #include "coherence.hpp"
 #include "agent.hpp"
 #include "snoopfilter.hpp"
-#include "genericcache.hpp"
+#include "cache.hpp"
 #include "msi.hpp"
 #include "mesi.hpp"
 #include "mosi.hpp"

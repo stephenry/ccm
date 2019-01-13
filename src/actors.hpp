@@ -30,7 +30,7 @@
 
 #include "log.hpp"
 #include "transaction.hpp"
-#include "genericcache.hpp"
+#include "cache.hpp"
 #include "sim.hpp"
 
 namespace ccm {
