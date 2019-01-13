@@ -79,12 +79,15 @@ std::string to_string(const QueueEntry & eq) {
           ? "Message" : "Transaction");
   sr.add("time", to_string(eq.time()));
   switch (eq.type()) {
-    case QueueEntryType::Message:
-      sr.add("msg", to_string(eq.as_msg()));
-      break;
-    case QueueEntryType::Transaction:
-      sr.add("msg", to_string(eq.as_trn()));
-      break;
+  case QueueEntryType::Message:
+    sr.add("msg", to_string(eq.as_msg()));
+    break;
+
+  case QueueEntryType::Transaction:
+    sr.add("msg", to_string(eq.as_trn()));
+    break;
+
+  default:;
   }
   return sr.str();
 }
@@ -98,17 +101,23 @@ bool operator>(const QueueEntry & lhs, const QueueEntry & rhs) {
 }
 
 Time QueueEntry::time() const {
+  Time ret{0};
   switch (type_) {
   case QueueEntryType::Message: {
     typename message_queue_type::value_type ts = msgq_->top();
-    return ts.time();
+    ret = ts.time();
   } break;
 
   case QueueEntryType::Transaction: {
     typename transaction_queue_type::value_type ts = trnq_->top();
-    return ts.time();
+    ret = ts.time();
   } break;
+
+  default:
+    // TODO: Error
+    ;
   }
+  return ret;
 }
   
 typename message_queue_type::value_type QueueEntry::as_msg() const {
@@ -165,6 +174,7 @@ void QueueEntry::consume() const {
   switch (type()) {
   case QueueEntryType::Message: msgq_->pop(); break;
   case QueueEntryType::Transaction: trnq_->pop(); break;
+  default: ;
   }
 }
 

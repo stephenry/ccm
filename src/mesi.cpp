@@ -462,7 +462,7 @@ void MesiCoherentAgentModel::init(CacheLine & l) const {
 }
 
 bool MesiCoherentAgentModel::is_stable(const CacheLine & l) const {
-  impl_->is_stable(l);
+  return impl_->is_stable(l);
 }
 
 std::string MesiCoherentAgentModel::to_string(state_t state) const {

@@ -346,7 +346,6 @@ void SnoopFilterCommandInvoker::execute_send_inv_to_sharers(
     const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
   log_debug("Send Invalidation(s) to sharers.");
   
-  std::size_t time_start = 1 + time();
   for (const std::size_t sharer : d.sharers()) {
 
     // Do not invalidation request to requester, only the other
