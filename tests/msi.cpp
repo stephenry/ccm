@@ -28,7 +28,6 @@
 #include "testcommon.hpp"
 #include <gtest/gtest.h>
 
-
 TEST(MSI, SimpleLoad) {
   // Perform a single load to one agent in the system. At the end of
   // the simulation, the line should be installed in the requestor in
