@@ -35,14 +35,11 @@ void CoherentActor::emit_message(Context & context,
   b.set_src_id(id());
 
   Message * msg = b.msg();
+  cursor.advance(MessageType::to_cost(msg->type()));
   context.emit_message(TimeStamped{cursor.time(), msg});
-
-  const Time message_delay = (cursor.step() * MessageType::to_cost(msg->type()));
-  cursor.set_time(cursor.time() + message_delay);
-
+  set_time(cursor.time());
   log_debug("Emit ", MessageType::to_string(msg->type()),
             msg->is_ack() ? "Ack: " : ": ", to_string(*msg));
-  set_time(cursor.time());
 }
 
 } // namespace ccm

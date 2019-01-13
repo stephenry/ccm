@@ -51,6 +51,7 @@ void SnoopFilter::eval(Context & context) {
         break;
 
     set_time(next.time());
+    cursor.set_time(next.time());
     
     CoherenceActions actions;
     switch (next.type()) {

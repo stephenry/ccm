@@ -37,6 +37,10 @@ std::string to_string(const Time & t) {
   return ss.str();
 }
 
+void Cursor::advance(std::size_t steps) {
+  set_time(time() + (step() * steps));
+}
+
 Epoch::Epoch(Time start, Time duration, Time step)
   : start_(start), duration_(duration), step_(step), cursor_(start)
 {}
