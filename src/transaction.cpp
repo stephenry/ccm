@@ -44,8 +44,8 @@ std::string to_string(const Transaction & t) {
 
   StructRenderer sr;
   sr.add("type", to_string(t.type()));
-  sr.add("addr", std::to_string(t.addr()));
-  sr.add("tid", std::to_string(t.tid()));
+  sr.add("addr", to_string(t.addr()));
+  sr.add("tid", to_string(t.tid()));
   return sr.str();
 }
 
