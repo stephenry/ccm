@@ -25,17 +25,10 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-cmake_minimum_required(VERSION 3.10)
+add_executable(ccmd main.cpp)
 
-project(ccm)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(BUILD_GMOCK OFF)
-add_subdirectory(third_party)
-add_subdirectory(src)
-add_subdirectory(driver)
-option(BUILD_TESTS "Enable build of unit tests." ON)
-if (BUILD_TESTS)
-  enable_testing()
-  add_subdirectory(tests)
-endif ()
+## TODO: there is a better way of doing this (exposing dependencies
+## to do the driver. Figure this out.)
+
+target_link_libraries(ccmd PUBLIC ccm)
+target_include_directories(ccmd PUBLIC ${CMAKE_SOURCE_DIR}/src)
