@@ -26,7 +26,6 @@
 //========================================================================== //
 
 #include "agent.hpp"
-#include "msi.hpp"
 #include "common.hpp"
 #include <queue>
 
