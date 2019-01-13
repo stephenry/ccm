@@ -103,7 +103,7 @@ enum class CoherentAgentCommand : command_t {
 
 const char * to_string(CoherentAgentCommand command);
 
-#define SNOOP_FILTER_COMMANDS(__func)      \
+#define SNOOP_FILTER_COMMANDS(__func)           \
   __func(UpdateState)                           \
   __func(SetOwnerToReq)                         \
   __func(SendDataToReq)                         \
