@@ -33,6 +33,7 @@
 #include "message.hpp"
 #include "actors.hpp"
 #include "platform.hpp"
+#include "actors.hpp"
 #include <memory>
 #include <optional>
 
@@ -40,6 +41,7 @@ namespace ccm {
 
 class Transaction;
 class Frontier;
+class CoherentActor;
 
 enum class Protocol {
   MSI,
@@ -54,8 +56,10 @@ using result_t = uint8_t;
 using command_t = uint8_t;
 
 struct CoherentAgentOptions : ActorOptions {
-  CoherentAgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options, Platform platform)
-    : ActorOptions(id), protocol_(protocol), cache_options_(cache_options), platform_(platform)
+  CoherentAgentOptions(std::size_t id, Protocol protocol,
+                       CacheOptions cache_options, Platform platform)
+    : ActorOptions(id), protocol_(protocol),
+      cache_options_(cache_options), platform_(platform)
   {}
   Protocol protocol() const { return protocol_; }
   CacheOptions cache_options() const { return cache_options_; }
@@ -67,8 +71,10 @@ struct CoherentAgentOptions : ActorOptions {
 };
 
 struct SnoopFilterOptions : ActorOptions {
-  SnoopFilterOptions(std::size_t id, Protocol protocol, CacheOptions cache_options, Platform platform)
-    : ActorOptions(id), protocol_(protocol), cache_options_(cache_options), platform_(platform)
+  SnoopFilterOptions(std::size_t id, Protocol protocol,
+                     CacheOptions cache_options, Platform platform)
+    : ActorOptions(id), protocol_(protocol),
+      cache_options_(cache_options), platform_(platform)
   {}
   Protocol protocol() const { return protocol_; }
   CacheOptions cache_options() const { return cache_options_; }
@@ -269,6 +275,18 @@ class CoherentAgentModel : public CoherentActorBase {
       const Transaction * t, const CacheLine & cache_line) const = 0;
 };
 
+struct ExecutionContext {
+  ExecutionContext(CoherentActor * actor, Context & context, Cursor & cursor);
+
+  id_t self_id() const;
+  void emit_message(MessageBuilder & b);
+private:
+  CoherentActor * coherent_actor_;
+  Cursor & cursor_;
+  Context & context_;
+  id_t id_;
+};
+
 struct CoherentAgentCommandInvoker : CoherentActor {
   using ack_count_type = std::size_t;
   
@@ -278,7 +296,7 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   CacheLine cache_line(std::size_t addr) const;
   
   void execute(
-      Context & ctxt, const CoherenceActions & actions,
+      ExecutionContext & ctxt, const CoherenceActions & actions,
       CacheLine & cache_line, Transaction * t);
   void set_time(std::size_t time) { time_ = time; }
 
@@ -287,14 +305,14 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   std::unique_ptr<GenericCache<CacheLine> > cache_;
  private:
   void execute_update_state(
-      Context & ctxt, CacheLine & cache_line, state_t state_next);
+      ExecutionContext & ctxt, CacheLine & cache_line, state_t state_next);
   void execute_set_ack_count(
       CacheLine & cache_line, ack_count_type ack_count);
-  void execute_emit_gets(Context & ctxt, Transaction * t);
-  void execute_emit_getm(Context & ctxt, Transaction * t);
-  void execute_emit_data_to_req(Context & ctxt, Transaction * t);
-  void execute_emit_data_to_dir(Context & ctxt, Transaction * t);
-  void execute_emit_inv_ack(Context & ctxt, Transaction * t);
+  void execute_emit_gets(ExecutionContext & ctxt, Transaction * t);
+  void execute_emit_getm(ExecutionContext & ctxt, Transaction * t);
+  void execute_emit_data_to_req(ExecutionContext & ctxt, Transaction * t);
+  void execute_emit_data_to_dir(ExecutionContext & ctxt, Transaction * t);
+  void execute_emit_inv_ack(ExecutionContext & ctxt, Transaction * t);
   
   MessageDirector msgd_;
   std::size_t id_;
@@ -326,7 +344,7 @@ struct SnoopFilterCommandInvoker : CoherentActor {
   DirectoryEntry directory_entry(std::size_t addr) const;
   
   void execute(
-      Context & ctxt, const CoherenceActions & actions,
+      ExecutionContext & ctxt, const CoherenceActions & actions,
       const Message * msg, DirectoryEntry & d);
   void set_time(Time time) { time_ = time; }
   // protected:
@@ -334,31 +352,32 @@ struct SnoopFilterCommandInvoker : CoherentActor {
   std::unique_ptr<GenericCache<DirectoryEntry> > cache_;
 private:
   void execute_update_state(
-      Context & ctxt, DirectoryEntry & d, state_t state_next);
+      ExecutionContext & ctxt, DirectoryEntry & d, state_t state_next);
   void execute_set_owner_to_req(
-      const Message * msg, Context & ctxt, DirectoryEntry & d);
+      const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d);
   void execute_send_data_to_req(
-      const Message * msg, Context & ctxt, DirectoryEntry & d, const CoherenceActions & act);
+      const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d,
+      const CoherenceActions & act);
   void execute_send_inv_to_sharers(
-      const Message * msg, Context & ctxt, DirectoryEntry & d);
+      const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d);
   void execute_clear_sharers(
-      const Message * msg, Context & ctxt, DirectoryEntry & d);
+      const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d);
   void execute_add_req_to_sharers(
-      const Message * msg, Context & ctxt, DirectoryEntry & d);
+      const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d);
   void execute_del_req_from_sharers(
-      const Message * msg, Context & ctxt, DirectoryEntry & d);
+      const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d);
   void execute_del_owner(
-      const Message * msg, Context & ctxt, DirectoryEntry & d);
+      const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d);
   void execute_add_owner_to_sharers(
-      const Message * msg, Context & ctxt, DirectoryEntry & d);
+      const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d);
   void execute_cpy_data_to_memory(
-      const Message * msg, Context & ctxt, DirectoryEntry & d);
+      const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d);
   void execute_send_put_sack_to_req(
-      const Message * msg, Context & ctxt, DirectoryEntry & d);
+      const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d);
   void execute_send_put_mack_to_req(
-      const Message * msg, Context & ctxt, DirectoryEntry & d);
+      const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d);
   void execute_send_fwd_gets_to_owner(
-      const Message * msg, Context & ctxt, DirectoryEntry & d);
+      const Message * msg, ExecutionContext & ctxt, DirectoryEntry & d);
 
   MessageDirector msgd_;
   std::size_t id_;

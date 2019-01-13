@@ -65,14 +65,14 @@ struct CoherentActor : Loggable {
   Time time() const override { return time_; }
   std::size_t id() const { return opts_.id(); }
 
-  virtual void apply(TimeStamped<const Message *> ts) = 0;
+  virtual void apply(TimeStamped<Message *> ts) = 0;
   virtual void eval(Context & ctxt) = 0;
   virtual bool is_active() const = 0;
 
   void set_time(Time time) { time_ = time; }
   
  private:
-  const ActorOptions & opts_;
+  const ActorOptions opts_;
   Time time_;
 };
 

@@ -45,17 +45,18 @@ std::string to_string(const Time & t);
 class Cursor {
   friend class Epoch;
 
-  Cursor(Time time)
-    : time_(time)
+  Cursor(Time time, Time step)
+    : time_(time), step_(step)
   {}
 
 public:
   void set_time(Time time) { time_ = time; }
 
   Time time() const { return time_; }
+  Time step() const { return step_; }
   
 private:
-  Time time_;
+  Time time_, step_;
 };
 
 struct Epoch {
@@ -67,7 +68,7 @@ struct Epoch {
   Epoch advance() const;
   void step();
 
-  Cursor cursor() const { return Cursor{start()}; }
+  Cursor cursor() const { return Cursor{start(), step()}; }
   Time start() const { return start_; }
   Time end() const { return start_ + duration_; }
   Time duration() const { return duration_; }
@@ -116,7 +117,7 @@ bool operator>(const TimeStamped<T> & lhs, const TimeStamped<T> & rhs) {
 
 enum class QueueEntryType { Message, Transaction, Invalid };
 
-using message_queue_type = MinHeap<TimeStamped<const Message *> >;
+using message_queue_type = MinHeap<TimeStamped<Message *> >;
   
 using transaction_queue_type = MinHeap<TimeStamped<Transaction *> >;
 
@@ -173,7 +174,7 @@ public:
     tac_ = std::move(tac);
   }
 
-  void push(TimeStamped<const Message *> ts);
+  void push(TimeStamped<Message *> ts);
   void push(TimeStamped<Transaction *> ts);
 
   QueueEntry next();
@@ -189,19 +190,17 @@ private:
 };
   
 struct Context {
+  friend class ExecutionContext;
 
   Context(const Epoch & epoch)
     : epoch_(epoch)
   {}
 
   Epoch epoch() const { return epoch_; }
-
-  void emit_message(Time t, const Message * m) {
-    msgs_.push_back(TimeStamped{t, m});
-  }
+  void emit_message(TimeStamped<Message *> msg);
 
   //private:
-  std::vector<TimeStamped<const Message *> > msgs_;
+  std::vector<TimeStamped<Message *> > msgs_;
   Epoch epoch_;
 };
 

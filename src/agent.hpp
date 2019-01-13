@@ -54,14 +54,14 @@ struct Agent : CoherentAgentCommandInvoker {
   void set_transaction_source(TransactionSource * trns) { trns_ = trns; }
   TransactionSource * transaction_source() const { return trns_; }
   
-  void apply(TimeStamped<const Message *> ts) override;
+  void apply(TimeStamped<Message *> ts) override;
   void eval(Context & ctxt) override;
   
   // private:
   void fetch_transactions(std::size_t n = 10);
   
   void handle_msg(Context & ctxt, Cursor & cursor,
-                  TimeStamped<const Message *> ts);
+                  TimeStamped<Message *> ts);
   
   void handle_trn(Context & ctxt, Cursor & cursor,
                   TimeStamped<Transaction *> ts);

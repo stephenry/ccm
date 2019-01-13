@@ -36,11 +36,11 @@ struct SnoopFilter : SnoopFilterCommandInvoker {
   SnoopFilter(const SnoopFilterOptions & opts);
   
   bool is_active() const override { return !qmgr_.empty(); }
-  void apply(TimeStamped<const Message *> ts) override;
+  void apply(TimeStamped<Message *> ts) override;
   void eval(Context & context) override;
  private:
   void handle_msg(
-      Context & context, Cursor & cursor, TimeStamped<const Message *> ts);
+      Context & context, Cursor & cursor, TimeStamped<Message *> ts);
   QueueManager qmgr_;
   const SnoopFilterOptions opts_;
 };

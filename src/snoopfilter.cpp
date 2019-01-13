@@ -34,7 +34,7 @@ SnoopFilter::SnoopFilter(const SnoopFilterOptions & opts)
   set_logger_scope(opts.logger_scope());
 }
 
-void SnoopFilter::apply(TimeStamped<const Message *> ts) {
+void SnoopFilter::apply(TimeStamped<Message *> ts) {
   qmgr_.push(ts);
 }
 
@@ -67,7 +67,7 @@ void SnoopFilter::eval(Context & context) {
 }
 
 void SnoopFilter::handle_msg(
-    Context & context, Cursor & cursor, TimeStamped<const Message *> ts) {
+    Context & context, Cursor & cursor, TimeStamped<Message *> ts) {
   const Message * msg = ts.t();
   const Transaction * transaction = msg->transaction();
       
@@ -80,7 +80,9 @@ void SnoopFilter::handle_msg(
   DirectoryEntry & directory_entry = cache_->lookup(transaction->addr());
   const CoherenceActions actions =
       cc_model_->get_actions(msg, directory_entry);
-  execute(context, actions, msg, directory_entry);
+
+  ExecutionContext ectxt{this, context, cursor};
+  execute(ectxt, actions, msg, directory_entry);
 }
 
 } // namespace ccm

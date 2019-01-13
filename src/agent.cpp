@@ -182,20 +182,20 @@ void Agent::fetch_transactions(std::size_t n) {
 }
 
 void Agent::handle_msg(Context & context, Cursor & cursor,
-                       TimeStamped<const Message *> ts) {
+                       TimeStamped<Message *> ts) {
   const Message * msg = ts.t();
   const Transaction * trn = msg->transaction();
 
   CacheLine & cache_line = cache_->lookup(trn->addr());
   const CoherenceActions actions = cc_model_->get_actions(msg, cache_line);
-  execute(context, actions, cache_line, msg->transaction());
+
+  ExecutionContext ectxt{this, context, cursor};
+  execute(ectxt, actions, cache_line, msg->transaction());
   // TODO: assertion that confirms commital
 
-  if (actions.transaction_done()) {
-    Transaction * trn = msg->transaction();
+  if (actions.transaction_done())
+    trns_->event_finish(TimeStamped{time(), msg->transaction()});
 
-    trns_->event_finish(TimeStamped{time(), trn});
-  }
   msg->release();
 
   cursor.set_time(cursor.time() + actions.duration());
@@ -219,12 +219,13 @@ void Agent::handle_trn(Context & context, Cursor & cursor,
   CacheLine & cache_line = cache_->lookup(trn->addr());
   const CoherenceActions actions = cc_model_->get_actions(trn, cache_line);
   
-  execute(context, actions, cache_line, trn);
+  ExecutionContext ectxt{this, context, cursor};
+  execute(ectxt, actions, cache_line, trn);
   
   cursor.set_time(cursor.time() + actions.duration());
 }
 
-void Agent::apply(TimeStamped<const Message *> ts) {
+void Agent::apply(TimeStamped<Message *> ts) {
   qmgr_.push(ts);
 }
 

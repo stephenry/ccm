@@ -40,10 +40,10 @@ struct InterconnectModel {
   InterconnectModel() {}
   virtual ~InterconnectModel() {}
   
-  void apply(TimeStamped<const Message *> & ts);
+  void apply(TimeStamped<Message *> & ts);
  private:
   virtual std::size_t cost(std::size_t src_id, std::size_t dst_id) = 0;
-  void update_time(TimeStamped<const Message *> & ts);
+  void update_time(TimeStamped<Message *> & ts);
 };
 
 struct FixedLatencyInterconnectModel : InterconnectModel {

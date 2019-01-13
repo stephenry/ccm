@@ -31,11 +31,11 @@
 
 namespace ccm {
 
-void InterconnectModel::apply(TimeStamped<const Message *> & ts) {
+void InterconnectModel::apply(TimeStamped<Message *> & ts) {
   update_time(ts);
 }
 
-void InterconnectModel::update_time(TimeStamped<const Message *> & ts) {
+void InterconnectModel::update_time(TimeStamped<Message *> & ts) {
   const Message * m = ts.t();
   ts.set_time(ts.time() + cost(m->src_id(), m->dst_id()));
 }

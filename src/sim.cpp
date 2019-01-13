@@ -134,7 +134,7 @@ bool QueueManager::empty() const {
   return true;
 }
 
-void QueueManager::push(TimeStamped<const Message *> ts) {
+void QueueManager::push(TimeStamped<Message *> ts) {
   messages_[ts.t()->cls()].push(ts);
 }
   
@@ -168,6 +168,10 @@ void QueueEntry::consume() const {
   }
 }
 
+void Context::emit_message(TimeStamped<Message *> msg) {
+  msgs_.push_back(msg);
+}
+
 void Sim::add_actor(CoherentActor * a) {
   actors_.insert(std::make_pair(a->id(), a));
 }
@@ -175,13 +179,13 @@ void Sim::add_actor(CoherentActor * a) {
 void Sim::run() {
   FixedLatencyInterconnectModel interconnect_model{10};
 
-  Epoch current_epoch{0, 100, 10};
+  Epoch current_epoch{0, 20, 10};
   do {
     Context ctxt{current_epoch};
     for (auto [t, actor] : actors_)
       actor->eval(ctxt);
 
-    for (TimeStamped<const Message *> ts : ctxt.msgs_) {
+    for (TimeStamped<Message *> ts : ctxt.msgs_) {
       interconnect_model.apply(ts);
         
       const Message * msg = ts.t();
