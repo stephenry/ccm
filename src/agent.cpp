@@ -197,8 +197,6 @@ void Agent::handle_msg(Context & context, Cursor & cursor,
     trns_->event_finish(TimeStamped{time(), msg->transaction()});
 
   msg->release();
-
-  cursor.set_time(cursor.time() + actions.duration());
 }
 
 void Agent::handle_trn(Context & context, Cursor & cursor,
@@ -221,8 +219,6 @@ void Agent::handle_trn(Context & context, Cursor & cursor,
   
   ExecutionContext ectxt{this, context, cursor};
   execute(ectxt, actions, cache_line, trn);
-  
-  cursor.set_time(cursor.time() + actions.duration());
 }
 
 void Agent::apply(TimeStamped<Message *> ts) {

@@ -229,9 +229,6 @@ struct CoherenceActions {
   }
   ACTION_FIELDS(__declare_getter_setter)
 #undef __declare_getter_setter
-
-  // TODO
-  Time duration() const { return 10; }
   
   template<typename T>
   void append_command(const T & cmd) {
