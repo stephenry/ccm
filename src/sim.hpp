@@ -205,13 +205,37 @@ struct Context {
   Epoch epoch_;
 };
 
+class RunOptions {
+
+  enum class Terminate {
+    OnExhaustion,
+    AfterTime
+  };
+
+public:
+
+  RunOptions()
+    : terminate_(Terminate::OnExhaustion)
+  {}
+
+  RunOptions(Time time)
+    : terminate_(Terminate::AfterTime), final_(time)
+  {}
+
+  bool has_completed(Time current) const;
+  
+private:
+  Terminate terminate_;
+  Time final_;
+};
+
 struct Sim {
 
   Sim() : time_(0) {}
 
   void add_actor(CoherentActor * a);
 
-  void run();
+  void run(const RunOptions & run_options = RunOptions{});
 
  private:
   void set_time(std::size_t time) { time_ = time; }

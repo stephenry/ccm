@@ -186,15 +186,22 @@ void Context::emit_message(TimeStamped<Message *> msg) {
   msgs_.push_back(msg);
 }
 
+bool RunOptions::has_completed(Time current) const {
+  return (current >= final_);
+}
+
 void Sim::add_actor(CoherentActor * a) {
   actors_.insert(std::make_pair(a->id(), a));
 }
 
-void Sim::run() {
+void Sim::run(const RunOptions & run_options) {
   FixedLatencyInterconnectModel interconnect_model{10};
 
   Epoch current_epoch{0, 20, 10};
   do {
+    if (run_options.has_completed(current_epoch.start()))
+      break;
+    
     Context ctxt{current_epoch};
     for (auto [t, actor] : actors_)
       actor->eval(ctxt);
