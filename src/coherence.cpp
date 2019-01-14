@@ -83,7 +83,7 @@ CacheLine CoherentAgentCommandInvoker::cache_line(std::size_t addr) const {
 
 void CoherentAgentCommandInvoker::execute(
     Context & context, Cursor & cursor, const CoherenceActions & actions,
-    CacheLine & cache_line, Transaction * t) {
+    CacheLine & cache_line, const Transaction * t) {
 
   for (const command_t c : actions.commands()) {
 
@@ -91,9 +91,8 @@ void CoherentAgentCommandInvoker::execute(
     log_debug("Execute: ", to_string(cmd));
     
     switch (cmd) {
-      
       case CoherentAgentCommand::UpdateState:
-        execute_update_state(context, cursor, cache_line, actions.next_state());
+        execute_update_state(cache_line, actions);
         break;
 
       case CoherentAgentCommand::EmitGetS:
@@ -103,85 +102,122 @@ void CoherentAgentCommandInvoker::execute(
       case CoherentAgentCommand::EmitGetM:
         execute_emit_getm(context, cursor, t);
         break;
+
+      default:
+        break;
+    }
+  }
+}
+
+void CoherentAgentCommandInvoker::execute(
+    Context & context, Cursor & cursor, const CoherenceActions & actions,
+    CacheLine & cache_line, const Message * msg) {
+
+  for (const command_t c : actions.commands()) {
+
+    const CoherentAgentCommand cmd{c};
+    log_debug("Execute: ", to_string(cmd));
+    
+    switch (cmd) {
+      case CoherentAgentCommand::UpdateState:
+        execute_update_state(cache_line, actions);
+        break;
       
       case CoherentAgentCommand::EmitDataToReq:
-        execute_emit_data_to_req(context, cursor, t);
+        execute_emit_data_to_req(context, cursor, msg);
         break;
       
       case CoherentAgentCommand::EmitDataToDir:
-        execute_emit_data_to_dir(context, cursor, t);
+        execute_emit_data_to_dir(context, cursor, msg);
         break;
       
       case CoherentAgentCommand::EmitInvAck:
-        execute_emit_inv_ack(context, cursor, t);
+        execute_emit_inv_ack(context, cursor, msg);
         break;
 
       case CoherentAgentCommand::SetAckCount:
-        execute_set_ack_count(cache_line, actions.ack_count());
+        execute_set_ack_count(cache_line, actions);
+        break;
+
+      default:
         break;
     }
   }
 }
 
 void CoherentAgentCommandInvoker::execute_update_state(
-    Context & context, Cursor & cursor, CacheLine & cache_line, state_t state_next) {
-  log_debug("Update state; current: ", cc_model_->to_string(state_next),
+    CacheLine & cache_line, const CoherenceActions & actions) {
+  const state_t next_state = actions.next_state();
+  log_debug("Update state; current: ", cc_model_->to_string(next_state),
             " previous: ", cc_model_->to_string(cache_line.state()));
-  
-  cache_line.set_state(state_next);
+  cache_line.set_state(next_state);
 }
 
 void CoherentAgentCommandInvoker::execute_emit_gets(
-    Context & context, Cursor & cursor, Transaction * t) {
+    Context & context, Cursor & cursor, const Transaction * t) {
   const Platform platform = opts_.platform();
-  
   MessageBuilder b = msgd_.builder();
+  
   b.set_type(MessageType::GetS);
   b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
   b.set_transaction(t);
+  
   log_debug("Sending GetS to home directory.");
   emit_message(context, cursor, b);
 }
 
 void CoherentAgentCommandInvoker::execute_emit_getm(
-    Context & context, Cursor & cursor, Transaction * t) {
+    Context & context, Cursor & cursor, const Transaction * t) {
   const Platform platform = opts_.platform();
-  
   MessageBuilder b = msgd_.builder();
+  
   b.set_type(MessageType::GetM);
   b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
   b.set_transaction(t);
+  
   log_debug("Sending GetM to home directory.");
   emit_message(context, cursor, b);
 }
 
 void CoherentAgentCommandInvoker::execute_emit_data_to_req(
-    Context & context, Cursor & cursor, Transaction * t) {
+    Context & context, Cursor & cursor, const Message * msg) {
+  const Transaction * t = msg->transaction();
   MessageBuilder b = msgd_.builder();
+  
   b.set_type(MessageType::Data);
+  b.set_dst_id(msg->fwd_id());
   b.set_transaction(t);
+  
   log_debug("Emit Data To Requester.");
   emit_message(context, cursor, b);
 }
 
 void CoherentAgentCommandInvoker::execute_emit_data_to_dir(
-    Context & context, Cursor & cursor, Transaction * t) {
+    Context & context, Cursor & cursor, const Message * msg) {
+  const Transaction * t = msg->transaction();
   const Platform platform = opts_.platform();
-
   MessageBuilder b = msgd_.builder();
+  
   b.set_type(MessageType::Data);
   b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
   b.set_transaction(t);
+  
   log_debug("Emit Data To Directory.");
   emit_message(context, cursor, b);
 }
 
 void CoherentAgentCommandInvoker::execute_emit_inv_ack(
-    Context & context, Cursor & cursor, Transaction * t) {
+    Context & context, Cursor & cursor, const Message * msg) {
+  const Transaction * t = msg->transaction();
   MessageBuilder b = msgd_.builder();
+  
   b.set_type(MessageType::Inv);
   b.set_is_ack(true);
-  b.set_dst_id(0); // TODO! Need to derive dst_id somehow. TODO!
+
+  // TODO: This is a special case because the dst_id for the ack. is
+  // not the originator of the command.
+  b.set_dst_id(msg->src_id());
+  b.set_dst_id(0);
   b.set_transaction(t);
 
   log_debug("Sending invalidation acknowledgement.");
@@ -189,7 +225,9 @@ void CoherentAgentCommandInvoker::execute_emit_inv_ack(
 }
 
 void CoherentAgentCommandInvoker::execute_set_ack_count(
-    CacheLine & cache_line, ack_count_type ack_count) {
+    CacheLine & cache_line, const CoherenceActions & actions) {
+  const CoherenceActions::ack_count_type ack_count = actions.ack_count();
+  log_debug("Update ack_count: ", ack_count);
   cache_line.set_ack_count(ack_count);
 }
 
@@ -296,11 +334,11 @@ void SnoopFilterCommandInvoker::execute(
         break;
 
       case SnoopFilterCommand::SendPutSAckToReq:
-        execute_send_put_sack_to_req(msg, context, cursor, d);
+        execute_send_puts_ack_to_req(msg, context, cursor, d);
         break;
 
       case SnoopFilterCommand::SendPutMAckToReq:
-        execute_send_put_mack_to_req(msg, context, cursor, d);
+        execute_send_putm_ack_to_req(msg, context, cursor, d);
         break;
 
       case SnoopFilterCommand::SendFwdGetSToOwner:
@@ -308,10 +346,22 @@ void SnoopFilterCommandInvoker::execute(
         break;
 
       case SnoopFilterCommand::SendPutEAckToReq:
+        execute_send_pute_ack_to_req(msg, context, cursor);
+        break;
+        
       case SnoopFilterCommand::SendPutOAckToReq:
+        execute_send_puto_ack_to_req(msg, context, cursor);
+        break;
+        
       case SnoopFilterCommand::SendAckCountToReq:
+        execute_send_ack_count_to_req(msg, context, cursor, actions);
+        break;
+        
       case SnoopFilterCommand::SendFwdGetMToOwner:
         // TODO
+        break;
+
+      default:
         break;
     }
   }
@@ -424,7 +474,7 @@ void SnoopFilterCommandInvoker::execute_cpy_data_to_memory(
   // NOP
 }
 
-void SnoopFilterCommandInvoker::execute_send_put_sack_to_req(
+void SnoopFilterCommandInvoker::execute_send_puts_ack_to_req(
     const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
   
   MessageBuilder b = msgd_.builder();
@@ -437,7 +487,7 @@ void SnoopFilterCommandInvoker::execute_send_put_sack_to_req(
   emit_message(context, cursor, b);
 }
 
-void SnoopFilterCommandInvoker::execute_send_put_mack_to_req(
+void SnoopFilterCommandInvoker::execute_send_putm_ack_to_req(
     const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::PutM);
@@ -456,10 +506,45 @@ void SnoopFilterCommandInvoker::execute_send_fwd_gets_to_owner(
   b.set_type(MessageType::FwdGetS);
   b.set_dst_id(d.owner());
   b.set_fwd_id(actions.fwd_id());
-  b.set_is_ack(true);
   b.set_transaction(msg->transaction());
 
   log_debug("Sending FwdGetS to owner.");
+  emit_message(context, cursor, b);
+}
+
+void SnoopFilterCommandInvoker::execute_send_pute_ack_to_req(
+    const Message * msg, Context & context, Cursor & cursor) {
+  MessageBuilder b = msgd_.builder();
+
+  b.set_type(MessageType::PutE);
+  b.set_dst_id(msg->src_id());
+  b.set_is_ack(true);
+  
+  log_debug("Sending PutEAck to requester.");
+  emit_message(context, cursor, b);
+}
+
+void SnoopFilterCommandInvoker::execute_send_puto_ack_to_req(
+    const Message * msg, Context & context, Cursor & cursor) {
+  MessageBuilder b = msgd_.builder();
+
+  b.set_type(MessageType::PutO);
+  b.set_dst_id(msg->src_id());
+  b.set_is_ack(true);
+  
+  log_debug("Sending PutOAck to requester.");
+  emit_message(context, cursor, b);
+}
+
+void SnoopFilterCommandInvoker::execute_send_ack_count_to_req(
+    const Message * msg, Context & context, Cursor & cursor, const CoherenceActions & actions) {
+  MessageBuilder b = msgd_.builder();
+
+  b.set_type(MessageType::AckCount);
+  b.set_dst_id(msg->src_id());
+  b.set_ack_count(actions.ack_count());
+  
+  log_debug("Sending AckCount to requester.");
   emit_message(context, cursor, b);
 }
 

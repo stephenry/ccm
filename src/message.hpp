@@ -88,7 +88,7 @@ struct Message : ccm::Poolable {
   __func(fwd_id, id_t, 1000)                                    \
   __func(addr, uint64_t, 0)                                     \
   __func(is_ack, bool, false)                                   \
-  __func(transaction, Transaction *, nullptr)                   \
+  __func(transaction, const Transaction *, nullptr)             \
   __func(ack_count, std::size_t, 0)                             \
   __func(is_exclusive, bool, false)                             \
   __func(was_owner, bool, false)

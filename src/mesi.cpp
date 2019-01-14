@@ -535,11 +535,11 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
         break;
           
       case MessageType::PutE:
-        handle__PutM(m, dir_entry, actions);
+        handle__PutE(m, dir_entry, actions);
         break;
           
       case MessageType::Data:
-        handle__PutM(m, dir_entry, actions);
+        handle__Data(m, dir_entry, actions);
         break;
           
       default:
@@ -677,22 +677,26 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
   void handle__PutM(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    const bool is_from_owner = (m->src_id() == dir_entry.owner()); // TODO
-
     switch (dir_entry.state()) {
-      case MesiDirectoryLineState::I:
+      case MesiDirectoryLineState::I: {
+        const bool is_from_owner = (m->src_id() == dir_entry.owner());
+
         if (!is_from_owner)
           a.append_command(SnoopFilterCommand::SendPutMAckToReq);
-        break;
+      } break;
 
-      case MesiDirectoryLineState::S:
+      case MesiDirectoryLineState::S: {
+        const bool is_from_owner = (m->src_id() == dir_entry.owner());
+
         if (!is_from_owner) {
           a.append_command(SnoopFilterCommand::DelReqFromSharers);
           a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         }
-        break;
+      } break;
 
-      case MesiDirectoryLineState::E:
+      case MesiDirectoryLineState::E: {
+        const bool is_from_owner = (m->src_id() == dir_entry.owner());
+
         a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         if (is_from_owner) {
           a.append_command(SnoopFilterCommand::CpyDataToMemory);
@@ -700,9 +704,11 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
           a.append_command(SnoopFilterCommand::UpdateState);
           a.set_next_state(MesiDirectoryLineState::I);
         }
-        break;
+      } break;
 
-      case MesiDirectoryLineState::M:
+      case MesiDirectoryLineState::M: {
+        const bool is_from_owner = (m->src_id() == dir_entry.owner());
+
         a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         if (is_from_owner) {
           a.append_command(SnoopFilterCommand::CpyDataToMemory);
@@ -710,12 +716,12 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
           a.append_command(SnoopFilterCommand::UpdateState);
           a.set_next_state(MesiDirectoryLineState::I);
         }
-        break;
+      } break;
 
-      case MesiDirectoryLineState::S_D:
+      case MesiDirectoryLineState::S_D: {
         a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         a.append_command(SnoopFilterCommand::DelReqFromSharers);
-        break;
+      } break;
 
       default:
         a.set_error(true);
@@ -726,7 +732,6 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
   void handle__PutE(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-    const bool is_from_owner = (m->src_id() == dir_entry.owner()); // TODO
 
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
@@ -738,14 +743,16 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
         a.append_command(SnoopFilterCommand::SendPutEAckToReq);
         break;
 
-      case MesiDirectoryLineState::E:
+      case MesiDirectoryLineState::E: {
+        const bool is_from_owner = (m->src_id() == dir_entry.owner());
+
         a.append_command(SnoopFilterCommand::SendPutEAckToReq);
         if (is_from_owner) {
           a.append_command(SnoopFilterCommand::DelOwner);
           a.append_command(SnoopFilterCommand::UpdateState);
           a.set_next_state(MesiDirectoryLineState::I);
         }
-        break;
+      } break;
 
       case MesiDirectoryLineState::M:
         a.append_command(SnoopFilterCommand::SendPutEAckToReq);

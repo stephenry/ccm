@@ -27,7 +27,7 @@
 
 #include "testcommon.hpp"
 #include <gtest/gtest.h>
-/*
+
 TEST(MESI, SimpleLoad) {
   // Perform a single load to one agent in the system. At the end of
   // the simulation, the line should be installed in the requestor in
@@ -101,7 +101,7 @@ TEST(MESI, SimpleStore) {
     p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::M);
 }
-*/
+
 TEST(MESI, MultipleSharers) {
   // Each agent in the system performs a load request to the same
   // line.  Upon completion of the commands, each agent should have a
@@ -133,7 +133,7 @@ TEST(MESI, MultipleSharers) {
     p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::S);
 }
-/*
+
 TEST(MESI, MultipleSharersThenPromotion) {
   // Each agent performs a load to the same line. After the loads have
   // completed, an agent performs a Store operationp to the line.
@@ -171,7 +171,7 @@ TEST(MESI, MultipleSharersThenPromotion) {
     p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::M);
 }
-*/
+
 int main(int argc, char ** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

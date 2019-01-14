@@ -277,23 +277,40 @@ struct CoherentAgentCommandInvoker : CoherentActor {
 
   CacheLine cache_line(std::size_t addr) const;
   
-  void execute(
-      Context & context, Cursor & cursor, const CoherenceActions & actions,
-      CacheLine & cache_line, Transaction * t);
+  void execute(Context & context, Cursor & cursor,
+               const CoherenceActions & actions,
+               CacheLine & cache_line, const Transaction * t);
+
+  void execute(Context & context, Cursor & cursor,
+               const CoherenceActions & actions,
+               CacheLine & cache_line, const Message * msg);
 
   // protected:
   std::unique_ptr<CoherentAgentModel> cc_model_;
   std::unique_ptr<GenericCache<CacheLine> > cache_;
  private:
+  // Common
+  //
   void execute_update_state(
-      Context & context, Cursor & cursor, CacheLine & cache_line, state_t state_next);
+      CacheLine & cache_line, const CoherenceActions & actions);
   void execute_set_ack_count(
-      CacheLine & cache_line, ack_count_type ack_count);
-  void execute_emit_gets(Context & context, Cursor & cursor, Transaction * t);
-  void execute_emit_getm(Context & context, Cursor & cursor, Transaction * t);
-  void execute_emit_data_to_req(Context & context, Cursor & cursor, Transaction * t);
-  void execute_emit_data_to_dir(Context & context, Cursor & cursor, Transaction * t);
-  void execute_emit_inv_ack(Context & context, Cursor & cursor, Transaction * t);
+      CacheLine & cache_line, const CoherenceActions & actions);
+
+  // Transaction Initiated
+  //
+  void execute_emit_gets(
+      Context & context, Cursor & cursor, const Transaction * t);
+  void execute_emit_getm(
+      Context & context, Cursor & cursor, const Transaction * t);
+
+  // Message Initiated
+  //
+  void execute_emit_data_to_req(
+      Context & context, Cursor & cursor, const Message * msg);
+  void execute_emit_data_to_dir(
+      Context & context, Cursor & cursor, const Message * msg);
+  void execute_emit_inv_ack(
+      Context & context, Cursor & cursor, const Message * msg);
   
   MessageDirector msgd_;
 };
@@ -349,12 +366,20 @@ private:
       const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
   void execute_cpy_data_to_memory(
       const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
-  void execute_send_put_sack_to_req(
+  void execute_send_puts_ack_to_req(
       const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
-  void execute_send_put_mack_to_req(
+  void execute_send_putm_ack_to_req(
       const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
   void execute_send_fwd_gets_to_owner(
-      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d, const CoherenceActions & actions);
+      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d,
+      const CoherenceActions & actions);
+  void execute_send_pute_ack_to_req(
+      const Message * msg, Context & context, Cursor & cursor);
+  void execute_send_puto_ack_to_req(
+      const Message * msg, Context & context, Cursor & cursor);
+  void execute_send_ack_count_to_req(
+      const Message * msg, Context & context, Cursor & cursor,
+      const CoherenceActions & actions);
 
   MessageDirector msgd_;
   const SnoopFilterOptions opts_;

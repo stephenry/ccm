@@ -95,7 +95,7 @@ struct TransactionSource : Loggable {
 
   //
   virtual void event_start(TimeStamped<Transaction *> ts) = 0;
-  virtual void event_finish(TimeStamped<Transaction *> ts) = 0;
+  virtual void event_finish(TimeStamped<const Transaction *> ts) = 0;
 };
 
 struct NullTransactionSource : TransactionSource {
@@ -104,7 +104,7 @@ struct NullTransactionSource : TransactionSource {
 
   //
   virtual void event_start(TimeStamped<Transaction *> ts) override {}
-  virtual void event_finish(TimeStamped<Transaction *> ts) override {}
+  virtual void event_finish(TimeStamped<const Transaction *> ts) override {}
 };
   
 struct ProgrammaticTransactionSource : TransactionSource {
@@ -119,7 +119,7 @@ struct ProgrammaticTransactionSource : TransactionSource {
 
   //
   virtual void event_start(TimeStamped<Transaction *> ts) override;
-  virtual void event_finish(TimeStamped<Transaction *> ts) override;
+  virtual void event_finish(TimeStamped<const Transaction *> ts) override;
 
  private:
   Pool<Transaction> pool_;

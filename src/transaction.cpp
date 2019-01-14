@@ -80,7 +80,7 @@ void ProgrammaticTransactionSource::event_start(TimeStamped<Transaction *> ts) {
   log_info("Transaction starts: ", t->tid());
 }
 
-void ProgrammaticTransactionSource::event_finish(TimeStamped<Transaction *> ts) {
+void ProgrammaticTransactionSource::event_finish(TimeStamped<const Transaction *> ts) {
   const Transaction * t = ts.t();
   log_info("Transaction ends: ", t->tid());
   

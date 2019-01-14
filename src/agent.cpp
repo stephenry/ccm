@@ -189,7 +189,7 @@ void Agent::handle_msg(Context & context, Cursor & cursor,
   CacheLine & cache_line = cache_->lookup(trn->addr());
   const CoherenceActions actions = cc_model_->get_actions(msg, cache_line);
 
-  execute(context, cursor, actions, cache_line, msg->transaction());
+  execute(context, cursor, actions, cache_line, msg);
   // TODO: assertion that confirms commital
 
   if (actions.transaction_done())
