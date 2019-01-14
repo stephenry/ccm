@@ -57,7 +57,7 @@ struct MesiCoherentAgentModel::MesiCoherentAgentModelImpl {
   {}
 
   void init(CacheLine & l) const {
-    l.set_state(static_cast<CacheLine::state_type>(MesiAgentLineState::I));
+    l.set_state(MesiAgentLineState::I);
   }
 
   bool is_stable(const CacheLine & cache_line) const {
@@ -607,6 +607,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
 
       case MesiDirectoryLineState::S:
         a.append_command(SnoopFilterCommand::SendDataToReq);
+        a.set_ack_count(dir_entry.num_sharers_not_id(m->src_id()));
         a.append_command(SnoopFilterCommand::SendInvToSharers);
         a.append_command(SnoopFilterCommand::ClearSharers);
         a.append_command(SnoopFilterCommand::SetOwnerToReq);

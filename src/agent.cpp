@@ -186,6 +186,7 @@ void Agent::handle_msg(Context & context, Cursor & cursor,
   const Message * msg = ts.t();
   const Transaction * trn = msg->transaction();
 
+  CCM_AGENT_ASSERT(cache_->is_hit(trn->addr()));
   CacheLine & cache_line = cache_->lookup(trn->addr());
   const CoherenceActions actions = cc_model_->get_actions(msg, cache_line);
   CCM_AGENT_ASSERT(!actions.error());
@@ -206,7 +207,7 @@ void Agent::handle_trn(Context & context, Cursor & cursor,
   trns_->event(TransactionEvent::Start, TimeStamped{time(), trn});
 
   if (trn->type() != TransactionType::Replacement)
-    CCM_ASSERT(!cache_->requires_eviction(trn->addr()));
+    CCM_AGENT_ASSERT(!cache_->requires_eviction(trn->addr()));
                        
   if (!cache_->is_hit(trn->addr())) {
     CacheLine cache_line;

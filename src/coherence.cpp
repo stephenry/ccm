@@ -227,7 +227,7 @@ void CoherentAgentCommandInvoker::execute_emit_inv_ack(
 void CoherentAgentCommandInvoker::execute_set_ack_count(
     CacheLine & cache_line, const CoherenceActions & actions) {
   const CoherenceActions::ack_count_type ack_count = actions.ack_count();
-  log_debug("Update ack_count: ", ack_count);
+  log_debug("Update ack_count: ", (int)ack_count);
   cache_line.set_ack_count(ack_count);
 }
 

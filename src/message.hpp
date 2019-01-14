@@ -42,13 +42,16 @@ struct Transaction;
   __func(Data)
 
 enum MessageClass {
+// clang-format off
 #define __declare_class(__class)                \
   __class,
   MESSAGE_CLASSES(__declare_class)
 #undef __declare_class
   CLASS_COUNT
+// clang-format on
 };
 
+  // clang-format off
 #define MESSAGE_TYPES(__func)                   \
   __func(GetS, 1)                               \
   __func(GetM, 1)                               \
@@ -61,6 +64,7 @@ enum MessageClass {
   __func(Inv, 1)                                \
   __func(AckCount, 1)                           \
   __func(Data, 4)
+  // clang-format on
 
 struct MessageType {
   using base_type = std::uint8_t;
@@ -81,6 +85,7 @@ struct Message : ccm::Poolable {
 
   Message() { set_invalid(); }
 
+// clang-format off
 #define MESSAGE_FIELDS(__func)                                  \
   __func(type, MessageType::base_type, MessageType::Invalid)    \
   __func(src_id, id_t, 1000)                                    \
@@ -92,6 +97,7 @@ struct Message : ccm::Poolable {
   __func(ack_count, std::size_t, 0)                             \
   __func(is_exclusive, bool, false)                             \
   __func(was_owner, bool, false)
+// clang-format on
 
   MessageClass cls() const;
 #define __declare_getter(__name, __type, __default)     \
