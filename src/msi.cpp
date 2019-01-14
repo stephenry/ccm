@@ -505,7 +505,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
 
       case MsiDirectoryLineState::S:
         a.append_command(SnoopFilterCommand::SendDataToReq);
-        a.set_ack_count(0);
+        a.set_ack_count(0); // TODO
         a.append_command(SnoopFilterCommand::AddReqToSharers);
         break;
 
@@ -518,6 +518,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
         break;
 
       case MsiDirectoryLineState::S_D:
+        // TODO
         //        a.set_stall();
         break;
 
@@ -593,7 +594,7 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
 
   void handle__PutM(
       const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
-    const bool is_data_from_owner = false;
+    const bool is_data_from_owner = false; // TODO
     switch (dir_entry.state()) {
       case MsiDirectoryLineState::I:
         if (!is_data_from_owner) {
