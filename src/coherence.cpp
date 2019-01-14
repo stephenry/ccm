@@ -133,9 +133,11 @@ void CoherentAgentCommandInvoker::execute_update_state(
 
 void CoherentAgentCommandInvoker::execute_emit_gets(
     Context & context, Cursor & cursor, Transaction * t) {
+  const Platform platform = opts_.platform();
+  
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::GetS);
-  b.set_dst_id(4);
+  b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
   b.set_transaction(t);
   log_debug("Sending GetS to home directory.");
   emit_message(context, cursor, b);
@@ -143,9 +145,11 @@ void CoherentAgentCommandInvoker::execute_emit_gets(
 
 void CoherentAgentCommandInvoker::execute_emit_getm(
     Context & context, Cursor & cursor, Transaction * t) {
+  const Platform platform = opts_.platform();
+  
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::GetM);
-  b.set_dst_id(4);
+  b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
   b.set_transaction(t);
   log_debug("Sending GetM to home directory.");
   emit_message(context, cursor, b);
@@ -153,20 +157,23 @@ void CoherentAgentCommandInvoker::execute_emit_getm(
 
 void CoherentAgentCommandInvoker::execute_emit_data_to_req(
     Context & context, Cursor & cursor, Transaction * t) {
-  log_debug("Emit Data To Requester.");
-  
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::Data);
   b.set_transaction(t);
+  log_debug("Emit Data To Requester.");
+  emit_message(context, cursor, b);
 }
 
 void CoherentAgentCommandInvoker::execute_emit_data_to_dir(
     Context & context, Cursor & cursor, Transaction * t) {
-  log_debug("Emit Data To Directory.");
+  const Platform platform = opts_.platform();
 
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::Data);
+  b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
   b.set_transaction(t);
+  log_debug("Emit Data To Directory.");
+  emit_message(context, cursor, b);
 }
 
 void CoherentAgentCommandInvoker::execute_emit_inv_ack(
@@ -297,7 +304,7 @@ void SnoopFilterCommandInvoker::execute(
         break;
 
       case SnoopFilterCommand::SendFwdGetSToOwner:
-        execute_send_fwd_gets_to_owner(msg, context, cursor, d);
+        execute_send_fwd_gets_to_owner(msg, context, cursor, d, actions);
         break;
 
       case SnoopFilterCommand::SendPutEAckToReq:
@@ -443,10 +450,12 @@ void SnoopFilterCommandInvoker::execute_send_put_mack_to_req(
 }
 
 void SnoopFilterCommandInvoker::execute_send_fwd_gets_to_owner(
-    const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d) {
+    const Message * msg, Context & context,
+    Cursor & cursor, DirectoryEntry & d, const CoherenceActions & actions) {
   MessageBuilder b = msgd_.builder();
   b.set_type(MessageType::FwdGetS);
   b.set_dst_id(d.owner());
+  b.set_fwd_id(actions.fwd_id());
   b.set_is_ack(true);
   b.set_transaction(msg->transaction());
 

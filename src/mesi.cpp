@@ -368,9 +368,7 @@ private:
 
   void handle__Data(
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
-
     const Platform platform = opts_.platform();
-
     const bool is_from_dir =
       platform.is_valid_snoop_filter_id(m->src_id());
     
@@ -383,7 +381,7 @@ private:
     const bool is_data_from_dir_ack_non_zero =
       is_from_dir && (m->ack_count() != 0); // TODO
     
-    const bool is_data_from_owner = !is_from_dir && m->was_owner();
+    const bool is_data_from_owner = !is_from_dir;
 
     if (is_exclusive_data_from_dir) {
 
@@ -570,6 +568,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
 
       case MesiDirectoryLineState::E:
         a.append_command(SnoopFilterCommand::SendFwdGetSToOwner);
+        a.set_fwd_id(m->src_id());
         a.append_command(SnoopFilterCommand::AddOwnerToSharers);
         a.append_command(SnoopFilterCommand::AddReqToSharers);
         a.append_command(SnoopFilterCommand::DelOwner);
@@ -579,6 +578,7 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
 
       case MesiDirectoryLineState::M:
         a.append_command(SnoopFilterCommand::SendFwdGetSToOwner);
+        a.set_fwd_id(m->src_id());
         a.append_command(SnoopFilterCommand::AddOwnerToSharers);
         a.append_command(SnoopFilterCommand::AddReqToSharers);
         a.append_command(SnoopFilterCommand::DelOwner);

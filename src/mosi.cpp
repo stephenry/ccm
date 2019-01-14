@@ -177,6 +177,7 @@ private:
       case MosiAgentLineState::SM_A:
       case MosiAgentLineState::M:
         a.set_result(TransactionResult::Hit);
+        a.set_transaction_done(true);
         break;
         
       case MosiAgentLineState::MI_A:
@@ -187,6 +188,7 @@ private:
       case MosiAgentLineState::OM_AC:
       case MosiAgentLineState::OM_A:
         a.set_result(TransactionResult::Hit);
+        a.set_transaction_done(true);
         break;
         
       case MosiAgentLineState::OI_A:
@@ -221,8 +223,8 @@ private:
       case MosiAgentLineState::S:
         a.append_command(CoherentAgentCommand::EmitGetM);
         a.append_command(CoherentAgentCommand::UpdateState);
-        a.set_next_state(MosiAgentLineState::SI_A);
-        a.set_result(TransactionResult::Blocked);
+        a.set_next_state(MosiAgentLineState::SM_AD);
+        a.set_result(TransactionResult::Miss);
         break;
 
       case MosiAgentLineState::SM_AD:
@@ -232,6 +234,7 @@ private:
 
       case MosiAgentLineState::M:
         a.set_result(TransactionResult::Hit);
+        a.set_transaction_done(true);
         break;
 
       case MosiAgentLineState::MI_A:
@@ -243,6 +246,7 @@ private:
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MosiAgentLineState::OM_AC);
         a.set_result(TransactionResult::Hit);
+        a.set_transaction_done(true);
         break;
 
       case MosiAgentLineState::OM_AC:
@@ -439,9 +443,16 @@ private:
   void handle__Data(
       const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
 
-    const bool is_data_from_dir_ack_zero = true; // TODO
-    const bool is_data_from_dir_ack_non_zero = false; // TODO
-    const bool is_data_from_owner = false; // TODO
+    const Platform platform = opts_.platform();
+    const bool is_from_dir = platform.is_valid_snoop_filter_id(m->src_id());
+    
+    const bool is_data_from_dir_ack_zero =
+      is_from_dir && (m->ack_count() == 0);
+    
+    const bool is_data_from_dir_ack_non_zero =
+      is_from_dir && (m->ack_count() != 0);
+    
+    const bool is_data_from_owner = !is_from_dir;
 
     if (is_data_from_dir_ack_zero || is_data_from_owner) {
 
@@ -449,12 +460,14 @@ private:
         case MosiAgentLineState::IS_D:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MosiAgentLineState::S);
+          a.set_transaction_done(true);
           break;
           
         case MosiAgentLineState::IM_AD:
         case MosiAgentLineState::SM_AD:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MosiAgentLineState::M);
+          a.set_transaction_done(true);
           break;
           
         default:

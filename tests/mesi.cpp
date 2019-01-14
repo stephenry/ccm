@@ -27,7 +27,7 @@
 
 #include "testcommon.hpp"
 #include <gtest/gtest.h>
-
+/*
 TEST(MESI, SimpleLoad) {
   // Perform a single load to one agent in the system. At the end of
   // the simulation, the line should be installed in the requestor in
@@ -101,7 +101,77 @@ TEST(MESI, SimpleStore) {
     p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::M);
 }
+*/
+TEST(MESI, MultipleSharers) {
+  // Each agent in the system performs a load request to the same
+  // line.  Upon completion of the commands, each agent should have a
+  // line installed in its cache in the shared state. The directory
+  // should have the line in the shared state and each agent should
+  // be present in the sharer set.
+  //
+  
+  const std::size_t addr = 0;
 
+  ccm::Sim s;
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
+
+  for (std::size_t i = 0; i < p.agents(); i++) {
+    const std::size_t time = (i + 1) * 1000;
+
+    p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
+  }
+
+  s.run();
+
+  for (std::size_t i = 0; i < p.agents(); i++) {
+    const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
+    
+    EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::S);
+  }
+
+  const ccm::DirectoryEntry directory_entry =
+    p.snoop_filter()->directory_entry(addr);
+  EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::S);
+}
+/*
+TEST(MESI, MultipleSharersThenPromotion) {
+  // Each agent performs a load to the same line. After the loads have
+  // completed, an agent performs a Store operationp to the line.
+  // Before the Store operation completes, each line in the other
+  // agents must be invalidate and the resulting acknowlegement passed
+  // to the original requesting agent. Upon completion, the storing
+  // agent is the only agent with a copy of the line (in the modified
+  // state).
+  //
+  
+  const std::size_t addr = 0;
+
+  ccm::Sim s;
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
+
+  for (std::size_t i = 0; i < p.agents(); i++) {
+    const std::size_t time = (i + 1) * 1000;
+    
+    p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
+  }
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 10000, addr);
+
+  s.run();
+
+  for (std::size_t i = 0; i < p.agents(); i++) {
+    const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
+
+    if (i == 0) 
+      EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::M);
+    else
+      EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::I);
+  }
+
+  const ccm::DirectoryEntry directory_entry =
+    p.snoop_filter()->directory_entry(addr);
+  EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::M);
+}
+*/
 int main(int argc, char ** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

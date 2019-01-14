@@ -83,8 +83,9 @@ struct Message : ccm::Poolable {
 
 #define MESSAGE_FIELDS(__func)                                  \
   __func(type, MessageType::base_type, MessageType::Invalid)    \
-  __func(src_id, std::size_t, 1000)                             \
-  __func(dst_id, std::size_t, 1000)                             \
+  __func(src_id, id_t, 1000)                                    \
+  __func(dst_id, id_t, 1000)                                    \
+  __func(fwd_id, id_t, 1000)                                    \
   __func(addr, uint64_t, 0)                                     \
   __func(is_ack, bool, false)                                   \
   __func(transaction, Transaction *, nullptr)                   \

@@ -32,7 +32,6 @@
 #include "cache.hpp"
 #include "message.hpp"
 #include "actors.hpp"
-#include "platform.hpp"
 #include "actors.hpp"
 #include <memory>
 #include <optional>
@@ -42,6 +41,7 @@ namespace ccm {
 class Transaction;
 class Frontier;
 class CoherentActor;
+class Platform;
 
 enum class Protocol {
   MSI,
@@ -52,37 +52,34 @@ enum class Protocol {
 const char * to_string(Protocol p);
 
 using state_t = uint8_t;
+  
 using result_t = uint8_t;
 using command_t = uint8_t;
 
 struct CoherentAgentOptions : ActorOptions {
   CoherentAgentOptions(std::size_t id, Protocol protocol,
-                       CacheOptions cache_options, Platform platform)
-    : ActorOptions(id), protocol_(protocol),
-      cache_options_(cache_options), platform_(platform)
+                       CacheOptions cache_options, Platform & platform)
+    : ActorOptions(id, platform), protocol_(protocol),
+      cache_options_(cache_options)
   {}
   Protocol protocol() const { return protocol_; }
   CacheOptions cache_options() const { return cache_options_; }
-  Platform platform() const { return platform_; }
  private:
   Protocol protocol_;
   CacheOptions cache_options_;
-  Platform platform_;
 };
 
 struct SnoopFilterOptions : ActorOptions {
   SnoopFilterOptions(std::size_t id, Protocol protocol,
-                     CacheOptions cache_options, Platform platform)
-    : ActorOptions(id), protocol_(protocol),
-      cache_options_(cache_options), platform_(platform)
+                     CacheOptions cache_options, Platform & platform)
+    : ActorOptions(id, platform), protocol_(protocol),
+      cache_options_(cache_options)
   {}
   Protocol protocol() const { return protocol_; }
   CacheOptions cache_options() const { return cache_options_; }
-  Platform platform() const { return platform_; }
  private:
   Protocol protocol_;
   CacheOptions cache_options_;
-  Platform platform_;
 };
 
 #define AGENT_COMMANDS(__func)                  \
@@ -210,22 +207,23 @@ enum MessageResult : result_t {
 };
 
 #define ACTION_FIELDS(__func)                   \
-  __func(transaction_done, bool)                \
-  __func(next_state, state_t)                   \
-  __func(is_exclusive, bool)                    \
-  __func(error, bool)                           \
-  __func(ack_count, uint8_t)                    \
-  __func(result, result_t)                      \
-  __func(commands, std::vector<command_t>)
+  __func(fwd_id, id_t, 0)                       \
+  __func(transaction_done, bool, false)         \
+  __func(next_state, state_t, 0)                \
+  __func(is_exclusive, bool, false)             \
+  __func(error, bool, false)                    \
+  __func(ack_count, uint8_t, 0)                 \
+  __func(result, result_t, 0)                   \
+  __func(commands, std::vector<command_t>, {})
 
 struct CoherenceActions {
   CoherenceActions() { reset(); }
-#define __declare_getter_setter(__name, __type) \
-  using __name ## _type = __type;               \
-  __type __name() const { return __name ## _; } \
-  template<typename T>                          \
-  void set_ ## __name(const T & __name) {       \
-    __name ## _ = static_cast<__type>(__name);  \
+#define __declare_getter_setter(__name, __type, __default)      \
+  using __name ## _type = __type;                               \
+  __type __name() const { return __name ## _; }                 \
+  template<typename T>                                          \
+  void set_ ## __name(const T & __name) {                       \
+    __name ## _ = static_cast<__type>(__name);                  \
   }
   ACTION_FIELDS(__declare_getter_setter)
 #undef __declare_getter_setter
@@ -237,12 +235,12 @@ struct CoherenceActions {
   
  private:
   void reset() {
-    is_exclusive_ = false;
-    error_ = false;
-    ack_count_ = 0;
-    transaction_done_ = false;
+#define __declare_default(__name, __type, __default)    \
+    __name ## _ = __default;
+    ACTION_FIELDS(__declare_default)
+#undef __declare_default
   }
-#define __declare_field(__name, __type)         \
+#define __declare_field(__name, __type, __default)      \
   __type __name ## _;
   ACTION_FIELDS(__declare_field)
 #undef __declare_field
@@ -356,7 +354,7 @@ private:
   void execute_send_put_mack_to_req(
       const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
   void execute_send_fwd_gets_to_owner(
-      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
+      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d, const CoherenceActions & actions);
 
   MessageDirector msgd_;
   const SnoopFilterOptions opts_;

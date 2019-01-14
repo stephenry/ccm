@@ -87,6 +87,10 @@ std::string to_string(const Message & m) {
       sr.add("ack_count", to_string(m.ack_count()));
       sr.add("is_exclusive", to_string(m.is_exclusive()));
       break;
+    case MessageType::FwdGetS:
+    case MessageType::FwdGetM:
+      sr.add("fwd_id", to_string(m.fwd_id()));
+      break;
     default:
       break;
   }

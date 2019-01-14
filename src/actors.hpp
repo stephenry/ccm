@@ -32,6 +32,7 @@
 #include "transaction.hpp"
 #include "cache.hpp"
 #include "sim.hpp"
+#include "platform.hpp"
 
 namespace ccm {
 
@@ -42,19 +43,21 @@ class Cursor;
 class MessageBuilder;
 
 struct ActorOptions {
-  ActorOptions(std::size_t id)
-      : id_(id)
+  ActorOptions(id_t id, Platform platform)
+    : id_(id), platform_(platform)
   {}
-  std::size_t id() const { return id_; }
+  id_t id() const { return id_; }
   LoggerScope * logger_scope() const { return logger_scope_; }
+  Platform platform() const { return platform_; }
 
   void set_logger_scope(LoggerScope * logger_scope) {
     logger_scope_ = logger_scope;
   }
  private:
-  std::size_t id_;
+  id_t id_;
   CacheOptions cache_options_;
   LoggerScope * logger_scope_;
+  Platform platform_;
 };
 
 struct CoherentActor : Loggable {
@@ -64,7 +67,7 @@ struct CoherentActor : Loggable {
   virtual ~CoherentActor() {}
 
   Time time() const override { return time_; }
-  std::size_t id() const { return opts_.id(); }
+  id_t id() const { return opts_.id(); }
 
   virtual void apply(TimeStamped<Message *> ts) = 0;
   virtual void eval(Context & ctxt) = 0;
@@ -72,8 +75,9 @@ struct CoherentActor : Loggable {
 
   void set_time(Time time) { time_ = time; }
   void emit_message(Context & context, Cursor & cursor, MessageBuilder & b);
- private:
+protected:
   const ActorOptions opts_;
+private:
   Time time_;
 };
 

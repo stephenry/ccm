@@ -34,7 +34,6 @@ TEST(MOSI, SimpleLoad) {
   // the shared state, and installed in the directory in the shared
   // state.
   //
-  
   const std::size_t addr = 0;
 
   ccm::Sim s;
@@ -50,6 +49,125 @@ TEST(MOSI, SimpleLoad) {
   const ccm::DirectoryEntry directory_entry =
     p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MosiDirectoryLineState::S);
+}
+
+TEST(MOSI, SimpleLoadPromotion) {
+  // Perform a load followed by a store to the same address in the
+  // same agent. Upon completion of the first transaction, the line
+  // should be installed in the shared state. Upon completion of the
+  // second instruction, the line should be promoted to the modified
+  // state. As no other agents hold the line, no invalidation requests
+  // should be passed to any other agent.
+  //
+  const std::size_t addr = 0;
+
+  ccm::Sim s;
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MOSI, 4};
+
+  p.ts(0)->add_transaction(ccm::TransactionType::Load,  100, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 200, addr);
+
+  s.run();
+
+  const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
+  EXPECT_EQ(cache_line.state(), ccm::MosiAgentLineState::M);
+
+  const ccm::DirectoryEntry directory_entry =
+    p.snoop_filter()->directory_entry(addr);
+  EXPECT_EQ(directory_entry.state(), ccm::MosiDirectoryLineState::M);
+}
+
+TEST(MOSI, SimpleStore) {
+  // Perform a single store to one agent in the system. At the end of
+  // the simulation, the line should be installed in the requester in the
+  // modified state, and installed in the directory in the modified state.
+  //
+  
+  const std::size_t addr = 0;
+
+  ccm::Sim s;
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MOSI, 4};
+
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 1000, addr);
+
+  s.run();
+
+  const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
+  EXPECT_EQ(cache_line.state(), ccm::MosiAgentLineState::M);
+
+  const ccm::DirectoryEntry directory_entry =
+    p.snoop_filter()->directory_entry(addr);
+  EXPECT_EQ(directory_entry.state(), ccm::MosiDirectoryLineState::M);
+}
+
+TEST(MOSI, MultipleSharers) {
+  // Each agent in the system performs a load request to the same
+  // line.  Upon completion of the commands, each agent should have a
+  // line installed in its cache in the shared state. The directory
+  // should have the line in the shared state and each agent should
+  // be present in the sharer set.
+  //
+  
+  const std::size_t addr = 0;
+
+  ccm::Sim s;
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MOSI, 4};
+
+  for (std::size_t i = 0; i < p.agents(); i++) {
+    const std::size_t time = (i + 1) * 1000;
+
+    p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
+  }
+
+  s.run();
+
+  for (std::size_t i = 0; i < p.agents(); i++) {
+    const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
+    
+    EXPECT_EQ(cache_line.state(), ccm::MosiAgentLineState::S);
+  }
+
+  const ccm::DirectoryEntry directory_entry =
+    p.snoop_filter()->directory_entry(addr);
+  EXPECT_EQ(directory_entry.state(), ccm::MosiDirectoryLineState::S);
+}
+
+TEST(MOSI, MultipleSharersThenPromotion) {
+  // Each agent performs a load to the same line. After the loads have
+  // completed, an agent performs a Store operationp to the line.
+  // Before the Store operation completes, each line in the other
+  // agents must be invalidate and the resulting acknowlegement passed
+  // to the original requesting agent. Upon completion, the storing
+  // agent is the only agent with a copy of the line (in the modified
+  // state).
+  //
+  
+  const std::size_t addr = 0;
+
+  ccm::Sim s;
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MOSI, 4};
+
+  for (std::size_t i = 0; i < p.agents(); i++) {
+    const std::size_t time = (i + 1) * 1000;
+    
+    p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
+  }
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 10000, addr);
+
+  s.run();
+
+  for (std::size_t i = 0; i < p.agents(); i++) {
+    const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
+
+    if (i == 0) 
+      EXPECT_EQ(cache_line.state(), ccm::MosiAgentLineState::M);
+    else
+      EXPECT_EQ(cache_line.state(), ccm::MosiAgentLineState::I);
+  }
+
+  const ccm::DirectoryEntry directory_entry =
+    p.snoop_filter()->directory_entry(addr);
+  EXPECT_EQ(directory_entry.state(), ccm::MosiDirectoryLineState::M);
 }
 
 int main(int argc, char ** argv) {
