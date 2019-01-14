@@ -46,6 +46,18 @@ enum class TransactionType {
 
 const char * to_string(TransactionType t);
 
+#define TRANSACTION_EVENT(__func)               \
+  __func(Start)                                 \
+  __func(End)
+
+enum class TransactionEvent {
+#define __declare_event(__name) __name,
+    TRANSACTION_EVENT(__declare_event)
+#undef __declare_event
+};
+  
+const char * to_string(TransactionEvent event);
+  
 #define TRANSACTION_FIELDS(__func)                              \
   __func(TransactionType, type, TransactionType::Invalid)       \
   __func(uint64_t, addr, 0)                                     \
@@ -94,8 +106,7 @@ struct TransactionSource : Loggable {
   virtual bool get_transaction(TimeStamped<Transaction *> & ts) = 0;
 
   //
-  virtual void event_start(TimeStamped<Transaction *> ts) = 0;
-  virtual void event_finish(TimeStamped<const Transaction *> ts) = 0;
+  virtual void event(TransactionEvent event, TimeStamped<const Transaction *> ts) = 0;
 };
 
 struct NullTransactionSource : TransactionSource {
@@ -103,8 +114,8 @@ struct NullTransactionSource : TransactionSource {
   virtual bool get_transaction(TimeStamped<Transaction *> & ts) override;
 
   //
-  virtual void event_start(TimeStamped<Transaction *> ts) override {}
-  virtual void event_finish(TimeStamped<const Transaction *> ts) override {}
+  virtual void event(TransactionEvent event,
+                     TimeStamped<const Transaction *> ts) override {}
 };
   
 struct ProgrammaticTransactionSource : TransactionSource {
@@ -118,8 +129,8 @@ struct ProgrammaticTransactionSource : TransactionSource {
   virtual bool get_transaction(TimeStamped<Transaction *> & ts) override;
 
   //
-  virtual void event_start(TimeStamped<Transaction *> ts) override;
-  virtual void event_finish(TimeStamped<const Transaction *> ts) override;
+  virtual void event(TransactionEvent event,
+                     TimeStamped<const Transaction *> ts) override;
 
  private:
   Pool<Transaction> pool_;

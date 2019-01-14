@@ -194,16 +194,16 @@ void Agent::handle_msg(Context & context, Cursor & cursor,
   // TODO: assertion that confirms commital
 
   if (actions.transaction_done())
-    trns_->event_finish(TimeStamped{time(), msg->transaction()});
+    trns_->event(TransactionEvent::End, TimeStamped{time(), msg->transaction()});
 
   msg->release();
 }
 
 void Agent::handle_trn(Context & context, Cursor & cursor,
                        TimeStamped<Transaction *> ts) {
-  Transaction * trn = ts.t();
+  const Transaction * trn = ts.t();
   
-  trns_->event_start(TimeStamped{time(), trn});
+  trns_->event(TransactionEvent::Start, TimeStamped{time(), trn});
 
   if (trn->type() != TransactionType::Replacement)
     CCM_ASSERT(!cache_->requires_eviction(trn->addr()));

@@ -49,6 +49,16 @@ std::string to_string(const Transaction & t) {
   return sr.str();
 }
 
+const char * to_string(TransactionEvent event) {
+  switch (event) {
+#define __declare_string(__name)                \
+    case TransactionEvent::__name: return #__name; break;
+    TRANSACTION_EVENT(__declare_string)
+#undef __declare_string
+    default: return "Unknown"; break;
+  }
+}
+
 bool NullTransactionSource::get_transaction(TimeStamped<Transaction *> & ts) {
   return false;
 }
@@ -75,19 +85,25 @@ bool ProgrammaticTransactionSource::get_transaction(TimeStamped<Transaction *> &
   return true;
 }
 
-void ProgrammaticTransactionSource::event_start(TimeStamped<Transaction *> ts) {
+void ProgrammaticTransactionSource::event(TransactionEvent event,
+                                          TimeStamped<const Transaction *> ts) {
   const Transaction * t = ts.t();
-  log_info("Transaction starts: ", t->tid());
-}
-
-void ProgrammaticTransactionSource::event_finish(TimeStamped<const Transaction *> ts) {
-  const Transaction * t = ts.t();
-  log_info("Transaction ends: ", t->tid());
   
-  auto it = std::find(in_flight_.begin(), in_flight_.end(), t);
-  if (it != in_flight_.end()) {
-    (*it)->release();
-    in_flight_.erase(it);
+  switch (event) {
+  case TransactionEvent::Start: {
+    log_info("Transaction starts: ", t->tid());
+  } break;
+    
+  case TransactionEvent::End: {
+    log_info("Transaction ends: ", t->tid());
+  
+    auto it = std::find(in_flight_.begin(), in_flight_.end(), t);
+    if (it != in_flight_.end()) {
+      (*it)->release();
+      in_flight_.erase(it);
+    }
+  } break;
+
   }
 }
 
