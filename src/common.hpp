@@ -45,6 +45,12 @@ namespace ccm {
   }                                                             \
   CCM_MACRO_END
 
+#define CCM_AGENT_ASSERT(__cond)                                        \
+  CCM_MACRO_BEGIN                                                       \
+  if (!(__cond))                                                        \
+    log_fatal(__FILE__, ":", __LINE__, " assertion failed: ", #__cond); \
+  CCM_MACRO_END
+
 using addr_t = std::size_t;
   
 } // namespace ccm

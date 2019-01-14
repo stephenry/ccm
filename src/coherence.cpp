@@ -537,7 +537,8 @@ void SnoopFilterCommandInvoker::execute_send_puto_ack_to_req(
 }
 
 void SnoopFilterCommandInvoker::execute_send_ack_count_to_req(
-    const Message * msg, Context & context, Cursor & cursor, const CoherenceActions & actions) {
+    const Message * msg, Context & context, Cursor & cursor,
+    const CoherenceActions & actions) {
   MessageBuilder b = msgd_.builder();
 
   b.set_type(MessageType::AckCount);

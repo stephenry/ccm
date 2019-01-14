@@ -188,6 +188,7 @@ void Agent::handle_msg(Context & context, Cursor & cursor,
 
   CacheLine & cache_line = cache_->lookup(trn->addr());
   const CoherenceActions actions = cc_model_->get_actions(msg, cache_line);
+  CCM_AGENT_ASSERT(!actions.error());
 
   execute(context, cursor, actions, cache_line, msg);
   // TODO: assertion that confirms commital
@@ -215,6 +216,7 @@ void Agent::handle_trn(Context & context, Cursor & cursor,
 
   CacheLine & cache_line = cache_->lookup(trn->addr());
   const CoherenceActions actions = cc_model_->get_actions(trn, cache_line);
+  CCM_AGENT_ASSERT(!actions.error());
   
   execute(context, cursor, actions, cache_line, trn);
 }

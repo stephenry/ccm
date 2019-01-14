@@ -373,13 +373,13 @@ private:
       platform.is_valid_snoop_filter_id(m->src_id());
     
     const bool is_exclusive_data_from_dir =
-      is_from_dir && m->is_exclusive(); // TODO
+      is_from_dir && m->is_exclusive();
     
     const bool is_data_from_dir_ack_zero =
-      is_from_dir && (m->ack_count() == 0); // TODO
+      is_from_dir && (m->ack_count() == 0);
     
     const bool is_data_from_dir_ack_non_zero =
-      is_from_dir && (m->ack_count() != 0); // TODO
+      is_from_dir && (m->ack_count() != 0);
     
     const bool is_data_from_owner = !is_from_dir;
 
