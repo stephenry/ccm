@@ -238,12 +238,12 @@ struct Sim {
   void run(const RunOptions & run_options = RunOptions{});
 
  private:
-  void set_time(std::size_t time) { time_ = time; }
-  std::size_t time() const { return time_; }
+  void set_time(Time time) { time_ = time; }
+  Time time() const { return time_; }
   
   bool has_active_actors() const;
 
-  std::size_t time_;
+  Time time_;
   std::map<std::size_t, CoherentActor *> actors_;
 };
 
