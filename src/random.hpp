@@ -28,39 +28,36 @@
 #ifndef __SRCS_RANDOM_HPP__
 #define __SRCS_RANDOM_HPP__
 
-#include <random>
 #include <limits>
+#include <random>
 
 namespace ccm {
 
 struct Random {
+  template <typename T>
+  struct UniformRandomInterval {
+    UniformRandomInterval(T hi = std::numeric_limits<T>::max(),
+                          T lo = std::numeric_limits<T>::min())
+        : hi_(hi), lo_(lo) {
+      mt_ = std::mt19937{Random::rd_()};
+      dst_ = std::uniform_int_distribution<T>(lo_, hi_);
+    }
 
-    template<typename T>
-    struct UniformRandomInterval {
-        UniformRandomInterval (T hi = std::numeric_limits<T>::max(),
-                T lo = std::numeric_limits<T>::min())
-            : hi_(hi), lo_(lo) {
-            mt_ = std::mt19937{Random::rd_()};
-            dst_ = std::uniform_int_distribution<T>(lo_, hi_);
-        }
+    T operator()() { return dst_(mt_); }
 
-        T operator()() {
-            return dst_(mt_);
-        }
+   private:
+    std::mt19937 mt_;
+    std::uniform_int_distribution<T> dst_;
+    const T lo_, hi_;
+  };
 
-    private:
-        std::mt19937 mt_;
-        std::uniform_int_distribution<T> dst_;
-        const T lo_, hi_;
-    };
+  static void set_seed(std::size_t seed) { Random::seed_ = seed; }
 
-    static void set_seed(std::size_t seed) { Random::seed_ = seed; }
-
-private:
-    static std::random_device rd_;
-    static std::size_t seed_;
+ private:
+  static std::random_device rd_;
+  static std::size_t seed_;
 };
 
-} // namespace ccm
+}  // namespace ccm
 
 #endif
