@@ -29,18 +29,20 @@
 #include <gtest/gtest.h>
 
 TEST(MSI, SimpleLoad) {
+  using rnd = ccm::Random;
+
   // Perform a single load to one agent in the system. At the end of
   // the simulation, the line should be installed in the requestor in
   // the shared state, and installed in the directory in the shared
   // state.
   //
-  ccm::Random::set_seed(1);  
+  rnd::set_seed(1);
 
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
-  auto ragent = ccm::Random::UniformRandomInterval<ccm::id_t>(p.agents() - 1, 0);
-  auto raddr = ccm::Random::UniformRandomInterval<ccm::addr_t>(1 << 12);
+  auto ragent = rnd::UniformRandomInterval<ccm::id_t>(p.agents() - 1, 0);
+  auto raddr = rnd::UniformRandomInterval<ccm::addr_t>(1 << 12);
 
   std::vector<std::set<ccm::addr_t> > addrs_id{p.agents()};
   for (std::size_t i = 0; i < 1000; i++) {
