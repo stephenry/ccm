@@ -96,26 +96,53 @@ TEST(MSI, SimpleLoadPromotion) {
 }
 
 TEST(MSI, SimpleStore) {
+  using rnd = ccm::Random;
+
   // Perform a single store to one agent in the system. At the end of
   // the simulation, the line should be installed in the requester in the
   // modified state, and installed in the directory in the modified state.
   //
-  
-  const std::size_t addr = 0;
+  rnd::set_seed(1);
 
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Store, 1000, addr);
+  auto ragent = rnd::UniformRandomInterval<ccm::id_t>(p.agents() - 1, 0);
+  auto raddr = rnd::UniformRandomInterval<ccm::addr_t>(1 << 12);
+
+  std::set<ccm::addr_t> addrs;
+  std::vector<std::set<ccm::addr_t> > addrs_id{p.agents()};
+
+  for (std::size_t i = 0; i < 1000; i++) {
+    const ccm::Time t = (1 + i) * 1000;
+    const ccm::addr_t addr = raddr();
+    const ccm::id_t id = ragent();
+
+    // In this simple test, the set of addresses issued by each agent
+    // must be disjoint (we do not specifically wish to consider
+    // forwarding in this case).
+    //
+    if (addrs.find(addr) != addrs.end())
+      continue;
+
+    addrs.insert(addr);
+    addrs_id[id].insert(addr);
+    p.ts(id)->add_transaction(ccm::TransactionType::Store, t, addr);
+  }
 
   s.run();
 
-  const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
-  EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::M);
+  for (ccm::id_t id = 0; id < addrs_id.size(); id++) {
+    for (const ccm::addr_t addr : addrs_id[id]) {
 
-  const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
-  EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::M);
+      const ccm::CacheLine cache_line = p.agent(id)->cache_line(addr);
+      EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::M);
+
+      const ccm::DirectoryEntry directory_entry =
+        p.snoop_filter()->directory_entry(addr);
+      EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::M);
+    }
+  }
 }
 
 TEST(MSI, MultipleSharers) {
