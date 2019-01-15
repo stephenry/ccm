@@ -187,7 +187,19 @@ void Context::emit_message(TimeStamped<Message *> msg) {
 }
 
 bool RunOptions::has_completed(Time current) const {
-  return (current >= final_);
+  bool ret{false};
+  switch (terminate()) {
+    case Terminate::OnExhaustion:
+      ret = false;
+      break;
+    case Terminate::AfterTime:
+      ret = (current >= final_);
+      break;
+    default:
+      ret = true;
+      break;
+  }
+  return ret;
 }
 
 void Sim::add_actor(CoherentActor * a) {

@@ -34,22 +34,36 @@ TEST(MSI, SimpleLoad) {
   // the shared state, and installed in the directory in the shared
   // state.
   //
-  
-  const std::size_t addr = 0;
+  ccm::Random::set_seed(1);  
 
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Load, 1000, addr);
+  auto ragent = ccm::Random::UniformRandomInterval<ccm::id_t>(p.agents() - 1, 0);
+  auto raddr = ccm::Random::UniformRandomInterval<ccm::addr_t>(1 << 12);
+
+  std::vector<std::set<ccm::addr_t> > addrs_id{p.agents()};
+  for (std::size_t i = 0; i < 1000; i++) {
+    const ccm::Time t = (1 + i) * 1000;
+    const ccm::addr_t addr = raddr();
+    const ccm::id_t id = ragent();
+
+    addrs_id[id].insert(addr);
+    p.ts(id)->add_transaction(ccm::TransactionType::Load, t, addr);
+  }
 
   s.run();
 
-  const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
-  EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::S);
+  for (ccm::id_t id = 0; id < addrs_id.size(); id++) {
+    for (const ccm::addr_t addr : addrs_id[id]) {
+      const ccm::CacheLine cache_line = p.agent(id)->cache_line(addr);
+      EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::S);
 
-  const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
-  EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::S);
+      const ccm::DirectoryEntry directory_entry =
+        p.snoop_filter()->directory_entry(addr);
+      EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::S);
+    }
+  }
 }
 
 TEST(MSI, SimpleLoadPromotion) {

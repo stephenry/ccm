@@ -222,6 +222,7 @@ public:
     : terminate_(Terminate::AfterTime), final_(time)
   {}
 
+  Terminate terminate() const { return terminate_; }
   bool has_completed(Time current) const;
   
 private:

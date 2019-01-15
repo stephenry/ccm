@@ -25,22 +25,12 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __SRC_CCM_HPP__
-#define __SRC_CCM_HPP__
-
-#include "utility.hpp"
-#include "log.hpp"
-#include "actors.hpp"
-#include "interconnect.hpp"
-#include "platform.hpp"
-#include "sim.hpp"
-#include "coherence.hpp"
-#include "agent.hpp"
-#include "snoopfilter.hpp"
-#include "cache.hpp"
-#include "msi.hpp"
-#include "mesi.hpp"
-#include "mosi.hpp"
 #include "random.hpp"
 
-#endif
+namespace ccm {
+
+std::random_device Random::rd_;
+
+std::size_t Random::seed_;
+
+} // namespace ccm
