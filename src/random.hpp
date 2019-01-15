@@ -43,6 +43,8 @@ struct Random {
       dst_ = std::uniform_int_distribution<T>(lo_, hi_);
     }
 
+    T lo() const { return lo_; }
+    T hi() const { return hi_; }
     T operator()() { return dst_(mt_); }
 
    private:
