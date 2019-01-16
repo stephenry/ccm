@@ -66,6 +66,7 @@ TEST(MSI, SimpleLoad) {
       EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::S);
     }
   }
+  EXPECT_TRUE(p.validate());
 }
 
 TEST(MSI, SimpleLoadPromotion) {
@@ -93,6 +94,8 @@ TEST(MSI, SimpleLoadPromotion) {
   const ccm::DirectoryEntry directory_entry =
       p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::M);
+
+  EXPECT_TRUE(p.validate());
 }
 
 TEST(MSI, SimpleStore) {
@@ -141,6 +144,7 @@ TEST(MSI, SimpleStore) {
       EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::M);
     }
   }
+  EXPECT_TRUE(p.validate());
 }
 
 TEST(MSI, MultipleSharers) {
@@ -173,6 +177,7 @@ TEST(MSI, MultipleSharers) {
   const ccm::DirectoryEntry directory_entry =
       p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::S);
+  EXPECT_TRUE(p.validate());
 }
 
 TEST(MSI, MultipleSharersThenPromotion) {
@@ -211,6 +216,7 @@ TEST(MSI, MultipleSharersThenPromotion) {
   const ccm::DirectoryEntry directory_entry =
       p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::M);
+  EXPECT_TRUE(p.validate());
 }
 
 int main(int argc, char** argv) {
