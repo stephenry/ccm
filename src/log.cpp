@@ -29,59 +29,56 @@
 
 namespace ccm {
 
-const char * to_string(LogLevel ll) {
+const char* to_string(LogLevel ll) {
   switch (ll) {
-#define __declare_to_string(__level)            \
-    case LogLevel::__level: return #__level; break;
-  LOGLEVELS(__declare_to_string)
+#define __declare_to_string(__level) \
+  case LogLevel::__level:            \
+    return #__level;                 \
+    break;
+    LOGLEVELS(__declare_to_string)
 #undef __declare_to_string
-  default: return "Unknown";
+    default:
+      return "Unknown";
   }
 }
 
 const char LoggerScope::SEP = '.';
 
-Logger::Logger() {
-}
+Logger::Logger() {}
 
-Logger::~Logger() {
-  os_.flush();
-}
+Logger::~Logger() { os_.flush(); }
 
-LoggerScope * Logger::top() {
-  if (!top_)
-    top_ = std::unique_ptr<LoggerScope>(new LoggerScope("t", this));
+LoggerScope* Logger::top() {
+  if (!top_) top_ = std::unique_ptr<LoggerScope>(new LoggerScope("t", this));
 
   return top_.get();
 }
 
-LoggerScope::LoggerScope (const std::string & path, Logger * logger)
-    : path_(path), logger_(logger)
-{}
-  
-LoggerScope * LoggerScope::child_scope(const std::string & leaf) {
+LoggerScope::LoggerScope(const std::string& path, Logger* logger)
+    : path_(path), logger_(logger) {}
+
+LoggerScope* LoggerScope::child_scope(const std::string& leaf) {
   if (scopes_.find(leaf) == scopes_.end()) {
     std::stringstream ss;
     ss << path() << LoggerScope::SEP << leaf;
-    scopes_[leaf] = std::unique_ptr<LoggerScope>(new LoggerScope(ss.str(), logger()));
+    scopes_[leaf] =
+        std::unique_ptr<LoggerScope>(new LoggerScope(ss.str(), logger()));
   }
   return scopes_[leaf].get();
 }
 
-void Logger::log(const LogLevel ll, const std::string & s) {
+void Logger::log(const LogLevel ll, const std::string& s) {
   os_ << s << "\n";
-  if (force_flush_)
-    os_.flush();
+  if (force_flush_) os_.flush();
 }
 
-void Logger::log(const LogLevel ll, const char * s) {
+void Logger::log(const LogLevel ll, const char* s) {
   os_ << s << "\n";
-  if (force_flush_)
-    os_.flush();
+  if (force_flush_) os_.flush();
 }
 
-void Loggable::prefix(std::ostream & os) {
+void Loggable::prefix(std::ostream& os) {
   os << "[" << scope_->path() << "@" << time() << "]: ";
 }
 
-} // namespace ccm
+}  // namespace ccm

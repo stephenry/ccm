@@ -28,13 +28,12 @@
 #ifndef __SRC_COHERENCE_HPP__
 #define __SRC_COHERENCE_HPP__
 
-#include "sim.hpp"
-#include "cache.hpp"
-#include "message.hpp"
-#include "actors.hpp"
-#include "actors.hpp"
 #include <memory>
 #include <optional>
+#include "actors.hpp"
+#include "cache.hpp"
+#include "message.hpp"
+#include "sim.hpp"
 
 namespace ccm {
 
@@ -45,63 +44,64 @@ class Platform;
 class CacheLine;
 class DirectoryEntry;
 
-enum class Protocol {
-  MSI,
-  MESI,
-  MOSI
-};
+enum class Protocol { MSI, MESI, MOSI };
 
-const char * to_string(Protocol p);
+const char* to_string(Protocol p);
 
 using state_t = uint8_t;
-  
+
 using result_t = uint8_t;
 using command_t = uint8_t;
 
 class CacheWalker {
   friend class CoherenceProtocolValidator;
-  
-  CacheWalker(CoherenceProtocolValidator * validator);
-public:
-  void add_cache_line(id_t id, addr_t addr, const CacheLine & cache_line);
-  void add_dir_line(addr_t addr, const DirectoryEntry & directory_entry);
-private:
-  CoherenceProtocolValidator * validator_;
+
+  CacheWalker(CoherenceProtocolValidator* validator);
+
+ public:
+  void add_cache_line(id_t id, addr_t addr, const CacheLine& cache_line);
+  void add_dir_line(addr_t addr, const DirectoryEntry& directory_entry);
+
+ private:
+  CoherenceProtocolValidator* validator_;
 };
 
-template<typename T> using Entry = std::tuple<id_t, const T>;
+template <typename T>
+using Entry = std::tuple<id_t, const T>;
 
 class CoherenceProtocolValidator {
   friend class CacheWalker;
-public:
+
+ public:
   CoherenceProtocolValidator();
   virtual ~CoherenceProtocolValidator() {}
-  
+
   CacheWalker get_cache_walker();
 
   bool validate() const;
   virtual bool validate_addr(addr_t addr,
-                             const std::vector<Entry<CacheLine> > & lines,
-                             const DirectoryEntry & entry) const = 0;
+                             const std::vector<Entry<CacheLine> >& lines,
+                             const DirectoryEntry& entry) const = 0;
 
-protected:
-  void add_cache_line(id_t id, addr_t addr, const CacheLine & cache_line);
-  void add_dir_line(addr_t addr, const DirectoryEntry & directory_entry);
+ protected:
+  void add_cache_line(id_t id, addr_t addr, const CacheLine& cache_line);
+  void add_dir_line(addr_t addr, const DirectoryEntry& directory_entry);
 
-  void error(const char * str) const {}
+  void error(const char* str) const {}
 
   std::map<addr_t, std::vector<Entry<CacheLine> > > cache_lines_;
   std::map<addr_t, DirectoryEntry> directory_lines_;
 };
-  
+
 struct CoherentAgentOptions : ActorOptions {
   CoherentAgentOptions(std::size_t id, Protocol protocol,
-                       CacheOptions cache_options, Platform & platform)
-    : ActorOptions(id, platform), protocol_(protocol),
-      cache_options_(cache_options)
-  {}
+                       CacheOptions cache_options, Platform& platform)
+      : ActorOptions(id, platform),
+        protocol_(protocol),
+        cache_options_(cache_options) {}
   Protocol protocol() const { return protocol_; }
   CacheOptions cache_options() const { return cache_options_; }
+
  private:
   Protocol protocol_;
   CacheOptions cache_options_;
@@ -109,17 +109,19 @@ struct CoherentAgentOptions : ActorOptions {
 
 struct SnoopFilterOptions : ActorOptions {
   SnoopFilterOptions(std::size_t id, Protocol protocol,
-                     CacheOptions cache_options, Platform & platform)
-    : ActorOptions(id, platform), protocol_(protocol),
-      cache_options_(cache_options)
-  {}
+                     CacheOptions cache_options, Platform& platform)
+      : ActorOptions(id, platform),
+        protocol_(protocol),
+        cache_options_(cache_options) {}
   Protocol protocol() const { return protocol_; }
   CacheOptions cache_options() const { return cache_options_; }
+
  private:
   Protocol protocol_;
   CacheOptions cache_options_;
 };
 
+// clang-format off
 #define AGENT_COMMANDS(__func)                  \
   __func(UpdateState)                           \
   __func(SetAckCount)                           \
@@ -128,16 +130,20 @@ struct SnoopFilterOptions : ActorOptions {
   __func(EmitDataToReq)                         \
   __func(EmitDataToDir)                         \
   __func(EmitInvAck)
+// clang-format on
 
+// clang-format off
 enum class CoherentAgentCommand : command_t {
 #define __declare_state(__state)                \
   __state,
   AGENT_COMMANDS(__declare_state)
 #undef __declare_state
 };
+// clang-format on
 
-const char * to_string(CoherentAgentCommand command);
+const char* to_string(CoherentAgentCommand command);
 
+// clang-format off
 #define SNOOP_FILTER_COMMANDS(__func)           \
   __func(UpdateState)                           \
   __func(SetOwnerToReq)                         \
@@ -156,13 +162,14 @@ const char * to_string(CoherentAgentCommand command);
   __func(SendAckCountToReq)                     \
   __func(SendFwdGetMToOwner)                    \
   __func(SendFwdGetSToOwner)
+// clang-format on
 
 enum class SnoopFilterCommand : command_t {
-#define __declare_state(__state)                \
-  __state,
-SNOOP_FILTER_COMMANDS(__declare_state)
+#define __declare_state(__state) __state,
+  SNOOP_FILTER_COMMANDS(__declare_state)
 #undef __declare_state
 };
+// clang-format off
 
 const char * to_string(SnoopFilterCommand command);
 
@@ -253,9 +260,11 @@ enum MessageResult : result_t {
   __func(ack_count, uint8_t, 0)                 \
   __func(result, result_t, 0)                   \
   __func(commands, std::vector<command_t>, {})
+// clang-format on
 
 struct CoherenceActions {
   CoherenceActions() { reset(); }
+// clang-format off
 #define __declare_getter_setter(__name, __type, __default)      \
   using __name ## _type = __type;                               \
   __type __name() const { return __name ## _; }                 \
@@ -265,169 +274,180 @@ struct CoherenceActions {
   }
   ACTION_FIELDS(__declare_getter_setter)
 #undef __declare_getter_setter
-  
-  template<typename T>
-  void append_command(const T & cmd) {
+  // clang-format on
+
+  template <typename T>
+  void append_command(const T& cmd) {
     commands_.push_back(static_cast<command_t>(cmd));
   }
-  
+
  private:
   void reset() {
+// clang-format off
 #define __declare_default(__name, __type, __default)    \
     __name ## _ = __default;
     ACTION_FIELDS(__declare_default)
 #undef __declare_default
+    // clang-format on
   }
+// clang-format off
 #define __declare_field(__name, __type, __default)      \
   __type __name ## _;
   ACTION_FIELDS(__declare_field)
 #undef __declare_field
+  // clang-format on
 };
 
 class CoherentActorBase {
  public:
-  CoherentActorBase(const ActorOptions & opts);
+  CoherentActorBase(const ActorOptions& opts);
   virtual ~CoherentActorBase() {}
-  
+
   virtual Protocol protocol() const = 0;
-private:
+
+ private:
   const ActorOptions opts_;
 };
-  
+
 class CoherentAgentModel : public CoherentActorBase {
  public:
-  CoherentAgentModel(const CoherentAgentOptions & opts);
+  CoherentAgentModel(const CoherentAgentOptions& opts);
   virtual ~CoherentAgentModel() {}
-  
-  virtual void init(CacheLine & l) const = 0;
-  virtual bool is_stable(const CacheLine & l) const = 0;
+
+  virtual void init(CacheLine& l) const = 0;
+  virtual bool is_stable(const CacheLine& l) const = 0;
   virtual std::string to_string(state_t l) const = 0;
-  
-  virtual CoherenceActions get_actions(
-      const Message * t, const CacheLine & cache_line) const = 0;
-  virtual CoherenceActions get_actions(
-      const Transaction * t, const CacheLine & cache_line) const = 0;
+
+  virtual CoherenceActions get_actions(const Message* t,
+                                       const CacheLine& cache_line) const = 0;
+  virtual CoherenceActions get_actions(const Transaction* t,
+                                       const CacheLine& cache_line) const = 0;
 };
 
 struct CoherentAgentCommandInvoker : CoherentActor {
   using ack_count_type = std::size_t;
-  
-  CoherentAgentCommandInvoker(const CoherentAgentOptions & opts);
+
+  CoherentAgentCommandInvoker(const CoherentAgentOptions& opts);
 
   CacheLine cache_line(std::size_t addr) const;
 
-  void walk_cache(CacheWalker & cache_walker) const override;
-  void execute(Context & context, Cursor & cursor,
-               const CoherenceActions & actions,
-               CacheLine & cache_line, const Transaction * t);
-  void execute(Context & context, Cursor & cursor,
-               const CoherenceActions & actions,
-               CacheLine & cache_line, const Message * msg);
+  void walk_cache(CacheWalker& cache_walker) const override;
+  void execute(Context& context, Cursor& cursor,
+               const CoherenceActions& actions, CacheLine& cache_line,
+               const Transaction* t);
+  void execute(Context& context, Cursor& cursor,
+               const CoherenceActions& actions, CacheLine& cache_line,
+               const Message* msg);
 
   // protected:
   std::unique_ptr<CoherentAgentModel> cc_model_;
   std::unique_ptr<GenericCache<CacheLine> > cache_;
+
  private:
   // Common
   //
-  void execute_update_state(
-      CacheLine & cache_line, const CoherenceActions & actions);
-  void execute_set_ack_count(
-      CacheLine & cache_line, const CoherenceActions & actions);
+  void execute_update_state(CacheLine& cache_line,
+                            const CoherenceActions& actions);
+  void execute_set_ack_count(CacheLine& cache_line,
+                             const CoherenceActions& actions);
 
   // Transaction Initiated
   //
-  void execute_emit_gets(
-      Context & context, Cursor & cursor, const Transaction * t);
-  void execute_emit_getm(
-      Context & context, Cursor & cursor, const Transaction * t);
+  void execute_emit_gets(Context& context, Cursor& cursor,
+                         const Transaction* t);
+  void execute_emit_getm(Context& context, Cursor& cursor,
+                         const Transaction* t);
 
   // Message Initiated
   //
-  void execute_emit_data_to_req(
-      Context & context, Cursor & cursor, const Message * msg);
-  void execute_emit_data_to_dir(
-      Context & context, Cursor & cursor, const Message * msg);
-  void execute_emit_inv_ack(
-      Context & context, Cursor & cursor, const Message * msg);
-  
+  void execute_emit_data_to_req(Context& context, Cursor& cursor,
+                                const Message* msg);
+  void execute_emit_data_to_dir(Context& context, Cursor& cursor,
+                                const Message* msg);
+  void execute_emit_inv_ack(Context& context, Cursor& cursor,
+                            const Message* msg);
+
   MessageDirector msgd_;
 };
 
 std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
-    const CoherentAgentOptions & opts);
+    const CoherentAgentOptions& opts);
 
 class SnoopFilterModel : public CoherentActorBase {
  public:
-  SnoopFilterModel(const SnoopFilterOptions & opts);
-  
-  virtual void init(DirectoryEntry & l) const = 0;
-  virtual bool is_stable(const DirectoryEntry & l) const = 0;
-  virtual std::string to_string(const DirectoryEntry & l) const = 0;
+  SnoopFilterModel(const SnoopFilterOptions& opts);
+
+  virtual void init(DirectoryEntry& l) const = 0;
+  virtual bool is_stable(const DirectoryEntry& l) const = 0;
+  virtual std::string to_string(const DirectoryEntry& l) const = 0;
   virtual std::string to_string(state_t l) const = 0;
-  
+
   virtual CoherenceActions get_actions(
-      const Message * t, const DirectoryEntry & dir_entry) const = 0;
+      const Message* t, const DirectoryEntry& dir_entry) const = 0;
+
  private:
   const SnoopFilterOptions opts_;
 };
 
 struct SnoopFilterCommandInvoker : CoherentActor {
-  SnoopFilterCommandInvoker(const SnoopFilterOptions & opts);
-  
+  SnoopFilterCommandInvoker(const SnoopFilterOptions& opts);
+
   DirectoryEntry directory_entry(std::size_t addr) const;
-  
-  void walk_cache(CacheWalker & cache_walker) const override;
-  void execute(
-      Context & context, Cursor & cursor, const CoherenceActions & actions,
-      const Message * msg, DirectoryEntry & d);
+
+  void walk_cache(CacheWalker& cache_walker) const override;
+  void execute(Context& context, Cursor& cursor,
+               const CoherenceActions& actions, const Message* msg,
+               DirectoryEntry& d);
   // protected:
   std::unique_ptr<SnoopFilterModel> cc_model_;
   std::unique_ptr<GenericCache<DirectoryEntry> > cache_;
-private:
-  void execute_update_state(
-      Context & context, Cursor & cursor, DirectoryEntry & d, state_t state_next);
-  void execute_set_owner_to_req(
-      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
-  void execute_send_data_to_req(
-      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d,
-      const CoherenceActions & act);
-  void execute_send_inv_to_sharers(
-      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
-  void execute_clear_sharers(
-      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
-  void execute_add_req_to_sharers(
-      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
-  void execute_del_req_from_sharers(
-      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
-  void execute_del_owner(
-      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
-  void execute_add_owner_to_sharers(
-      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
-  void execute_cpy_data_to_memory(
-      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
-  void execute_send_puts_ack_to_req(
-      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
-  void execute_send_putm_ack_to_req(
-      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d);
-  void execute_send_fwd_gets_to_owner(
-      const Message * msg, Context & context, Cursor & cursor, DirectoryEntry & d,
-      const CoherenceActions & actions);
-  void execute_send_pute_ack_to_req(
-      const Message * msg, Context & context, Cursor & cursor);
-  void execute_send_puto_ack_to_req(
-      const Message * msg, Context & context, Cursor & cursor);
-  void execute_send_ack_count_to_req(
-      const Message * msg, Context & context, Cursor & cursor,
-      const CoherenceActions & actions);
+
+ private:
+  void execute_update_state(Context& context, Cursor& cursor, DirectoryEntry& d,
+                            state_t state_next);
+  void execute_set_owner_to_req(const Message* msg, Context& context,
+                                Cursor& cursor, DirectoryEntry& d);
+  void execute_send_data_to_req(const Message* msg, Context& context,
+                                Cursor& cursor, DirectoryEntry& d,
+                                const CoherenceActions& act);
+  void execute_send_inv_to_sharers(const Message* msg, Context& context,
+                                   Cursor& cursor, DirectoryEntry& d);
+  void execute_clear_sharers(const Message* msg, Context& context,
+                             Cursor& cursor, DirectoryEntry& d);
+  void execute_add_req_to_sharers(const Message* msg, Context& context,
+                                  Cursor& cursor, DirectoryEntry& d);
+  void execute_del_req_from_sharers(const Message* msg, Context& context,
+                                    Cursor& cursor, DirectoryEntry& d);
+  void execute_del_owner(const Message* msg, Context& context, Cursor& cursor,
+                         DirectoryEntry& d);
+  void execute_add_owner_to_sharers(const Message* msg, Context& context,
+                                    Cursor& cursor, DirectoryEntry& d);
+  void execute_cpy_data_to_memory(const Message* msg, Context& context,
+                                  Cursor& cursor, DirectoryEntry& d);
+  void execute_send_puts_ack_to_req(const Message* msg, Context& context,
+                                    Cursor& cursor, DirectoryEntry& d);
+  void execute_send_putm_ack_to_req(const Message* msg, Context& context,
+                                    Cursor& cursor, DirectoryEntry& d);
+  void execute_send_fwd_gets_to_owner(const Message* msg, Context& context,
+                                      Cursor& cursor, DirectoryEntry& d,
+                                      const CoherenceActions& actions);
+  void execute_send_pute_ack_to_req(const Message* msg, Context& context,
+                                    Cursor& cursor);
+  void execute_send_puto_ack_to_req(const Message* msg, Context& context,
+                                    Cursor& cursor);
+  void execute_send_ack_count_to_req(const Message* msg, Context& context,
+                                     Cursor& cursor,
+                                     const CoherenceActions& actions);
 
   MessageDirector msgd_;
   const SnoopFilterOptions opts_;
 };
 
-std::unique_ptr<SnoopFilterModel> snoop_filter_factory(const SnoopFilterOptions & opts);
-std::unique_ptr<CoherenceProtocolValidator> validator_factory(Protocol protocol);
+std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
+    const SnoopFilterOptions& opts);
+std::unique_ptr<CoherenceProtocolValidator> validator_factory(
+    Protocol protocol);
 
-} // namespace ccm
+}  // namespace ccm
 
 #endif

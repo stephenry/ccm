@@ -28,10 +28,10 @@
 #ifndef __SRC_PLATFORM_HPP__
 #define __SRC_PLATFORM_HPP__
 
-#include "common.hpp"
-#include <set>
 #include <map>
 #include <memory>
+#include <set>
+#include "common.hpp"
 
 namespace ccm {
 
@@ -46,33 +46,30 @@ struct DefaultAddressRegion : AddressRegion {
 };
 
 struct ContiguousAddressRegion : AddressRegion {
-  ContiguousAddressRegion(addr_t lo, addr_t hi)
-    : lo_(lo), hi_(hi)
-  {}
+  ContiguousAddressRegion(addr_t lo, addr_t hi) : lo_(lo), hi_(hi) {}
 
   bool is_valid(addr_t addr) const override {
     return (addr >= lo_) && (addr < hi_);
   }
-  
-private:
+
+ private:
   addr_t lo_, hi_;
 };
 
 class Platform {
-public:
-
+ public:
   void add_agent(id_t id);
-  void add_snoop_filter(id_t id, std::shared_ptr<AddressRegion> && ar);
+  void add_snoop_filter(id_t id, std::shared_ptr<AddressRegion>&& ar);
 
   bool is_valid_agent_id(id_t id) const;
   bool is_valid_snoop_filter_id(id_t id) const;
   id_t get_snoop_filter_id(addr_t addr) const;
 
-private:
+ private:
   std::set<id_t> agent_ids_;
   std::map<id_t, std::shared_ptr<AddressRegion> > snoop_filters_;
 };
 
-} // namespace ccm
+}  // namespace ccm
 
 #endif

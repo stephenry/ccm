@@ -28,18 +28,15 @@
 #ifndef __SRC_MESSAGE_HPP__
 #define __SRC_MESSAGE_HPP__
 
-#include "utility.hpp"
-#include "actors.hpp"
 #include <string>
+#include "actors.hpp"
+#include "utility.hpp"
 
 namespace ccm {
 
 struct Transaction;
 
-#define MESSAGE_CLASSES(__func)                 \
-  __func(Request)                               \
-  __func(Response)                              \
-  __func(Data)
+#define MESSAGE_CLASSES(__func) __func(Request) __func(Response) __func(Data)
 
 enum MessageClass {
 // clang-format off
@@ -48,10 +45,10 @@ enum MessageClass {
   MESSAGE_CLASSES(__declare_class)
 #undef __declare_class
   CLASS_COUNT
-// clang-format on
+  // clang-format on
 };
 
-  // clang-format off
+// clang-format off
 #define MESSAGE_TYPES(__func)                   \
   __func(GetS, 1)                               \
   __func(GetM, 1)                               \
@@ -64,19 +61,19 @@ enum MessageClass {
   __func(Inv, 1)                                \
   __func(AckCount, 1)                           \
   __func(Data, 4)
-  // clang-format on
+// clang-format on
 
 struct MessageType {
   using base_type = std::uint8_t;
-  
+
   enum : base_type {
 #define __declare_enum(__name, __cost) __name,
     MESSAGE_TYPES(__declare_enum)
 #undef __declare_enum
-    Invalid
+        Invalid
   };
 
-  static const char * to_string(base_type b);
+  static const char *to_string(base_type b);
   static int to_cost(base_type b);
 };
 
@@ -97,11 +94,11 @@ struct Message : ccm::Poolable {
   __func(ack_count, std::size_t, 0)                             \
   __func(is_exclusive, bool, false)                             \
   __func(was_owner, bool, false)
-// clang-format on
+  // clang-format on
 
   MessageClass cls() const;
-#define __declare_getter(__name, __type, __default)     \
-  __type __name() const { return __name ## _; }
+#define __declare_getter(__name, __type, __default) \
+  __type __name() const { return __name##_; }
   MESSAGE_FIELDS(__declare_getter)
 #undef __declare_getter
 
@@ -110,53 +107,55 @@ struct Message : ccm::Poolable {
  private:
   void set_invalid();
 
-#define __declare_setter(__name, __type, __default)             \
-  void set_ ## __name(__type __name) { __name ## _ = __name; }
+#define __declare_setter(__name, __type, __default) \
+  void set_##__name(__type __name) { __name##_ = __name; }
   MESSAGE_FIELDS(__declare_setter)
 #undef __declare_setter
 
-#define __declare_field(__name, __type, __default)      \
-  __type __name ## _;
+#define __declare_field(__name, __type, __default) __type __name##_;
   MESSAGE_FIELDS(__declare_field)
 #undef __declare_field
 };
 
-std::string to_string(const Message & m);
+std::string to_string(const Message &m);
 
 class MessageBuilder {
  public:
-  MessageBuilder(Message * msg, std::size_t src_id)
+  MessageBuilder(Message *msg, std::size_t src_id)
       : msg_(msg), src_id_(src_id) {
     set_src_id();
   }
-  ~MessageBuilder() { if (msg_) msg_->release(); }
+  ~MessageBuilder() {
+    if (msg_) msg_->release();
+  }
 
-  Message * msg() {
-    Message * m{nullptr};
+  Message *msg() {
+    Message *m{nullptr};
     std::swap(m, msg_);
     return m;
   }
 
-#define __declare_setter(__name, __type, __default)     \
-  void set_ ## __name(__type __name) { msg_->set_ ## __name(__name); }
+#define __declare_setter(__name, __type, __default) \
+  void set_##__name(__type __name) { msg_->set_##__name(__name); }
   MESSAGE_FIELDS(__declare_setter)
 #undef __declare_setter
  private:
   void set_src_id() { msg_->set_src_id(src_id_); }
   std::size_t src_id_;
-  Message * msg_;
+  Message *msg_;
 };
 
 class MessageDirector {
  public:
-  MessageDirector(const ActorOptions & opts);
+  MessageDirector(const ActorOptions &opts);
   MessageBuilder builder();
+
  private:
   std::size_t src_id_;
   ccm::Pool<Message> pool_;
   const ActorOptions opts_;
 };
 
-} // namespace ccm
+}  // namespace ccm
 
 #endif

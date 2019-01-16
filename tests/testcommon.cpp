@@ -29,35 +29,29 @@
 
 namespace ccm::test {
 
-BasicPlatform::BasicPlatform(Sim & sim, Protocol protocol, std::size_t agents_n)
-  : sim_(sim), protocol_(protocol) {
+BasicPlatform::BasicPlatform(Sim& sim, Protocol protocol, std::size_t agents_n)
+    : sim_(sim), protocol_(protocol) {
   top_ = logger_.top();
 
-  for (std::size_t i = 0; i < agents_n; i++)
-    platform_.add_agent(i);
+  for (std::size_t i = 0; i < agents_n; i++) platform_.add_agent(i);
   platform_.add_snoop_filter(4, std::make_shared<DefaultAddressRegion>());
 
-  for (std::size_t i = 0; i < agents_n; i++)
-    construct_agent(i);
+  for (std::size_t i = 0; i < agents_n; i++) construct_agent(i);
   construct_snoop_filter(4);
 
   validator_ = validator_factory(protocol);
 }
-  
+
 BasicPlatform::~BasicPlatform() {
-  for (CoherentActor * actor : actors_)
-    delete actor;
-  for (TransactionSource * ts : ts_)
-    delete ts;
+  for (CoherentActor* actor : actors_) delete actor;
+  for (TransactionSource* ts : ts_) delete ts;
 }
 
 bool BasicPlatform::validate() const {
-  if (!validator_)
-    return false;
+  if (!validator_) return false;
 
   CacheWalker cache_walker = validator_->get_cache_walker();
-  for (CoherentActor * actor : actors_)
-    actor->walk_cache(cache_walker);
+  for (CoherentActor* actor : actors_) actor->walk_cache(cache_walker);
 
   return validator_->validate();
 }
@@ -65,11 +59,11 @@ bool BasicPlatform::validate() const {
 void BasicPlatform::construct_snoop_filter(std::size_t id) {
   SnoopFilterOptions opts(4, protocol(), CacheOptions(), platform_);
   opts.set_logger_scope(top_->child_scope("SnoopFilter"));
-    
+
   snoop_filter_ = new SnoopFilter(opts);
   add_actor(snoop_filter_);
 }
-  
+
 void BasicPlatform::construct_agent(std::size_t id) {
   AgentOptions opts(id, protocol(), CacheOptions(), platform_);
 
@@ -82,14 +76,14 @@ void BasicPlatform::construct_agent(std::size_t id) {
 
   ss << "Src";
   ts_.back()->set_logger_scope(top_->child_scope(ss.str()));
-  
+
   agents_.back()->set_transaction_source(ts_.back());
   add_actor(agents_.back());
 }
 
-void BasicPlatform::add_actor(CoherentActor * actor) {
+void BasicPlatform::add_actor(CoherentActor* actor) {
   actors_.push_back(actor);
   sim_.add_actor(actor);
 }
 
-} // namespace ccm::test
+}  // namespace ccm::test

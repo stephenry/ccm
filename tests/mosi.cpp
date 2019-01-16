@@ -25,8 +25,8 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "testcommon.hpp"
 #include <gtest/gtest.h>
+#include "testcommon.hpp"
 
 TEST(MOSI, SimpleLoad) {
   // Perform a single load to one agent in the system. At the end of
@@ -39,7 +39,7 @@ TEST(MOSI, SimpleLoad) {
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MOSI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Load,  100, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Load, 100, addr);
 
   s.run();
 
@@ -47,7 +47,7 @@ TEST(MOSI, SimpleLoad) {
   EXPECT_EQ(cache_line.state(), ccm::MosiAgentLineState::S);
 
   const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
+      p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MosiDirectoryLineState::S);
 }
 
@@ -64,7 +64,7 @@ TEST(MOSI, SimpleLoadPromotion) {
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MOSI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Load,  100, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Load, 100, addr);
   p.ts(0)->add_transaction(ccm::TransactionType::Store, 200, addr);
 
   s.run();
@@ -73,7 +73,7 @@ TEST(MOSI, SimpleLoadPromotion) {
   EXPECT_EQ(cache_line.state(), ccm::MosiAgentLineState::M);
 
   const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
+      p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MosiDirectoryLineState::M);
 }
 
@@ -82,7 +82,7 @@ TEST(MOSI, SimpleStore) {
   // the simulation, the line should be installed in the requester in the
   // modified state, and installed in the directory in the modified state.
   //
-  
+
   const std::size_t addr = 0;
 
   ccm::Sim s;
@@ -96,7 +96,7 @@ TEST(MOSI, SimpleStore) {
   EXPECT_EQ(cache_line.state(), ccm::MosiAgentLineState::M);
 
   const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
+      p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MosiDirectoryLineState::M);
 }
 
@@ -107,7 +107,7 @@ TEST(MOSI, MultipleSharers) {
   // should have the line in the shared state and each agent should
   // be present in the sharer set.
   //
-  
+
   const std::size_t addr = 0;
 
   ccm::Sim s;
@@ -123,12 +123,12 @@ TEST(MOSI, MultipleSharers) {
 
   for (std::size_t i = 0; i < p.agents(); i++) {
     const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
-    
+
     EXPECT_EQ(cache_line.state(), ccm::MosiAgentLineState::S);
   }
 
   const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
+      p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MosiDirectoryLineState::S);
 }
 
@@ -141,7 +141,7 @@ TEST(MOSI, MultipleSharersThenPromotion) {
   // agent is the only agent with a copy of the line (in the modified
   // state).
   //
-  
+
   const std::size_t addr = 0;
 
   ccm::Sim s;
@@ -149,7 +149,7 @@ TEST(MOSI, MultipleSharersThenPromotion) {
 
   for (std::size_t i = 0; i < p.agents(); i++) {
     const std::size_t time = (i + 1) * 1000;
-    
+
     p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
   }
   p.ts(0)->add_transaction(ccm::TransactionType::Store, 10000, addr);
@@ -159,18 +159,18 @@ TEST(MOSI, MultipleSharersThenPromotion) {
   for (std::size_t i = 0; i < p.agents(); i++) {
     const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
 
-    if (i == 0) 
+    if (i == 0)
       EXPECT_EQ(cache_line.state(), ccm::MosiAgentLineState::M);
     else
       EXPECT_EQ(cache_line.state(), ccm::MosiAgentLineState::I);
   }
 
   const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
+      p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MosiDirectoryLineState::M);
 }
 
-int main(int argc, char ** argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

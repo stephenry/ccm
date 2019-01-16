@@ -26,20 +26,26 @@
 //========================================================================== //
 
 #include "transaction.hpp"
-#include "utility.hpp"
 #include <algorithm>
+#include "utility.hpp"
 
 namespace ccm {
 
-const char * to_string(TransactionType t) {
+const char *to_string(TransactionType t) {
   switch (t) {
-    case TransactionType::Load: return "Load"; break;
-    case TransactionType::Store: return "Store"; break;
-    default: return "Unknown"; break;
+    case TransactionType::Load:
+      return "Load";
+      break;
+    case TransactionType::Store:
+      return "Store";
+      break;
+    default:
+      return "Unknown";
+      break;
   }
 }
 
-std::string to_string(const Transaction & t) {
+std::string to_string(const Transaction &t) {
   using namespace std;
 
   StructRenderer sr;
@@ -49,36 +55,40 @@ std::string to_string(const Transaction & t) {
   return sr.str();
 }
 
-const char * to_string(TransactionEvent event) {
+const char *to_string(TransactionEvent event) {
   switch (event) {
-#define __declare_string(__name)                \
-    case TransactionEvent::__name: return #__name; break;
+#define __declare_string(__name) \
+  case TransactionEvent::__name: \
+    return #__name;              \
+    break;
     TRANSACTION_EVENT(__declare_string)
 #undef __declare_string
-    default: return "Unknown"; break;
+    default:
+      return "Unknown";
+      break;
   }
 }
 
-bool NullTransactionSource::get_transaction(TimeStamped<Transaction *> & ts) {
+bool NullTransactionSource::get_transaction(TimeStamped<Transaction *> &ts) {
   return false;
 }
-  
-void ProgrammaticTransactionSource::add_transaction(
-        TransactionType type, Time time, uint64_t addr) {
-  Transaction * t = pool_.alloc();
+
+void ProgrammaticTransactionSource::add_transaction(TransactionType type,
+                                                    Time time, uint64_t addr) {
+  Transaction *t = pool_.alloc();
   t->set_type(type);
   t->set_addr(addr);
   pending_.push_back(TimeStamped<Transaction *>{time, t});
 }
 
-bool ProgrammaticTransactionSource::get_transaction(TimeStamped<Transaction *> & ts) {
-  if (pending_.size() == 0)
-    return false;
+bool ProgrammaticTransactionSource::get_transaction(
+    TimeStamped<Transaction *> &ts) {
+  if (pending_.size() == 0) return false;
 
   ts = pending_.front();
   pending_.pop_front();
-  
-  Transaction * t = ts.t();
+
+  Transaction *t = ts.t();
   t->set_tid(in_flight_.size());
   in_flight_.push_back(t);
 
@@ -87,24 +97,23 @@ bool ProgrammaticTransactionSource::get_transaction(TimeStamped<Transaction *> &
 
 void ProgrammaticTransactionSource::event(TransactionEvent event,
                                           TimeStamped<const Transaction *> ts) {
-  const Transaction * t = ts.t();
-  
-  switch (event) {
-  case TransactionEvent::Start: {
-    log_info("Transaction starts: ", t->tid());
-  } break;
-    
-  case TransactionEvent::End: {
-    log_info("Transaction ends: ", t->tid());
-  
-    auto it = std::find(in_flight_.begin(), in_flight_.end(), t);
-    if (it != in_flight_.end()) {
-      (*it)->release();
-      in_flight_.erase(it);
-    }
-  } break;
+  const Transaction *t = ts.t();
 
+  switch (event) {
+    case TransactionEvent::Start: {
+      log_info("Transaction starts: ", t->tid());
+    } break;
+
+    case TransactionEvent::End: {
+      log_info("Transaction ends: ", t->tid());
+
+      auto it = std::find(in_flight_.begin(), in_flight_.end(), t);
+      if (it != in_flight_.end()) {
+        (*it)->release();
+        in_flight_.erase(it);
+      }
+    } break;
   }
 }
 
-} // namespace ccm
+}  // namespace ccm

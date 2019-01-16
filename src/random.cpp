@@ -33,4 +33,4 @@ std::random_device Random::rd_;
 
 std::size_t Random::seed_;
 
-} // namespace ccm
+}  // namespace ccm

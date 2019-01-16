@@ -28,9 +28,9 @@
 #ifndef __SRC_SIM_HPP__
 #define __SRC_SIM_HPP__
 
-#include "utility.hpp"
-#include <vector>
 #include <map>
+#include <vector>
+#include "utility.hpp"
 
 namespace ccm {
 
@@ -38,26 +38,24 @@ class Message;
 class Transaction;
 class CoherentActor;
 class CoherenceProtocolValidator;
-  
+
 using Time = unsigned long long;
 
-std::string to_string(const Time & t);
+std::string to_string(const Time &t);
 
 class Cursor {
   friend class Epoch;
 
-  Cursor(Time time, Time step)
-    : time_(time), step_(step)
-  {}
+  Cursor(Time time, Time step) : time_(time), step_(step) {}
 
-public:
+ public:
   void set_time(Time time) { time_ = time; }
   void advance(std::size_t steps);
 
   Time time() const { return time_; }
   Time step() const { return step_; }
-  
-private:
+
+ private:
   Time time_, step_;
 };
 
@@ -76,29 +74,30 @@ struct Epoch {
   Time duration() const { return duration_; }
   Time step() const { return step_; }
 
-private:
+ private:
   Time start_, duration_, step_, cursor_;
 };
 
-std::string to_string(const Epoch & epoch);
+std::string to_string(const Epoch &epoch);
 
-template<typename T>
+template <typename T>
 class TimeStamped {
-public:
+ public:
   TimeStamped() {}
-  TimeStamped(Time time, const T & t) : t_(t), time_(time) {}
-  
+  TimeStamped(Time time, const T &t) : t_(t), time_(time) {}
+
   Time time() const { return time_; }
   T t() const { return t_; }
 
   void set_time(Time time) { time_ = time; }
-private:
+
+ private:
   Time time_;
   T t_;
 };
 
-template<typename T>
-std::string to_string(const TimeStamped<T> & ts) {
+template <typename T>
+std::string to_string(const TimeStamped<T> &ts) {
   using namespace std;
 
   StructRenderer sr;
@@ -107,29 +106,29 @@ std::string to_string(const TimeStamped<T> & ts) {
   return sr.str();
 }
 
-template<typename T>
-bool operator<(const TimeStamped<T> & lhs, const TimeStamped<T> & rhs) {
+template <typename T>
+bool operator<(const TimeStamped<T> &lhs, const TimeStamped<T> &rhs) {
   return (lhs.time() < lhs.time());
 }
 
-template<typename T>
-bool operator>(const TimeStamped<T> & lhs, const TimeStamped<T> & rhs) {
+template <typename T>
+bool operator>(const TimeStamped<T> &lhs, const TimeStamped<T> &rhs) {
   return (lhs.time() > lhs.time());
 }
 
 enum class QueueEntryType { Message, Transaction, Invalid };
 
 using message_queue_type = MinHeap<TimeStamped<Message *> >;
-  
+
 using transaction_queue_type = MinHeap<TimeStamped<Transaction *> >;
 
-template<typename T>
+template <typename T>
 class AdmissionControl {
-public:
+ public:
   AdmissionControl() {}
   virtual ~AdmissionControl() {}
 
-  virtual bool can_be_issued(const T * t) const = 0;
+  virtual bool can_be_issued(const T *t) const = 0;
 };
 
 using MessageAdmissionControl = AdmissionControl<Message>;
@@ -137,42 +136,42 @@ using TransactionAdmissionControl = AdmissionControl<Transaction>;
 
 struct QueueEntry {
   QueueEntry();
-  QueueEntry(message_queue_type * msgq);
-  QueueEntry(transaction_queue_type * trnq);
+  QueueEntry(message_queue_type *msgq);
+  QueueEntry(transaction_queue_type *trnq);
 
   QueueEntryType type() const { return type_; }
   Time time() const;
-  
+
   typename message_queue_type::value_type as_msg() const;
   typename transaction_queue_type::value_type as_trn() const;
 
   void consume() const;
 
-private:
+ private:
   QueueEntryType type_;
-  
+
   union {
-    message_queue_type * msgq_;
-    transaction_queue_type * trnq_;
+    message_queue_type *msgq_;
+    transaction_queue_type *trnq_;
   };
 };
-std::string to_string(const QueueEntry & eq);
+std::string to_string(const QueueEntry &eq);
 
-bool operator<(const QueueEntry & lhs, const QueueEntry & rhs);
-bool operator>(const QueueEntry & lhs, const QueueEntry & rhs);
+bool operator<(const QueueEntry &lhs, const QueueEntry &rhs);
+bool operator>(const QueueEntry &lhs, const QueueEntry &rhs);
 
 class QueueManager {
-public:
+ public:
   QueueManager();
 
   bool empty() const;
   bool pending_transactions() const { return !transactions_.empty(); }
 
-  void set_ac(std::unique_ptr<MessageAdmissionControl> && mac) {
+  void set_ac(std::unique_ptr<MessageAdmissionControl> &&mac) {
     mac_ = std::move(mac);
   }
 
-  void set_ac(std::unique_ptr<TransactionAdmissionControl> && tac) {
+  void set_ac(std::unique_ptr<TransactionAdmissionControl> &&tac) {
     tac_ = std::move(tac);
   }
 
@@ -181,7 +180,7 @@ public:
 
   QueueEntry next();
 
-private:
+ private:
   //
   std::vector<message_queue_type> messages_;
   transaction_queue_type transactions_;
@@ -190,43 +189,32 @@ private:
   std::unique_ptr<MessageAdmissionControl> mac_;
   std::unique_ptr<TransactionAdmissionControl> tac_;
 };
-  
+
 struct Context {
   friend class ExecutionContext;
 
-  Context(const Epoch & epoch)
-    : epoch_(epoch)
-  {}
+  Context(const Epoch &epoch) : epoch_(epoch) {}
 
   Epoch epoch() const { return epoch_; }
   void emit_message(TimeStamped<Message *> msg);
 
-  //private:
+  // private:
   std::vector<TimeStamped<Message *> > msgs_;
   Epoch epoch_;
 };
 
 class RunOptions {
+  enum class Terminate { OnExhaustion, AfterTime };
 
-  enum class Terminate {
-    OnExhaustion,
-    AfterTime
-  };
+ public:
+  RunOptions() : terminate_(Terminate::OnExhaustion) {}
 
-public:
-
-  RunOptions()
-    : terminate_(Terminate::OnExhaustion)
-  {}
-
-  RunOptions(Time time)
-    : terminate_(Terminate::AfterTime), final_(time)
-  {}
+  RunOptions(Time time) : terminate_(Terminate::AfterTime), final_(time) {}
 
   Terminate terminate() const { return terminate_; }
   bool has_completed(Time current) const;
-  
-private:
+
+ private:
   Terminate terminate_;
   Time final_;
 };
@@ -234,20 +222,20 @@ private:
 struct Sim {
   Sim() : time_(0) {}
 
-  void add_actor(CoherentActor * a);
+  void add_actor(CoherentActor *a);
 
-  void run(const RunOptions & run_options = RunOptions{});
+  void run(const RunOptions &run_options = RunOptions{});
 
  private:
   void set_time(Time time) { time_ = time; }
   Time time() const { return time_; }
-  
+
   bool has_active_actors() const;
 
   Time time_;
   std::map<std::size_t, CoherentActor *> actors_;
 };
 
-} // namespace ccm
+}  // namespace ccm
 
 #endif

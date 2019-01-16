@@ -25,8 +25,8 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "testcommon.hpp"
 #include <gtest/gtest.h>
+#include "testcommon.hpp"
 
 TEST(MESI, SimpleLoad) {
   // Perform a single load to one agent in the system. At the end of
@@ -34,7 +34,7 @@ TEST(MESI, SimpleLoad) {
   // the shared state, and installed in the directory in the shared
   // state.
   //
-  
+
   const std::size_t addr = 0;
 
   ccm::Sim s;
@@ -48,7 +48,7 @@ TEST(MESI, SimpleLoad) {
   EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::E);
 
   const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
+      p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::E);
 }
 
@@ -60,13 +60,13 @@ TEST(MESI, SimpleLoadPromotion) {
   // state. As no other agents hold the line, no invalidation requests
   // should be passed to any other agent.
   //
-  
+
   const std::size_t addr = 0;
 
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Load,  1000, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Load, 1000, addr);
   p.ts(0)->add_transaction(ccm::TransactionType::Store, 2000, addr);
 
   s.run();
@@ -75,7 +75,7 @@ TEST(MESI, SimpleLoadPromotion) {
   EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::M);
 
   const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
+      p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::E);
 }
 
@@ -84,13 +84,13 @@ TEST(MESI, SimpleStore) {
   // the simulation, the line should be installed in the requester in the
   // modified state, and installed in the directory in the modified state.
   //
-  
+
   const std::size_t addr = 0;
 
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Store,  100, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 100, addr);
 
   s.run();
 
@@ -98,7 +98,7 @@ TEST(MESI, SimpleStore) {
   EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::M);
 
   const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
+      p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::M);
 }
 
@@ -109,7 +109,7 @@ TEST(MESI, MultipleSharers) {
   // should have the line in the shared state and each agent should
   // be present in the sharer set.
   //
-  
+
   const std::size_t addr = 0;
 
   ccm::Sim s;
@@ -125,12 +125,12 @@ TEST(MESI, MultipleSharers) {
 
   for (std::size_t i = 0; i < p.agents(); i++) {
     const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
-    
+
     EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::S);
   }
 
   const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
+      p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::S);
 }
 
@@ -143,7 +143,7 @@ TEST(MESI, MultipleSharersThenPromotion) {
   // agent is the only agent with a copy of the line (in the modified
   // state).
   //
-  
+
   const std::size_t addr = 0;
 
   ccm::Sim s;
@@ -151,7 +151,7 @@ TEST(MESI, MultipleSharersThenPromotion) {
 
   for (std::size_t i = 0; i < p.agents(); i++) {
     const std::size_t time = (i + 1) * 1000;
-    
+
     p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
   }
   p.ts(0)->add_transaction(ccm::TransactionType::Store, 10000, addr);
@@ -161,18 +161,18 @@ TEST(MESI, MultipleSharersThenPromotion) {
   for (std::size_t i = 0; i < p.agents(); i++) {
     const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
 
-    if (i == 0) 
+    if (i == 0)
       EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::M);
     else
       EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::I);
   }
 
   const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
+      p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::M);
 }
 
-int main(int argc, char ** argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

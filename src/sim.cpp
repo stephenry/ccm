@@ -26,37 +26,30 @@
 //========================================================================== //
 
 #include "sim.hpp"
-#include "message.hpp"
-#include "interconnect.hpp"
 #include "coherence.hpp"
+#include "interconnect.hpp"
+#include "message.hpp"
 
 namespace ccm {
 
-std::string to_string(const Time & t) {
+std::string to_string(const Time &t) {
   std::stringstream ss;
   ss << static_cast<unsigned>(t);
   return ss.str();
 }
 
-void Cursor::advance(std::size_t steps) {
-  set_time(time() + (step() * steps));
-}
+void Cursor::advance(std::size_t steps) { set_time(time() + (step() * steps)); }
 
 Epoch::Epoch(Time start, Time duration, Time step)
-  : start_(start), duration_(duration), step_(step), cursor_(start)
-{}
+    : start_(start), duration_(duration), step_(step), cursor_(start) {}
 
-bool Epoch::in_interval(Time t) const {
-  return (t < end());
-}
+bool Epoch::in_interval(Time t) const { return (t < end()); }
 
-Epoch Epoch::advance() const {
-  return Epoch{end(), duration(), step()};
-}
+Epoch Epoch::advance() const { return Epoch{end(), duration(), step()}; }
 
-std::string to_string(const Epoch & epoch) {
+std::string to_string(const Epoch &epoch) {
   using namespace std;
-  
+
   StructRenderer sr;
   sr.add("start", to_string(epoch.start()));
   sr.add("end", to_string(epoch.end()));
@@ -64,67 +57,63 @@ std::string to_string(const Epoch & epoch) {
   return sr.str();
 }
 
-QueueEntry::QueueEntry()
-  : type_(QueueEntryType::Invalid)
-{}
-  
-QueueEntry::QueueEntry(message_queue_type * msgq)
-  : type_(QueueEntryType::Message), msgq_(msgq)
-{}
+QueueEntry::QueueEntry() : type_(QueueEntryType::Invalid) {}
 
-QueueEntry::QueueEntry(transaction_queue_type * trnq)
-  : type_(QueueEntryType::Transaction), trnq_(trnq)
-{}
+QueueEntry::QueueEntry(message_queue_type *msgq)
+    : type_(QueueEntryType::Message), msgq_(msgq) {}
 
-std::string to_string(const QueueEntry & eq) {
+QueueEntry::QueueEntry(transaction_queue_type *trnq)
+    : type_(QueueEntryType::Transaction), trnq_(trnq) {}
+
+std::string to_string(const QueueEntry &eq) {
   using namespace std;
-  
+
   StructRenderer sr;
-  sr.add("type", (eq.type() == QueueEntryType::Message)
-          ? "Message" : "Transaction");
+  sr.add("type",
+         (eq.type() == QueueEntryType::Message) ? "Message" : "Transaction");
   sr.add("time", to_string(eq.time()));
   switch (eq.type()) {
-  case QueueEntryType::Message:
-    sr.add("msg", to_string(eq.as_msg()));
-    break;
+    case QueueEntryType::Message:
+      sr.add("msg", to_string(eq.as_msg()));
+      break;
 
-  case QueueEntryType::Transaction:
-    sr.add("msg", to_string(eq.as_trn()));
-    break;
+    case QueueEntryType::Transaction:
+      sr.add("msg", to_string(eq.as_trn()));
+      break;
 
-  default:;
+    default:;
   }
   return sr.str();
 }
 
-bool operator<(const QueueEntry & lhs, const QueueEntry & rhs) {
+bool operator<(const QueueEntry &lhs, const QueueEntry &rhs) {
   return lhs.time() < rhs.time();
 }
 
-bool operator>(const QueueEntry & lhs, const QueueEntry & rhs) {
+bool operator>(const QueueEntry &lhs, const QueueEntry &rhs) {
   return lhs.time() > rhs.time();
 }
 
 Time QueueEntry::time() const {
   Time ret{0};
   switch (type_) {
-  case QueueEntryType::Message: {
-    typename message_queue_type::value_type ts = msgq_->top();
-    ret = ts.time();
-  } break;
+    case QueueEntryType::Message: {
+      typename message_queue_type::value_type ts = msgq_->top();
+      ret = ts.time();
+    } break;
 
-  case QueueEntryType::Transaction: {
-    typename transaction_queue_type::value_type ts = trnq_->top();
-    ret = ts.time();
-  } break;
+    case QueueEntryType::Transaction: {
+      typename transaction_queue_type::value_type ts = trnq_->top();
+      ret = ts.time();
+    } break;
 
-  default:
-    // TODO: Error
-    ;
+    default:
+        // TODO: Error
+        ;
   }
   return ret;
 }
-  
+
 typename message_queue_type::value_type QueueEntry::as_msg() const {
   return msgq_->top();
 }
@@ -133,25 +122,21 @@ typename transaction_queue_type::value_type QueueEntry::as_trn() const {
   return trnq_->top();
 }
 
-QueueManager::QueueManager() {
-  messages_.resize(CLASS_COUNT);
-}
+QueueManager::QueueManager() { messages_.resize(CLASS_COUNT); }
 
 bool QueueManager::empty() const {
-  if (!transactions_.empty())
-    return false;
-  
+  if (!transactions_.empty()) return false;
+
   for (std::size_t i = 0; i < CLASS_COUNT; i++)
-    if (!messages_[i].empty())
-      return false;
-  
+    if (!messages_[i].empty()) return false;
+
   return true;
 }
 
 void QueueManager::push(TimeStamped<Message *> ts) {
   messages_[ts.t()->cls()].push(ts);
 }
-  
+
 void QueueManager::push(TimeStamped<Transaction *> ts) {
   transactions_.push(ts);
 }
@@ -160,14 +145,14 @@ QueueEntry QueueManager::next() {
   MinHeap<QueueEntry> pq;
 
   if (!transactions_.empty()) {
-    const Transaction * trn = transactions_.top().t();
+    const Transaction *trn = transactions_.top().t();
     if (!tac_ || tac_->can_be_issued(trn))
       pq.push(QueueEntry{std::addressof(transactions_)});
   }
 
   for (std::size_t i = 0; i < CLASS_COUNT; i++) {
     if (!messages_[i].empty()) {
-      const Message * msg = messages_[i].top().t();
+      const Message *msg = messages_[i].top().t();
       if (!mac_ || mac_->can_be_issued(msg))
         pq.push(QueueEntry{std::addressof(messages_[i])});
     }
@@ -177,15 +162,17 @@ QueueEntry QueueManager::next() {
 
 void QueueEntry::consume() const {
   switch (type()) {
-  case QueueEntryType::Message: msgq_->pop(); break;
-  case QueueEntryType::Transaction: trnq_->pop(); break;
-  default: ;
+    case QueueEntryType::Message:
+      msgq_->pop();
+      break;
+    case QueueEntryType::Transaction:
+      trnq_->pop();
+      break;
+    default:;
   }
 }
 
-void Context::emit_message(TimeStamped<Message *> msg) {
-  msgs_.push_back(msg);
-}
+void Context::emit_message(TimeStamped<Message *> msg) { msgs_.push_back(msg); }
 
 bool RunOptions::has_completed(Time current) const {
   bool ret{false};
@@ -203,26 +190,24 @@ bool RunOptions::has_completed(Time current) const {
   return ret;
 }
 
-void Sim::add_actor(CoherentActor * a) {
+void Sim::add_actor(CoherentActor *a) {
   actors_.insert(std::make_pair(a->id(), a));
 }
 
-void Sim::run(const RunOptions & run_options) {
+void Sim::run(const RunOptions &run_options) {
   FixedLatencyInterconnectModel interconnect_model{10};
 
   Epoch current_epoch{0, 20, 10};
   do {
-    if (run_options.has_completed(current_epoch.start()))
-      break;
-    
+    if (run_options.has_completed(current_epoch.start())) break;
+
     Context ctxt{current_epoch};
-    for (auto [t, actor] : actors_)
-      actor->eval(ctxt);
+    for (auto [t, actor] : actors_) actor->eval(ctxt);
 
     for (TimeStamped<Message *> ts : ctxt.msgs_) {
       interconnect_model.apply(ts);
-        
-      const Message * msg = ts.t();
+
+      const Message *msg = ts.t();
       actors_[msg->dst_id()]->apply(ts);
     }
     current_epoch = current_epoch.advance();
@@ -231,10 +216,9 @@ void Sim::run(const RunOptions & run_options) {
 
 bool Sim::has_active_actors() const {
   for (auto [t, actor] : actors_) {
-    if (actor->is_active())
-      return true;
+    if (actor->is_active()) return true;
   }
   return false;
 }
 
-} // namespace ccm
+}  // namespace ccm

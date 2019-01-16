@@ -28,13 +28,13 @@
 #ifndef __SRC_UTILITY_HPP__
 #define __SRC_UTILITY_HPP__
 
-#include <vector>
-#include <string>
-#include <cmath>
-#include <sstream>
-#include <memory>
 #include <algorithm>
+#include <cmath>
+#include <memory>
 #include <queue>
+#include <sstream>
+#include <string>
+#include <vector>
 
 namespace ccm {
 
@@ -42,34 +42,34 @@ class PoolBase;
 
 class Poolable {
   friend class PoolBase;
+
  public:
   virtual void reset() = 0;
   virtual void release() const;
-  virtual ~Poolable() {};
+  virtual ~Poolable(){};
   //  private:
-  void set_parent (PoolBase * parent) { parent_ = parent; }
-  PoolBase * parent_;
+  void set_parent(PoolBase *parent) { parent_ = parent; }
+  PoolBase *parent_;
 };
 
 class PoolBase {
   friend class Poolable;
+
  public:
-  virtual void release(const Poolable * p) = 0;
+  virtual void release(const Poolable *p) = 0;
 };
 
-template<typename T>
+template <typename T>
 class Pool : public PoolBase {
  public:
-  Pool(std::size_t n = 1, std::size_t m = 16) : m_(m) {
-    construct_n(n);
-  }
-  T * alloc() {
-    if (fl_.size() == 0)
-      construct_n(m_);
-    T * t = fl_.back();
+  Pool(std::size_t n = 1, std::size_t m = 16) : m_(m) { construct_n(n); }
+  T *alloc() {
+    if (fl_.size() == 0) construct_n(m_);
+    T *t = fl_.back();
     fl_.pop_back();
     return t;
   }
+
  private:
   void construct_n(std::size_t n) {
     while (n--) {
@@ -79,9 +79,9 @@ class Pool : public PoolBase {
       ts_.push_back(std::move(t));
     }
   }
-  void release(const Poolable * p) override {
-    Poolable * nc_p = const_cast<Poolable *>(p);
-    
+  void release(const Poolable *p) override {
+    Poolable *nc_p = const_cast<Poolable *>(p);
+
     nc_p->reset();
     fl_.push_back(static_cast<T *>(nc_p));
   };
@@ -90,41 +90,43 @@ class Pool : public PoolBase {
   std::vector<T *> fl_;
 };
 
-template<typename T>
+template <typename T>
 using MinHeap = std::priority_queue<T, std::vector<T>, std::greater<T>>;
 
-template<typename T>
+template <typename T>
 using MaxHeap = std::priority_queue<T>;
 
 namespace detail {
 
-template<typename ARG>
-std::ostream & join_helper(std::ostream & os, ARG && arg) {
+template <typename ARG>
+std::ostream &join_helper(std::ostream &os, ARG &&arg) {
   return (os << arg);
 }
 
-template<typename ARG, typename ... REST>
-std::ostream & join_helper(std::ostream & os, ARG && arg, REST && ... rest) {
+template <typename ARG, typename... REST>
+std::ostream &join_helper(std::ostream &os, ARG &&arg, REST &&... rest) {
   return join_helper(os << arg, std::forward<REST>(rest)...);
 }
 
-} // namespace detail
+}  // namespace detail
 
-template<typename ...ARGS>
-std::string join(ARGS && ... args) {
+template <typename... ARGS>
+std::string join(ARGS &&... args) {
   std::stringstream ss;
   detail::join_helper(ss, std::forward<ARGS>(args)...);
   return ss.str();
 }
 
-template<typename FwdIt>
-std::string join(FwdIt begin, FwdIt end, const char * SEP = ", ") {
+template <typename FwdIt>
+std::string join(FwdIt begin, FwdIt end, const char *SEP = ", ") {
   std::stringstream ss;
   if (begin != end) {
-    ss << *begin; ++begin;
+    ss << *begin;
+    ++begin;
 
     while (begin != end) {
-      ss << SEP << *begin; ++begin;
+      ss << SEP << *begin;
+      ++begin;
     }
   }
   return ss.str();
@@ -134,7 +136,7 @@ class StructRenderer {
  public:
   StructRenderer() {}
 
-  void add(const std::string & k, const std::string & v) {
+  void add(const std::string &k, const std::string &v) {
     vs_.push_back(join(k, v));
   }
 
@@ -143,23 +145,25 @@ class StructRenderer {
     ss << "'{" << ::ccm::join(vs_.begin(), vs_.end()) << "}";
     return ss.str();
   }
+
  private:
-  std::string join(const std::string & k, const std::string & v) const {
+  std::string join(const std::string &k, const std::string &v) const {
     return k + ":" + v;
   }
-  
+
   std::vector<std::string> vs_;
 };
 
-template<typename T>
+template <typename T>
 T log2ceil(T t) {
   return static_cast<T>(std::ceil(std::log2(t)));
 }
 
-template<typename T, typename = std::is_integral<T> >
-T mask(T t) { return (1 << t) - 1; }
+template <typename T, typename = std::is_integral<T>>
+T mask(T t) {
+  return (1 << t) - 1;
+}
 
-} // namespace ccm
+}  // namespace ccm
 
 #endif
-

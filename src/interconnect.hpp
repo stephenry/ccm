@@ -28,8 +28,8 @@
 #ifndef __SRC_INTERCONNECT_HPP__
 #define __SRC_INTERCONNECT_HPP__
 
-#include "utility.hpp"
 #include "sim.hpp"
+#include "utility.hpp"
 
 namespace ccm {
 
@@ -39,17 +39,17 @@ class Message;
 struct InterconnectModel {
   InterconnectModel() {}
   virtual ~InterconnectModel() {}
-  
-  void apply(TimeStamped<Message *> & ts);
+
+  void apply(TimeStamped<Message *> &ts);
+
  private:
   virtual std::size_t cost(std::size_t src_id, std::size_t dst_id) = 0;
-  void update_time(TimeStamped<Message *> & ts);
+  void update_time(TimeStamped<Message *> &ts);
 };
 
 struct FixedLatencyInterconnectModel : InterconnectModel {
-  FixedLatencyInterconnectModel(std::size_t latency)
-      : latency_(latency)
-  {}
+  FixedLatencyInterconnectModel(std::size_t latency) : latency_(latency) {}
+
  private:
   std::size_t cost(std::size_t src_id, std::size_t dst_id) override {
     return latency_;
@@ -57,6 +57,6 @@ struct FixedLatencyInterconnectModel : InterconnectModel {
   std::size_t latency_;
 };
 
-} // namespace ccm
+}  // namespace ccm
 
 #endif

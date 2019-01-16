@@ -25,8 +25,8 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "testcommon.hpp"
 #include <gtest/gtest.h>
+#include "testcommon.hpp"
 
 TEST(MSI, SimpleLoad) {
   using rnd = ccm::Random;
@@ -62,7 +62,7 @@ TEST(MSI, SimpleLoad) {
       EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::S);
 
       const ccm::DirectoryEntry directory_entry =
-        p.snoop_filter()->directory_entry(addr);
+          p.snoop_filter()->directory_entry(addr);
       EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::S);
     }
   }
@@ -76,13 +76,13 @@ TEST(MSI, SimpleLoadPromotion) {
   // state. As no other agents hold the line, no invalidation requests
   // should be passed to any other agent.
   //
-  
+
   const std::size_t addr = 0;
 
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Load,  100, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Load, 100, addr);
   p.ts(0)->add_transaction(ccm::TransactionType::Store, 200, addr);
 
   s.run();
@@ -91,7 +91,7 @@ TEST(MSI, SimpleLoadPromotion) {
   EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::M);
 
   const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
+      p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::M);
 }
 
@@ -122,8 +122,7 @@ TEST(MSI, SimpleStore) {
     // must be disjoint (we do not specifically wish to consider
     // forwarding in this case).
     //
-    if (addrs.find(addr) != addrs.end())
-      continue;
+    if (addrs.find(addr) != addrs.end()) continue;
 
     addrs.insert(addr);
     addrs_id[id].insert(addr);
@@ -134,12 +133,11 @@ TEST(MSI, SimpleStore) {
 
   for (ccm::id_t id = 0; id < addrs_id.size(); id++) {
     for (const ccm::addr_t addr : addrs_id[id]) {
-
       const ccm::CacheLine cache_line = p.agent(id)->cache_line(addr);
       EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::M);
 
       const ccm::DirectoryEntry directory_entry =
-        p.snoop_filter()->directory_entry(addr);
+          p.snoop_filter()->directory_entry(addr);
       EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::M);
     }
   }
@@ -152,7 +150,7 @@ TEST(MSI, MultipleSharers) {
   // should have the line in the shared state and each agent should
   // be present in the sharer set.
   //
-  
+
   const std::size_t addr = 0;
 
   ccm::Sim s;
@@ -168,12 +166,12 @@ TEST(MSI, MultipleSharers) {
 
   for (std::size_t i = 0; i < p.agents(); i++) {
     const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
-    
+
     EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::S);
   }
 
   const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
+      p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::S);
 }
 
@@ -186,7 +184,7 @@ TEST(MSI, MultipleSharersThenPromotion) {
   // agent is the only agent with a copy of the line (in the modified
   // state).
   //
-  
+
   const std::size_t addr = 0;
 
   ccm::Sim s;
@@ -194,7 +192,7 @@ TEST(MSI, MultipleSharersThenPromotion) {
 
   for (std::size_t i = 0; i < p.agents(); i++) {
     const std::size_t time = (i + 1) * 1000;
-    
+
     p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
   }
   p.ts(0)->add_transaction(ccm::TransactionType::Store, 10000, addr);
@@ -204,18 +202,18 @@ TEST(MSI, MultipleSharersThenPromotion) {
   for (std::size_t i = 0; i < p.agents(); i++) {
     const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
 
-    if (i == 0) 
+    if (i == 0)
       EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::M);
     else
       EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::I);
   }
 
   const ccm::DirectoryEntry directory_entry =
-    p.snoop_filter()->directory_entry(addr);
+      p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MsiDirectoryLineState::M);
 }
 
-int main(int argc, char ** argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

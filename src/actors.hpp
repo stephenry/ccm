@@ -28,11 +28,11 @@
 #ifndef __SRC_ACTORS_HPP__
 #define __SRC_ACTORS_HPP__
 
-#include "log.hpp"
-#include "transaction.hpp"
 #include "cache.hpp"
-#include "sim.hpp"
+#include "log.hpp"
 #include "platform.hpp"
+#include "sim.hpp"
+#include "transaction.hpp"
 
 namespace ccm {
 
@@ -44,45 +44,44 @@ class MessageBuilder;
 class CacheWalker;
 
 struct ActorOptions {
-  ActorOptions(id_t id, Platform platform)
-    : id_(id), platform_(platform)
-  {}
+  ActorOptions(id_t id, Platform platform) : id_(id), platform_(platform) {}
   id_t id() const { return id_; }
-  LoggerScope * logger_scope() const { return logger_scope_; }
+  LoggerScope *logger_scope() const { return logger_scope_; }
   Platform platform() const { return platform_; }
 
-  void set_logger_scope(LoggerScope * logger_scope) {
+  void set_logger_scope(LoggerScope *logger_scope) {
     logger_scope_ = logger_scope;
   }
+
  private:
   id_t id_;
   CacheOptions cache_options_;
-  LoggerScope * logger_scope_;
+  LoggerScope *logger_scope_;
   Platform platform_;
 };
 
 struct CoherentActor : Loggable {
-  CoherentActor(const ActorOptions & opts)
-      : opts_(opts), time_(0)
-  {}
+  CoherentActor(const ActorOptions &opts) : opts_(opts), time_(0) {}
   virtual ~CoherentActor() {}
 
   Time time() const override { return time_; }
   id_t id() const { return opts_.id(); }
 
   virtual void apply(TimeStamped<Message *> ts) = 0;
-  virtual void eval(Context & ctxt) = 0;
+  virtual void eval(Context &ctxt) = 0;
   virtual bool is_active() const = 0;
-  virtual void walk_cache(CacheWalker & cache_walker) const = 0;
+  virtual void walk_cache(CacheWalker &cache_walker) const = 0;
 
   void set_time(Time time) { time_ = time; }
-  void emit_message(Context & context, Cursor & cursor, MessageBuilder & b);
-protected:
+  void emit_message(Context &context, Cursor &cursor, MessageBuilder &b);
+
+ protected:
   const ActorOptions opts_;
-private:
+
+ private:
   Time time_;
 };
 
-} // namespace ccm
+}  // namespace ccm
 
 #endif

@@ -34,15 +34,17 @@
 namespace ccm {
 
 #define CCM_MACRO_BEGIN do {
-#define CCM_MACRO_END   } while (false)
+#define CCM_MACRO_END \
+  }                   \
+  while (false)
 
-#define CCM_ASSERT(__cond)                                      \
-  CCM_MACRO_BEGIN                                               \
-  if (!(__cond)) {                                              \
-    std::cout << __FILE__ << ":" << __LINE__                    \
-              << " assertion failed: " << #__cond << "\n";      \
-    std::exit(1);                                               \
-  }                                                             \
+#define CCM_ASSERT(__cond)                                 \
+  CCM_MACRO_BEGIN                                          \
+  if (!(__cond)) {                                         \
+    std::cout << __FILE__ << ":" << __LINE__               \
+              << " assertion failed: " << #__cond << "\n"; \
+    std::exit(1);                                          \
+  }                                                        \
   CCM_MACRO_END
 
 #define CCM_AGENT_ASSERT(__cond)                                        \
@@ -52,7 +54,7 @@ namespace ccm {
   CCM_MACRO_END
 
 using addr_t = std::size_t;
-  
-} // namespace ccm
+
+}  // namespace ccm
 
 #endif

@@ -28,49 +28,40 @@
 #ifndef __SRC_TRANSACTION_HPP__
 #define __SRC_TRANSACTION_HPP__
 
-#include "utility.hpp"
+#include <deque>
+#include <list>
+#include <string>
 #include "log.hpp"
 #include "sim.hpp"
-#include <deque>
-#include <string>
-#include <list>
+#include "utility.hpp"
 
 namespace ccm {
 
-enum class TransactionType {
-  Load,
-  Store,
-  Replacement,
-  Invalid
-};
+enum class TransactionType { Load, Store, Replacement, Invalid };
 
-const char * to_string(TransactionType t);
+const char *to_string(TransactionType t);
 
-#define TRANSACTION_EVENT(__func)               \
-  __func(Start)                                 \
-  __func(End)
+#define TRANSACTION_EVENT(__func) __func(Start) __func(End)
 
 enum class TransactionEvent {
 #define __declare_event(__name) __name,
-    TRANSACTION_EVENT(__declare_event)
+  TRANSACTION_EVENT(__declare_event)
 #undef __declare_event
 };
-  
-const char * to_string(TransactionEvent event);
-  
-#define TRANSACTION_FIELDS(__func)                              \
-  __func(TransactionType, type, TransactionType::Invalid)       \
-  __func(uint64_t, addr, 0)                                     \
-  __func(std::size_t, tid, 0)
-  
-  
+
+const char *to_string(TransactionEvent event);
+
+#define TRANSACTION_FIELDS(__func)                        \
+  __func(TransactionType, type, TransactionType::Invalid) \
+      __func(uint64_t, addr, 0) __func(std::size_t, tid, 0)
+
 struct Transaction : ccm::Poolable {
   Transaction() {}
 
-#define __declare_getter_setter(__type, __name, __default)              \
-  using __name ## _type = __type;                                       \
-  __type __name() const { return __name ## _; }                         \
-  void set_ ## __name(const __type & __name) { __name ## _ = __name; }
+#define __declare_getter_setter(__type, __name, __default) \
+  using __name##_type = __type;                            \
+  __type __name() const { return __name##_; }              \
+  void set_##__name(const __type &__name) { __name##_ = __name; }
 
   TRANSACTION_FIELDS(__declare_getter_setter)
 #undef __declare_getter_setter
@@ -80,44 +71,43 @@ struct Transaction : ccm::Poolable {
 
  private:
   void set_invalid() {
-#define __declare_defaults(__type, __name, __default)   \
-    __name ## _ = __default;
+#define __declare_defaults(__type, __name, __default) __name##_ = __default;
 
     TRANSACTION_FIELDS(__declare_defaults)
 #undef __declare_defaults
   }
 
-#define __declare_fields(__type, __name, __default)     \
-  __type __name ## _;
+#define __declare_fields(__type, __name, __default) __type __name##_;
 
   TRANSACTION_FIELDS(__declare_fields)
 #undef __declare_fields
 };
 
-std::string to_string(const Transaction & t);
+std::string to_string(const Transaction &t);
 
 struct TransactionSource : Loggable {
   virtual ~TransactionSource() {}
-  
-  //
-  Time time() const override { return 0; }
-  
-  //
-  virtual bool get_transaction(TimeStamped<Transaction *> & ts) = 0;
 
   //
-  virtual void event(TransactionEvent event, TimeStamped<const Transaction *> ts) = 0;
+  Time time() const override { return 0; }
+
+  //
+  virtual bool get_transaction(TimeStamped<Transaction *> &ts) = 0;
+
+  //
+  virtual void event(TransactionEvent event,
+                     TimeStamped<const Transaction *> ts) = 0;
 };
 
 struct NullTransactionSource : TransactionSource {
   //
-  virtual bool get_transaction(TimeStamped<Transaction *> & ts) override;
+  virtual bool get_transaction(TimeStamped<Transaction *> &ts) override;
 
   //
   virtual void event(TransactionEvent event,
                      TimeStamped<const Transaction *> ts) override {}
 };
-  
+
 struct ProgrammaticTransactionSource : TransactionSource {
   //
   ProgrammaticTransactionSource() {}
@@ -126,7 +116,7 @@ struct ProgrammaticTransactionSource : TransactionSource {
   void add_transaction(TransactionType type, Time time, uint64_t addr);
 
   //
-  virtual bool get_transaction(TimeStamped<Transaction *> & ts) override;
+  virtual bool get_transaction(TimeStamped<Transaction *> &ts) override;
 
   //
   virtual void event(TransactionEvent event,
@@ -138,6 +128,6 @@ struct ProgrammaticTransactionSource : TransactionSource {
   std::list<Transaction *> in_flight_;
 };
 
-} // namespace ccm
+}  // namespace ccm
 
 #endif

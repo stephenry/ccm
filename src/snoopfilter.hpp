@@ -33,19 +33,18 @@
 namespace ccm {
 
 struct SnoopFilter : SnoopFilterCommandInvoker {
-  SnoopFilter(const SnoopFilterOptions & opts);
-  
+  SnoopFilter(const SnoopFilterOptions &opts);
+
   bool is_active() const override { return !qmgr_.empty(); }
   void apply(TimeStamped<Message *> ts) override;
-  void eval(Context & context) override;
+  void eval(Context &context) override;
+
  private:
-  void handle_msg(
-      Context & context, Cursor & cursor, TimeStamped<Message *> ts);
+  void handle_msg(Context &context, Cursor &cursor, TimeStamped<Message *> ts);
   QueueManager qmgr_;
   const SnoopFilterOptions opts_;
 };
 
-} // namespace ccm
+}  // namespace ccm
 
 #endif
-

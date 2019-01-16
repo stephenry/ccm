@@ -29,11 +29,9 @@
 
 namespace ccm {
 
-void Platform::add_agent(id_t id) {
-  agent_ids_.insert(id);
-}
+void Platform::add_agent(id_t id) { agent_ids_.insert(id); }
 
-void Platform::add_snoop_filter(id_t id, std::shared_ptr<AddressRegion> && ar) {
+void Platform::add_snoop_filter(id_t id, std::shared_ptr<AddressRegion>&& ar) {
   snoop_filters_.insert(std::make_pair(id, std::move(ar)));
 }
 
@@ -46,12 +44,11 @@ bool Platform::is_valid_snoop_filter_id(id_t id) const {
 }
 
 id_t Platform::get_snoop_filter_id(addr_t addr) const {
-  for (auto & [id, address_region] : snoop_filters_) {
-    if (address_region->is_valid(addr))
-      return id;
+  for (auto& [id, address_region] : snoop_filters_) {
+    if (address_region->is_valid(addr)) return id;
   }
   // Otherwise, throw exception.
   throw std::invalid_argument("SnoopFilter for address not found.");
 }
 
-} // namespace ccm
+}  // namespace ccm

@@ -27,6 +27,4 @@
 
 #include "cache.hpp"
 
-namespace ccm {
-
-} // namespace ccm
+namespace ccm {}  // namespace ccm

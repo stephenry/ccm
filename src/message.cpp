@@ -30,52 +30,56 @@
 
 namespace ccm {
 
-const char * MessageType::to_string(base_type e) {
+const char* MessageType::to_string(base_type e) {
   switch (e) {
-#define __to_str(__name, __cost)                \
-    case __name: return #__name; break;
+#define __to_str(__name, __cost) \
+  case __name:                   \
+    return #__name;              \
+    break;
     MESSAGE_TYPES(__to_str)
 #undef __to_str
-    default: return "Unknown";
+    default:
+      return "Unknown";
   }
 }
 
 int MessageType::to_cost(base_type b) {
   switch (b) {
-#define __to_str(__name, __cost)                \
-    case __name: return __cost; break;
+#define __to_str(__name, __cost) \
+  case __name:                   \
+    return __cost;               \
+    break;
     MESSAGE_TYPES(__to_str)
 #undef __to_str
-    default: return 0;
+    default:
+      return 0;
   }
 }
 
 MessageClass Message::cls() const {
-  if (is_ack())
-    return MessageClass::Response;
+  if (is_ack()) return MessageClass::Response;
 
   MessageClass cls;
   switch (type()) {
-  case MessageType::Data:
-    cls = MessageClass::Data;
-    break;
-  default:
-    cls = MessageClass::Request;
-    break;
+    case MessageType::Data:
+      cls = MessageClass::Data;
+      break;
+    default:
+      cls = MessageClass::Request;
+      break;
   }
   return cls;
 }
 
 void Message::set_invalid() {
-#define __declare_invalid(__name, __type, __default)    \
-  __name ## _ = __default;
+#define __declare_invalid(__name, __type, __default) __name##_ = __default;
   MESSAGE_FIELDS(__declare_invalid)
 #undef __declare_invalid
 }
-  
-std::string to_string(const Message & m) {
+
+std::string to_string(const Message& m) {
   using namespace std;
-  
+
   StructRenderer sr;
   sr.add("type", MessageType::to_string(m.type()));
   sr.add("src_id", to_string(m.src_id()));
@@ -97,8 +101,7 @@ std::string to_string(const Message & m) {
   return sr.str();
 }
 
-MessageDirector::MessageDirector(const ActorOptions & opts)
-    : opts_(opts) {
+MessageDirector::MessageDirector(const ActorOptions& opts) : opts_(opts) {
   src_id_ = opts.id();
 }
 
@@ -106,5 +109,4 @@ MessageBuilder MessageDirector::builder() {
   return MessageBuilder{pool_.alloc(), src_id_};
 }
 
-} // namespace ccm
-
+}  // namespace ccm

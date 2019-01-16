@@ -33,25 +33,26 @@
 namespace ccm::test {
 
 struct BasicPlatform {
-  BasicPlatform(Sim & sim, Protocol protocol, std::size_t agents_n);
+  BasicPlatform(Sim &sim, Protocol protocol, std::size_t agents_n);
   ~BasicPlatform();
 
   std::size_t agents() const { return agents_.size(); }
-  ProgrammaticTransactionSource * ts(std::size_t id) const { return ts_[id]; }
+  ProgrammaticTransactionSource *ts(std::size_t id) const { return ts_[id]; }
   Protocol protocol() const { return protocol_; }
-  Agent * agent(std::size_t id) { return agents_[id]; }
-  SnoopFilter * snoop_filter() { return snoop_filter_; }
-  
+  Agent *agent(std::size_t id) { return agents_[id]; }
+  SnoopFilter *snoop_filter() { return snoop_filter_; }
+
   bool validate() const;
+
  private:
   void construct_snoop_filter(std::size_t id);
   void construct_agent(std::size_t id);
-  void add_actor(CoherentActor * actor);
+  void add_actor(CoherentActor *actor);
 
   Logger logger_;
-  LoggerScope * top_;
-  SnoopFilter * snoop_filter_;
-  Sim & sim_;
+  LoggerScope *top_;
+  SnoopFilter *snoop_filter_;
+  Sim &sim_;
   std::vector<Agent *> agents_;
   std::vector<CoherentActor *> actors_;
   Protocol protocol_;
@@ -60,6 +61,6 @@ struct BasicPlatform {
   std::unique_ptr<CoherenceProtocolValidator> validator_;
 };
 
-} // namespace ccm::test
+}  // namespace ccm::test
 
 #endif

@@ -28,21 +28,17 @@
 #ifndef __SRC_LOG_HPP__
 #define __SRC_LOG_HPP__
 
-#include "sim.hpp"
-#include <string>
 #include <iostream>
-#include <sstream>
-#include <unordered_map>
 #include <memory>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include "sim.hpp"
 
 namespace ccm {
 
-#define LOGLEVELS(__func)                       \
-  __func(debug)                                 \
-  __func(info)                                  \
-  __func(warning)                               \
-  __func(error)                                 \
-  __func(fatal)
+#define LOGLEVELS(__func) \
+  __func(debug) __func(info) __func(warning) __func(error) __func(fatal)
 
 enum class LogLevel {
 #define __declare_level(__level) __level,
@@ -50,7 +46,7 @@ enum class LogLevel {
 #undef __declare_level
 };
 
-const char * to_string(LogLevel ll);
+const char* to_string(LogLevel ll);
 
 class LoggerScope;
 
@@ -61,14 +57,14 @@ class Logger {
   Logger();
   ~Logger();
 
-  LoggerScope * top();
+  LoggerScope* top();
   void set_force_flush(bool force_flush = true) { force_flush_ = force_flush; }
 
  private:
-  void log(const LogLevel ll, const std::string & s);
-  void log(const LogLevel ll, const char * s);
+  void log(const LogLevel ll, const std::string& s);
+  void log(const LogLevel ll, const char* s);
 
-  std::ostream & os_{std::cout};
+  std::ostream& os_{std::cout};
   std::unique_ptr<LoggerScope> top_{nullptr};
   bool force_flush_{false};
 };
@@ -76,54 +72,54 @@ class Logger {
 class LoggerScope {
   friend class Loggable;
   friend class Logger;
-  
+
   static const char SEP;
-  
-  LoggerScope (const std::string & s, Logger * logger);
+
+  LoggerScope(const std::string& s, Logger* logger);
+
  public:
   std::string path() const { return path_; }
-  Logger * logger() const { return logger_; }
-  
-  LoggerScope * child_scope(const std::string & leaf);
-  
+  Logger* logger() const { return logger_; }
+
+  LoggerScope* child_scope(const std::string& leaf);
+
  private:
-  void log(const LogLevel ll, const std::string & s) { logger_->log(ll, s); }
-  void log(const LogLevel ll, const char * s) { logger_->log(ll, s); }
-  
+  void log(const LogLevel ll, const std::string& s) { logger_->log(ll, s); }
+  void log(const LogLevel ll, const char* s) { logger_->log(ll, s); }
+
   std::string path_;
-  Logger * logger_;
+  Logger* logger_;
   std::unordered_map<std::string, std::unique_ptr<LoggerScope>> scopes_;
 };
 
 class Loggable {
  public:
-  LoggerScope * logger_scope() const { return scope_; }
-  void set_logger_scope(LoggerScope * scope) { scope_ = scope; }
+  LoggerScope* logger_scope() const { return scope_; }
+  void set_logger_scope(LoggerScope* scope) { scope_ = scope; }
 
-#define __declare_handler(__level)                              \
-  template<typename ... ARGS>                                   \
-  void log_ ## __level(ARGS && ... args) {                      \
-    log(LogLevel::__level, std::forward<ARGS>(args)...);        \
+#define __declare_handler(__level)                       \
+  template <typename... ARGS>                            \
+  void log_##__level(ARGS&&... args) {                   \
+    log(LogLevel::__level, std::forward<ARGS>(args)...); \
   }
   LOGLEVELS(__declare_handler)
 #undef __declare_handler
 
   virtual Time time() const = 0;
-  
- private:
 
-  template<typename ARG>
-  void log_helper(std::ostream & os, ARG arg) {
+ private:
+  template <typename ARG>
+  void log_helper(std::ostream& os, ARG arg) {
     os << arg;
   }
 
-  template<typename ARG, typename ... ARGS>
-  void log_helper(std::ostream & os, ARG arg, ARGS && ... args) {
+  template <typename ARG, typename... ARGS>
+  void log_helper(std::ostream& os, ARG arg, ARGS&&... args) {
     log_helper(os << arg, std::forward<ARGS>(args)...);
   }
 
-  template<typename ... ARGS>
-  void log(LogLevel ll, ARGS && ... args) {
+  template <typename... ARGS>
+  void log(LogLevel ll, ARGS&&... args) {
     if (scope_) {
       std::stringstream ss;
       prefix(ss);
@@ -132,24 +128,25 @@ class Loggable {
     }
   }
 
-  void prefix(std::ostream & os);
-  
-  LoggerScope * scope_{nullptr};
+  void prefix(std::ostream& os);
+
+  LoggerScope* scope_{nullptr};
 };
 
 struct StateUpdateLogger {
   StateUpdateLogger() {}
 
   std::string str() const { return ss.str(); }
-  
-  template<typename T>
-  void add(const T & t, const std::string & prefix = "") {
+
+  template <typename T>
+  void add(const T& t, const std::string& prefix = "") {
     ss << prefix << "'{" << join(t.begin(), t.end()) << "}";
   }
+
  private:
   std::stringstream ss;
 };
 
-} // namespace ccm
+}  // namespace ccm
 
 #endif

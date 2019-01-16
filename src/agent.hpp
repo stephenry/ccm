@@ -28,49 +28,46 @@
 #ifndef __SRC_AGENT_HPP__
 #define __SRC_AGENT_HPP__
 
+#include <deque>
 #include "coherence.hpp"
 #include "message.hpp"
 #include "sim.hpp"
-#include <deque>
 
 namespace ccm {
 
 struct TransactionSource;
 
 struct AgentOptions : CoherentAgentOptions {
-  AgentOptions(std::size_t id, Protocol protocol,
-               CacheOptions cache_options, Platform platform)
-    : CoherentAgentOptions(id, protocol, cache_options, platform)
-  {}
+  AgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options,
+               Platform platform)
+      : CoherentAgentOptions(id, protocol, cache_options, platform) {}
 };
 
 struct Agent : CoherentAgentCommandInvoker {
-  Agent(const AgentOptions & opts);
+  Agent(const AgentOptions &opts);
 
   bool is_active() const override;
   Protocol protocol() const { return opts_.protocol(); }
   CacheOptions cache_options() const { return opts_.cache_options(); }
 
-  void set_transaction_source(TransactionSource * trns) { trns_ = trns; }
-  TransactionSource * transaction_source() const { return trns_; }
-  
+  void set_transaction_source(TransactionSource *trns) { trns_ = trns; }
+  TransactionSource *transaction_source() const { return trns_; }
+
   void apply(TimeStamped<Message *> ts) override;
-  void eval(Context & ctxt) override;
-  
+  void eval(Context &ctxt) override;
+
   // private:
   void fetch_transactions(std::size_t n = 10);
-  
-  void handle_msg(Context & ctxt, Cursor & cursor,
-                  TimeStamped<Message *> ts);
-  
-  void handle_trn(Context & ctxt, Cursor & cursor,
-                  TimeStamped<Transaction *> ts);
-  
+
+  void handle_msg(Context &ctxt, Cursor &cursor, TimeStamped<Message *> ts);
+
+  void handle_trn(Context &ctxt, Cursor &cursor, TimeStamped<Transaction *> ts);
+
   QueueManager qmgr_;
-  TransactionSource * trns_;
+  TransactionSource *trns_;
   const AgentOptions opts_;
 };
 
-} // namespace ccm
+}  // namespace ccm
 
 #endif

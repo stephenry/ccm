@@ -26,61 +26,54 @@
 //========================================================================== //
 
 #include "agent.hpp"
-#include "common.hpp"
 #include <queue>
+#include "common.hpp"
 
 namespace ccm {
 
 class AgentMessageAdmissionControl : public MessageAdmissionControl {
-    
-public:
-  AgentMessageAdmissionControl(Agent * agent)
-    : agent_(agent)
-  {}
+ public:
+  AgentMessageAdmissionControl(Agent *agent) : agent_(agent) {}
 
-  bool can_be_issued(const Message * msg) const override {
-    const Transaction * trn = msg->transaction();
-    CacheLine & cache_line = agent_->cache_->lookup(trn->addr());
+  bool can_be_issued(const Message *msg) const override {
+    const Transaction *trn = msg->transaction();
+    CacheLine &cache_line = agent_->cache_->lookup(trn->addr());
     const CoherenceActions actions =
-      agent_->cc_model_->get_actions(msg, cache_line);
+        agent_->cc_model_->get_actions(msg, cache_line);
 
     switch (actions.result()) {
-    case MessageResult::Stall:
-      return false;
-      break;
+      case MessageResult::Stall:
+        return false;
+        break;
 
-    case MessageResult::Commit:
-      return true;
-      break;
+      case MessageResult::Commit:
+        return true;
+        break;
 
-    default:
-      // TODO: Error
-      break;
+      default:
+        // TODO: Error
+        break;
     }
-    
+
     return true;
   }
-  
-private:
-  Agent * agent_{nullptr};
+
+ private:
+  Agent *agent_{nullptr};
 };
 
 class AgentTransactionAdmissionControl : public TransactionAdmissionControl {
-public:
-  AgentTransactionAdmissionControl(Agent * agent)
-    : agent_(agent)
-  {}
+ public:
+  AgentTransactionAdmissionControl(Agent *agent) : agent_(agent) {}
 
-  bool can_be_issued(const Transaction * trn) const override {
-
+  bool can_be_issued(const Transaction *trn) const override {
     // TODO: variety of agent related issue conditions (max in flight count,
     // credits, etc..)
 
     // The coherence protocol cannot block if (by definition) the
     // transaction address is not present in the agents cache.
     //
-    if (!agent_->cache_->is_hit(trn->addr()))
-      return true;
+    if (!agent_->cache_->is_hit(trn->addr())) return true;
 
     // If the address is present in the agents cache, explicitly
     // derive the set of actions to be applied and verify that the
@@ -88,31 +81,30 @@ public:
     //
     // This is an expensive operation.
     //
-    CacheLine & cache_line = agent_->cache_->lookup(trn->addr());
+    CacheLine &cache_line = agent_->cache_->lookup(trn->addr());
     const CoherenceActions actions =
-      agent_->cc_model_->get_actions(trn, cache_line);
+        agent_->cc_model_->get_actions(trn, cache_line);
     switch (actions.result()) {
-    case TransactionResult::Blocked:
-      return false;
-      break;
-      
-    case TransactionResult::Hit:
-    case TransactionResult::Miss:
-      return true;
-      break;
+      case TransactionResult::Blocked:
+        return false;
+        break;
 
-    default:
-      // Error
-      return false;
+      case TransactionResult::Hit:
+      case TransactionResult::Miss:
+        return true;
+        break;
+
+      default:
+        // Error
+        return false;
     }
   }
-  
-private:
-  Agent * agent_{nullptr};
-};
-  
 
-Agent::Agent(const AgentOptions & opts)
+ private:
+  Agent *agent_{nullptr};
+};
+
+Agent::Agent(const AgentOptions &opts)
     : CoherentAgentCommandInvoker(opts), opts_(opts) {
   set_time(0);
   set_logger_scope(opts.logger_scope());
@@ -121,7 +113,7 @@ Agent::Agent(const AgentOptions & opts)
   qmgr_.set_ac(std::make_unique<AgentTransactionAdmissionControl>(this));
 }
 
-void Agent::eval(Context & context) {
+void Agent::eval(Context &context) {
   const Epoch epoch = context.epoch();
   Cursor cursor = epoch.cursor();
 
@@ -129,8 +121,7 @@ void Agent::eval(Context & context) {
   // time is present in the current Epoch, otherwise, sleep until the
   // next interval.
   //
-  if (!epoch.in_interval(time()))
-    return;
+  if (!epoch.in_interval(time())) return;
 
   // As the current time may not fall on a Epoch boundary, advance to
   // the 'time' location within the current Epoch and proceed from
@@ -138,32 +129,29 @@ void Agent::eval(Context & context) {
   //
   cursor.set_time(std::max(time(), cursor.time()));
 
-  if (!qmgr_.pending_transactions())
-    fetch_transactions(10);
+  if (!qmgr_.pending_transactions()) fetch_transactions(10);
 
   do {
     const QueueEntry next = qmgr_.next();
-    if (next.type() == QueueEntryType::Invalid)
-      break;
-    
-    if (!epoch.in_interval(next.time()))
-      break;
+    if (next.type() == QueueEntryType::Invalid) break;
+
+    if (!epoch.in_interval(next.time())) break;
 
     cursor.set_time(std::max(time(), next.time()));
     set_time(cursor.time());
 
     CoherenceActions actions;
     switch (next.type()) {
-    case QueueEntryType::Message:
-      handle_msg(context, cursor, next.as_msg());
-      break;
-      
-    case QueueEntryType::Transaction:
-      handle_trn(context, cursor, next.as_trn());
-      break;
+      case QueueEntryType::Message:
+        handle_msg(context, cursor, next.as_msg());
+        break;
 
-    default:
-      break;
+      case QueueEntryType::Transaction:
+        handle_trn(context, cursor, next.as_trn());
+        break;
+
+      default:
+        break;
     }
     next.consume();
   } while (epoch.in_interval(cursor.time()));
@@ -174,20 +162,19 @@ void Agent::eval(Context & context) {
 void Agent::fetch_transactions(std::size_t n) {
   TimeStamped<Transaction *> ts;
   for (int i = 0; i < n; i++) {
-    if (!trns_->get_transaction(ts))
-      break;
-    
+    if (!trns_->get_transaction(ts)) break;
+
     qmgr_.push(ts);
   }
 }
 
-void Agent::handle_msg(Context & context, Cursor & cursor,
+void Agent::handle_msg(Context &context, Cursor &cursor,
                        TimeStamped<Message *> ts) {
-  const Message * msg = ts.t();
-  const Transaction * trn = msg->transaction();
+  const Message *msg = ts.t();
+  const Transaction *trn = msg->transaction();
 
   CCM_AGENT_ASSERT(cache_->is_hit(trn->addr()));
-  CacheLine & cache_line = cache_->lookup(trn->addr());
+  CacheLine &cache_line = cache_->lookup(trn->addr());
   const CoherenceActions actions = cc_model_->get_actions(msg, cache_line);
   CCM_AGENT_ASSERT(!actions.error());
 
@@ -195,37 +182,36 @@ void Agent::handle_msg(Context & context, Cursor & cursor,
   // TODO: assertion that confirms commital
 
   if (actions.transaction_done())
-    trns_->event(TransactionEvent::End, TimeStamped{time(), msg->transaction()});
+    trns_->event(TransactionEvent::End,
+                 TimeStamped{time(), msg->transaction()});
 
   msg->release();
 }
 
-void Agent::handle_trn(Context & context, Cursor & cursor,
+void Agent::handle_trn(Context &context, Cursor &cursor,
                        TimeStamped<Transaction *> ts) {
-  const Transaction * trn = ts.t();
-  
+  const Transaction *trn = ts.t();
+
   trns_->event(TransactionEvent::Start, TimeStamped{time(), trn});
 
   if (trn->type() != TransactionType::Replacement)
     CCM_AGENT_ASSERT(!cache_->requires_eviction(trn->addr()));
-                       
+
   if (!cache_->is_hit(trn->addr())) {
     CacheLine cache_line;
     cc_model_->init(cache_line);
     cache_->install(trn->addr(), cache_line);
   }
 
-  CacheLine & cache_line = cache_->lookup(trn->addr());
+  CacheLine &cache_line = cache_->lookup(trn->addr());
   const CoherenceActions actions = cc_model_->get_actions(trn, cache_line);
   CCM_AGENT_ASSERT(!actions.error());
-  
+
   execute(context, cursor, actions, cache_line, trn);
 }
 
-void Agent::apply(TimeStamped<Message *> ts) {
-  qmgr_.push(ts);
-}
+void Agent::apply(TimeStamped<Message *> ts) { qmgr_.push(ts); }
 
 bool Agent::is_active() const { return !qmgr_.empty(); }
 
-} // namespace ccm
+}  // namespace ccm

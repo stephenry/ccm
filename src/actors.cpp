@@ -30,11 +30,11 @@
 
 namespace ccm {
 
-void CoherentActor::emit_message(Context & context,
-                                 Cursor & cursor, MessageBuilder & b) {
+void CoherentActor::emit_message(Context& context, Cursor& cursor,
+                                 MessageBuilder& b) {
   b.set_src_id(id());
 
-  Message * msg = b.msg();
+  Message* msg = b.msg();
   cursor.advance(MessageType::to_cost(msg->type()));
   context.emit_message(TimeStamped{cursor.time(), msg});
   set_time(cursor.time());
@@ -42,4 +42,4 @@ void CoherentActor::emit_message(Context & context,
             msg->is_ack() ? "Ack: " : ": ", to_string(*msg));
 }
 
-} // namespace ccm
+}  // namespace ccm
