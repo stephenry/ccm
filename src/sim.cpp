@@ -28,6 +28,7 @@
 #include "sim.hpp"
 #include "message.hpp"
 #include "interconnect.hpp"
+#include "coherence.hpp"
 
 namespace ccm {
 

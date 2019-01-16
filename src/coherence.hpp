@@ -42,6 +42,8 @@ class Transaction;
 class Frontier;
 class CoherentActor;
 class Platform;
+class CacheLine;
+class DirectoryEntry;
 
 enum class Protocol {
   MSI,
@@ -56,6 +58,42 @@ using state_t = uint8_t;
 using result_t = uint8_t;
 using command_t = uint8_t;
 
+class CacheWalker {
+  friend class CoherenceProtocolValidator;
+  
+  CacheWalker(CoherenceProtocolValidator * validator);
+public:
+  void add_cache_line(id_t id, addr_t addr, const CacheLine & cache_line);
+  void add_dir_line(addr_t addr, const DirectoryEntry & directory_entry);
+private:
+  CoherenceProtocolValidator * validator_;
+};
+
+template<typename T> using Entry = std::tuple<id_t, const T>;
+
+class CoherenceProtocolValidator {
+  friend class CacheWalker;
+public:
+  CoherenceProtocolValidator();
+  virtual ~CoherenceProtocolValidator() {}
+  
+  CacheWalker get_cache_walker();
+
+  bool validate() const;
+  virtual bool validate_addr(addr_t addr,
+                             const std::vector<Entry<CacheLine> > & lines,
+                             const DirectoryEntry & entry) const = 0;
+
+protected:
+  void add_cache_line(id_t id, addr_t addr, const CacheLine & cache_line);
+  void add_dir_line(addr_t addr, const DirectoryEntry & directory_entry);
+
+  void error(const char * str) const {}
+
+  std::map<addr_t, std::vector<Entry<CacheLine> > > cache_lines_;
+  std::map<addr_t, DirectoryEntry> directory_lines_;
+};
+  
 struct CoherentAgentOptions : ActorOptions {
   CoherentAgentOptions(std::size_t id, Protocol protocol,
                        CacheOptions cache_options, Platform & platform)
@@ -248,13 +286,14 @@ struct CoherenceActions {
 
 class CoherentActorBase {
  public:
-  CoherentActorBase() {}
+  CoherentActorBase(const ActorOptions & opts);
   virtual ~CoherentActorBase() {}
   
   virtual Protocol protocol() const = 0;
- private:
+private:
+  const ActorOptions opts_;
 };
-
+  
 class CoherentAgentModel : public CoherentActorBase {
  public:
   CoherentAgentModel(const CoherentAgentOptions & opts);
@@ -276,11 +315,11 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   CoherentAgentCommandInvoker(const CoherentAgentOptions & opts);
 
   CacheLine cache_line(std::size_t addr) const;
-  
+
+  void walk_cache(CacheWalker & cache_walker) const override;
   void execute(Context & context, Cursor & cursor,
                const CoherenceActions & actions,
                CacheLine & cache_line, const Transaction * t);
-
   void execute(Context & context, Cursor & cursor,
                const CoherenceActions & actions,
                CacheLine & cache_line, const Message * msg);
@@ -338,6 +377,7 @@ struct SnoopFilterCommandInvoker : CoherentActor {
   
   DirectoryEntry directory_entry(std::size_t addr) const;
   
+  void walk_cache(CacheWalker & cache_walker) const override;
   void execute(
       Context & context, Cursor & cursor, const CoherenceActions & actions,
       const Message * msg, DirectoryEntry & d);
@@ -385,8 +425,8 @@ private:
   const SnoopFilterOptions opts_;
 };
 
-std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
-    const SnoopFilterOptions & opts);
+std::unique_ptr<SnoopFilterModel> snoop_filter_factory(const SnoopFilterOptions & opts);
+std::unique_ptr<CoherenceProtocolValidator> validator_factory(Protocol protocol);
 
 } // namespace ccm
 

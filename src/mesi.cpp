@@ -818,4 +818,15 @@ CoherenceActions MesiSnoopFilterModel::get_actions(
   return impl_->get_actions(m, dir_entry);
 }
 
+MesiCoherenceProtocolValidator::MesiCoherenceProtocolValidator() {
+}
+
+  bool MesiCoherenceProtocolValidator::validate_addr(addr_t addr,
+                                                     const std::vector<Entry<CacheLine> > & lines,
+                                                     const DirectoryEntry & entry) const {
+                                                   
+                                                   
+  return false;
+}
+
 } // namespace ccm

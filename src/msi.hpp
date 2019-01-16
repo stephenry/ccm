@@ -44,7 +44,8 @@ namespace ccm {
   __func(M)                                     \
   __func(MI_A)                                  \
   __func(SI_A)                                  \
-  __func(II_A)
+  __func(II_A)                                  \
+  __func(STATE_COUNT)
 
 struct MsiAgentLineState {
 
@@ -125,6 +126,14 @@ class MsiSnoopFilterModel : public SnoopFilterModel {
   std::unique_ptr<MsiSnoopFilterModelImpl> impl_;
 };
 
+class MsiCoherenceProtocolValidator : public CoherenceProtocolValidator {
+public:
+  MsiCoherenceProtocolValidator();
+
+  bool validate_addr(addr_t addr,
+                     const std::vector<Entry<CacheLine> > & lines,
+                     const DirectoryEntry & entry) const;
+};
 
 } // namespace ccm
 

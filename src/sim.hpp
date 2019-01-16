@@ -37,6 +37,7 @@ namespace ccm {
 class Message;
 class Transaction;
 class CoherentActor;
+class CoherenceProtocolValidator;
   
 using Time = unsigned long long;
 
@@ -231,7 +232,6 @@ private:
 };
 
 struct Sim {
-
   Sim() : time_(0) {}
 
   void add_actor(CoherentActor * a);

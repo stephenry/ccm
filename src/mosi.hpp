@@ -47,7 +47,8 @@ namespace ccm {
   __func(OM_A)                                  \
   __func(OI_A)                                  \
   __func(SI_A)                                  \
-  __func(II_A)
+  __func(II_A)                                  \
+  __func(STATE_COUNT)
 
 struct MosiAgentLineState {
   enum : state_t {
@@ -126,6 +127,15 @@ class MosiSnoopFilterModel : public SnoopFilterModel {
   struct MosiSnoopFilterModelImpl;
 
   std::unique_ptr<MosiSnoopFilterModelImpl> impl_;
+};
+
+class MosiCoherenceProtocolValidator : public CoherenceProtocolValidator {
+public:
+  MosiCoherenceProtocolValidator();
+
+  bool validate_addr(addr_t addr,
+                     const std::vector<Entry<CacheLine> > & lines,
+                     const DirectoryEntry & entry) const;
 };
 
 } // namespace ccm

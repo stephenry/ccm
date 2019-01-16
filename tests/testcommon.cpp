@@ -40,6 +40,8 @@ BasicPlatform::BasicPlatform(Sim & sim, Protocol protocol, std::size_t agents_n)
   for (std::size_t i = 0; i < agents_n; i++)
     construct_agent(i);
   construct_snoop_filter(4);
+
+  validator_ = validator_factory(protocol);
 }
   
 BasicPlatform::~BasicPlatform() {
@@ -47,6 +49,17 @@ BasicPlatform::~BasicPlatform() {
     delete actor;
   for (TransactionSource * ts : ts_)
     delete ts;
+}
+
+bool BasicPlatform::validate() const {
+  if (!validator_)
+    return false;
+
+  CacheWalker cache_walker = validator_->get_cache_walker();
+  for (CoherentActor * actor : actors_)
+    actor->walk_cache(cache_walker);
+
+  return validator_->validate();
 }
 
 void BasicPlatform::construct_snoop_filter(std::size_t id) {

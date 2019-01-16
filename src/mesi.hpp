@@ -45,7 +45,8 @@ namespace ccm {
   __func(MI_A)                                  \
   __func(EI_A)                                  \
   __func(SI_A)                                  \
-  __func(II_A)
+  __func(II_A)                                  \
+  __func(STATE_COUNT)
 
 struct MesiAgentLineState {
   enum : state_t {
@@ -123,6 +124,15 @@ class MesiSnoopFilterModel : public SnoopFilterModel {
   struct MesiSnoopFilterModelImpl;
 
   std::unique_ptr<MesiSnoopFilterModelImpl> impl_;
+};
+
+class MesiCoherenceProtocolValidator : public CoherenceProtocolValidator {
+public:
+  MesiCoherenceProtocolValidator();
+
+  bool validate_addr(addr_t addr,
+                     const std::vector<Entry<CacheLine> > & lines,
+                     const DirectoryEntry & entry) const;
 };
 
 } // namespace ccm

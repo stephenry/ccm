@@ -41,6 +41,7 @@ class Epoch;
 class Context;
 class Cursor;
 class MessageBuilder;
+class CacheWalker;
 
 struct ActorOptions {
   ActorOptions(id_t id, Platform platform)
@@ -72,6 +73,7 @@ struct CoherentActor : Loggable {
   virtual void apply(TimeStamped<Message *> ts) = 0;
   virtual void eval(Context & ctxt) = 0;
   virtual bool is_active() const = 0;
+  virtual void walk_cache(CacheWalker & cache_walker) const = 0;
 
   void set_time(Time time) { time_ = time; }
   void emit_message(Context & context, Cursor & cursor, MessageBuilder & b);

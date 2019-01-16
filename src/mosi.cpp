@@ -847,4 +847,13 @@ CoherenceActions MosiSnoopFilterModel::get_actions(
   return impl_->get_actions(m, dir_entry);
 }
 
+MosiCoherenceProtocolValidator::MosiCoherenceProtocolValidator() {
+}
+
+  bool MosiCoherenceProtocolValidator::validate_addr(addr_t addr,
+                                                     const std::vector<Entry<CacheLine> > & lines,
+                                                     const DirectoryEntry & entry) const {
+  return false;
+}
+
 } // namespace ccm

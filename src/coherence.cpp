@@ -81,6 +81,9 @@ CacheLine CoherentAgentCommandInvoker::cache_line(std::size_t addr) const {
   return cl;
 }
 
+void CoherentAgentCommandInvoker::walk_cache(CacheWalker & cache_walker) const {
+}
+  
 void CoherentAgentCommandInvoker::execute(
     Context & context, Cursor & cursor, const CoherenceActions & actions,
     CacheLine & cache_line, const Transaction * t) {
@@ -231,7 +234,9 @@ void CoherentAgentCommandInvoker::execute_set_ack_count(
   cache_line.set_ack_count(ack_count);
 }
 
-CoherentAgentModel::CoherentAgentModel(const CoherentAgentOptions & opts) {}
+CoherentAgentModel::CoherentAgentModel(const CoherentAgentOptions & opts)
+  : CoherentActorBase(opts)
+{}
 
 std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
     const CoherentAgentOptions & opts) {
@@ -266,6 +271,9 @@ const char * to_string(SnoopFilterCommand command) {
   }
 }
 
+CoherentActorBase::CoherentActorBase(const ActorOptions & opts)
+  : opts_(opts) {}
+  
 SnoopFilterCommandInvoker::SnoopFilterCommandInvoker(
     const SnoopFilterOptions & opts)
     : opts_(opts), msgd_(opts), CoherentActor(opts) {
@@ -281,6 +289,9 @@ DirectoryEntry SnoopFilterCommandInvoker::directory_entry(std::size_t addr) cons
     cc_model_->init(directory_entry);
   }
   return directory_entry;
+}
+
+void SnoopFilterCommandInvoker::walk_cache(CacheWalker & cache_walker) const {
 }
 
 void SnoopFilterCommandInvoker::execute(
@@ -561,7 +572,7 @@ const char * to_string(EvictionPolicy p) {
 }
 
 SnoopFilterModel::SnoopFilterModel(const SnoopFilterOptions & opts)
-    : opts_(opts)
+  : CoherentActorBase(opts), opts_(opts)
 {}
 
 std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
@@ -584,6 +595,57 @@ std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
       // TODO: Not implemented
       return nullptr;
       break;
+  }
+}
+
+CacheWalker::CacheWalker(CoherenceProtocolValidator * validator)
+  : validator_(validator) {}
+
+void CacheWalker::add_cache_line(id_t id, addr_t addr, const CacheLine & cache_line) {
+  validator_->add_cache_line(id, addr, cache_line);
+}
+
+void CacheWalker::add_dir_line(addr_t addr, const DirectoryEntry & directory_entry) {
+  validator_->add_dir_line(addr, directory_entry);
+}
+
+CoherenceProtocolValidator::CoherenceProtocolValidator() {}
+
+CacheWalker CoherenceProtocolValidator::get_cache_walker() {
+  return CacheWalker{this};
+}
+
+bool CoherenceProtocolValidator::validate() const {
+  for (auto & l : directory_lines_) {
+    auto lines = cache_lines_.find(l.first);
+    if (lines == cache_lines_.end())
+      return false;
+    
+    if (!validate_addr(l.first, lines->second, l.second))
+      return false;
+  }
+  return true;
+}
+
+void CoherenceProtocolValidator::add_cache_line(id_t id, addr_t addr, const CacheLine & cache_line) {
+  cache_lines_[addr].push_back(std::make_tuple(id, cache_line));
+}
+
+void CoherenceProtocolValidator::add_dir_line(addr_t addr, const DirectoryEntry & directory_entry) {
+  directory_lines_[addr] = directory_entry;
+}
+
+std::unique_ptr<CoherenceProtocolValidator> validator_factory(Protocol protocol) {
+  switch (protocol) {
+  case Protocol::MSI:
+    return std::make_unique<MsiCoherenceProtocolValidator>();
+    break;
+  case Protocol::MESI:
+    return std::make_unique<MesiCoherenceProtocolValidator>();
+    break;
+  case Protocol::MOSI:
+    return std::make_unique<MosiCoherenceProtocolValidator>();
+    break;
   }
 }
 

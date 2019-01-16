@@ -684,4 +684,38 @@ CoherenceActions MsiSnoopFilterModel::get_actions(
   return impl_->get_actions(m, dir_entry);
 }
 
+MsiCoherenceProtocolValidator::MsiCoherenceProtocolValidator() {
+}
+
+bool MsiCoherenceProtocolValidator::validate_addr(addr_t addr,
+                                                  const std::vector<Entry<CacheLine> > & lines,
+                                                  const DirectoryEntry & entry) const {
+  bool fail = false;
+  
+  std::array<std::size_t, MsiAgentLineState::STATE_COUNT> state_count;
+  std::fill(state_count.begin(), state_count.end(), 0);
+  
+  for (const Entry<CacheLine> & cl : lines) {
+    const CacheLine & c = std::get<1>(cl);
+
+    state_count[c.state()]++;
+  }
+
+  if ((state_count[MsiAgentLineState::M] != 1) &&
+      (state_count[MsiAgentLineState::M] != 0)) {
+    fail = true;
+    
+    error("Multiple MODIFIED agents are present.");
+  }
+
+  if ((state_count[MsiAgentLineState::M] > 0) &&
+      (state_count[MsiAgentLineState::S] != 0)) {
+    fail = true;
+
+    error("When MODIFIED is present, other SHARED agents cannot be present.");
+  }
+  
+  return fail;
+}
+
 } // namespace ccm
