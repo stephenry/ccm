@@ -37,14 +37,22 @@
 
 namespace ccm {
 
-#define LOGLEVELS(__func) \
-  __func(debug) __func(info) __func(warning) __func(error) __func(fatal)
+// clang-format off
+#define LOGLEVELS(__func)                       \
+  __func(debug)                                 \
+  __func(info)                                  \
+  __func(warning)                               \
+  __func(error)                                 \
+  __func(fatal)
+// clang-format on
 
+// clang-format off
 enum class LogLevel {
 #define __declare_level(__level) __level,
   LOGLEVELS(__declare_level)
 #undef __declare_level
 };
+// clang-format on
 
 const char* to_string(LogLevel ll);
 
@@ -97,6 +105,7 @@ class Loggable {
   LoggerScope* logger_scope() const { return scope_; }
   void set_logger_scope(LoggerScope* scope) { scope_ = scope; }
 
+// clang-format off
 #define __declare_handler(__level)                       \
   template <typename... ARGS>                            \
   void log_##__level(ARGS&&... args) {                   \
@@ -104,6 +113,7 @@ class Loggable {
   }
   LOGLEVELS(__declare_handler)
 #undef __declare_handler
+// clang-format on
 
   virtual Time time() const = 0;
 

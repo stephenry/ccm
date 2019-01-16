@@ -31,14 +31,16 @@ namespace ccm {
 
 const char* to_string(LogLevel ll) {
   switch (ll) {
+// clang-format off
 #define __declare_to_string(__level) \
   case LogLevel::__level:            \
     return #__level;                 \
     break;
     LOGLEVELS(__declare_to_string)
 #undef __declare_to_string
-    default:
-      return "Unknown";
+// clang-format on
+  default:
+    return "Unknown";
   }
 }
 
