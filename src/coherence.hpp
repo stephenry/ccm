@@ -325,6 +325,9 @@ class CoherentAgentModel : public CoherentActorBase {
 };
 
 struct CoherentAgentCommandInvoker : CoherentActor {
+  friend class AgentMessageAdmissionControl;
+  friend class AgentTransactionAdmissionControl;
+
   using ack_count_type = std::size_t;
 
   CoherentAgentCommandInvoker(const CoherentAgentOptions& opts);
@@ -339,7 +342,7 @@ struct CoherentAgentCommandInvoker : CoherentActor {
                const CoherenceActions& actions, CacheLine& cache_line,
                const Message* msg);
 
-  // protected:
+ protected:
   std::unique_ptr<CoherentAgentModel> cc_model_;
   std::unique_ptr<GenericCache<CacheLine> > cache_;
 
@@ -398,7 +401,7 @@ struct SnoopFilterCommandInvoker : CoherentActor {
   void execute(Context& context, Cursor& cursor,
                const CoherenceActions& actions, const Message* msg,
                DirectoryEntry& d);
-  // protected:
+ protected:
   std::unique_ptr<SnoopFilterModel> cc_model_;
   std::unique_ptr<GenericCache<DirectoryEntry> > cache_;
 
