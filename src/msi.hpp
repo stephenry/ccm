@@ -28,11 +28,12 @@
 #ifndef __SRC_MSI_HPP__
 #define __SRC_MSI_HPP__
 
-#include "coherence.hpp"
 #include <memory>
+#include "coherence.hpp"
 
 namespace ccm {
 
+// clang-format off
 #define MSI_LINE_STATES(__func)                 \
   __func(I)                                     \
   __func(IS_D)                                  \
@@ -46,55 +47,61 @@ namespace ccm {
   __func(SI_A)                                  \
   __func(II_A)                                  \
   __func(STATE_COUNT)
+// clang-format on
 
 struct MsiAgentLineState {
-
+  // clang-format off
   enum : state_t {
 #define __declare_state(__state)                \
   __state,
   MSI_LINE_STATES(__declare_state)
 #undef __declare_state
   };
-    
-  static const char * to_string(state_t s);
+  // clang-format on
+
+  static const char* to_string(state_t s);
   static bool is_stable(state_t s);
 };
 
+// clang-format off
 #define MSI_DIRECTORY_STATES(__func)            \
   __func(I)                                     \
   __func(S)                                     \
   __func(M)                                     \
   __func(S_D)
+// clang-format on
 
 struct MsiDirectoryLineState {
+  // clang-format off
   enum : state_t {
 #define __declare_state(__state)                \
   __state,
   MSI_DIRECTORY_STATES(__declare_state)
 #undef __declare_state
   };
-  
-  static const char * to_string(state_t s);
+  // clang-format on
+
+  static const char* to_string(state_t s);
 };
 
 class MsiCoherentAgentModel : public CoherentAgentModel {
  public:
-  MsiCoherentAgentModel(const CoherentAgentOptions & opts);
+  MsiCoherentAgentModel(const CoherentAgentOptions& opts);
   virtual ~MsiCoherentAgentModel();
 
   //
   Protocol protocol() const override { return Protocol::MSI; }
 
   //
-  void init(CacheLine & l) const override;
-  bool is_stable(const CacheLine & l) const override;
+  void init(CacheLine& l) const override;
+  bool is_stable(const CacheLine& l) const override;
   std::string to_string(state_t s) const override;
-  
+
   //
-  CoherenceActions get_actions(
-      const Transaction * t, const CacheLine & cache_line) const override;
-  CoherenceActions get_actions(
-      const Message * m, const CacheLine & cache_line) const override;
+  CoherenceActions get_actions(const Transaction* t,
+                               const CacheLine& cache_line) const override;
+  CoherenceActions get_actions(const Message* m,
+                               const CacheLine& cache_line) const override;
 
  private:
   struct MsiCoherentAgentModelImpl;
@@ -104,21 +111,21 @@ class MsiCoherentAgentModel : public CoherentAgentModel {
 
 class MsiSnoopFilterModel : public SnoopFilterModel {
  public:
-  MsiSnoopFilterModel(const SnoopFilterOptions & opts);
+  MsiSnoopFilterModel(const SnoopFilterOptions& opts);
   virtual ~MsiSnoopFilterModel();
 
   //
   Protocol protocol() const override { return Protocol::MSI; }
 
   //
-  void init(DirectoryEntry & l) const override;
-  bool is_stable(const DirectoryEntry & l) const override;
-  std::string to_string(const DirectoryEntry & l) const override;
+  void init(DirectoryEntry& l) const override;
+  bool is_stable(const DirectoryEntry& l) const override;
+  std::string to_string(const DirectoryEntry& l) const override;
   std::string to_string(state_t l) const override;
 
   //
-  CoherenceActions get_actions(
-      const Message * m, const DirectoryEntry & dir_entry) const override;
+  CoherenceActions get_actions(const Message* m,
+                               const DirectoryEntry& dir_entry) const override;
 
  private:
   struct MsiSnoopFilterModelImpl;
@@ -127,14 +134,13 @@ class MsiSnoopFilterModel : public SnoopFilterModel {
 };
 
 class MsiCoherenceProtocolValidator : public CoherenceProtocolValidator {
-public:
+ public:
   MsiCoherenceProtocolValidator();
 
-  bool validate_addr(addr_t addr,
-                     const std::vector<Entry<CacheLine> > & lines,
-                     const DirectoryEntry & entry) const;
+  bool validate_addr(addr_t addr, const std::vector<Entry<CacheLine> >& lines,
+                     const DirectoryEntry& entry) const;
 };
 
-} // namespace ccm
+}  // namespace ccm
 
 #endif

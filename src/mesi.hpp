@@ -32,6 +32,7 @@
 
 namespace ccm {
 
+// clang-format off
 #define MESI_LINE_STATES(__func)                \
   __func(I)                                     \
   __func(IS_D)                                  \
@@ -47,54 +48,61 @@ namespace ccm {
   __func(SI_A)                                  \
   __func(II_A)                                  \
   __func(STATE_COUNT)
+// clang-format on
 
 struct MesiAgentLineState {
+  // clang-format off
   enum : state_t {
 #define __declare_state(__state)                \
   __state,
   MESI_LINE_STATES(__declare_state)
 #undef __declare_state
   };
+  // clang-format on
 
-  static const char * to_string(state_t state);
+  static const char* to_string(state_t state);
 };
 
+// clang-format off
 #define MESI_DIRECTORY_STATES(__func)           \
   __func(I)                                     \
   __func(S)                                     \
   __func(E)                                     \
   __func(M)                                     \
   __func(S_D)
+// clang-format on
 
 struct MesiDirectoryLineState {
+  // clang-format off
   enum : state_t {
 #define __declare_state(__state)                \
   __state,
   MESI_DIRECTORY_STATES(__declare_state)
 #undef __declare_state
   };
+  // clang-format on
 
-  static const char * to_string(state_t state);  
+  static const char* to_string(state_t state);
 };
 
 class MesiCoherentAgentModel : public CoherentAgentModel {
  public:
-  MesiCoherentAgentModel(const CoherentAgentOptions & opts);
+  MesiCoherentAgentModel(const CoherentAgentOptions& opts);
   virtual ~MesiCoherentAgentModel();
 
   //
   Protocol protocol() const override { return Protocol::MESI; }
 
   //
-  void init(CacheLine & l) const override;
-  bool is_stable(const CacheLine & l) const override;
+  void init(CacheLine& l) const override;
+  bool is_stable(const CacheLine& l) const override;
   std::string to_string(CacheLine::state_type s) const override;
-  
+
   //
-  CoherenceActions get_actions(
-      const Transaction * t, const CacheLine & cache_line) const override;
-  CoherenceActions get_actions(
-      const Message * m, const CacheLine & cache_line) const override;
+  CoherenceActions get_actions(const Transaction* t,
+                               const CacheLine& cache_line) const override;
+  CoherenceActions get_actions(const Message* m,
+                               const CacheLine& cache_line) const override;
 
  private:
   struct MesiCoherentAgentModelImpl;
@@ -104,21 +112,21 @@ class MesiCoherentAgentModel : public CoherentAgentModel {
 
 class MesiSnoopFilterModel : public SnoopFilterModel {
  public:
-  MesiSnoopFilterModel(const SnoopFilterOptions & opts);
+  MesiSnoopFilterModel(const SnoopFilterOptions& opts);
   virtual ~MesiSnoopFilterModel();
 
   //
   Protocol protocol() const override { return Protocol::MESI; }
 
   //
-  void init(DirectoryEntry & l) const override;
-  bool is_stable(const DirectoryEntry & l) const override;
-  std::string to_string(const DirectoryEntry & l) const override;
+  void init(DirectoryEntry& l) const override;
+  bool is_stable(const DirectoryEntry& l) const override;
+  std::string to_string(const DirectoryEntry& l) const override;
   std::string to_string(CacheLine::state_type l) const override;
 
   //
-  CoherenceActions get_actions(
-      const Message * m, const DirectoryEntry & dir_entry) const override;
+  CoherenceActions get_actions(const Message* m,
+                               const DirectoryEntry& dir_entry) const override;
 
  private:
   struct MesiSnoopFilterModelImpl;
@@ -127,14 +135,13 @@ class MesiSnoopFilterModel : public SnoopFilterModel {
 };
 
 class MesiCoherenceProtocolValidator : public CoherenceProtocolValidator {
-public:
+ public:
   MesiCoherenceProtocolValidator();
 
-  bool validate_addr(addr_t addr,
-                     const std::vector<Entry<CacheLine> > & lines,
-                     const DirectoryEntry & entry) const;
+  bool validate_addr(addr_t addr, const std::vector<Entry<CacheLine> >& lines,
+                     const DirectoryEntry& entry) const;
 };
 
-} // namespace ccm
+}  // namespace ccm
 
 #endif

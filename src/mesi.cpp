@@ -29,50 +29,54 @@
 
 namespace ccm {
 
-const char * MesiAgentLineState::to_string(state_t state) {
+const char* MesiAgentLineState::to_string(state_t state) {
   switch (state) {
-#define __to_str(__state)                                       \
-    case MesiAgentLineState::__state: return #__state; break;
-    
+#define __to_str(__state)           \
+  case MesiAgentLineState::__state: \
+    return #__state;                \
+    break;
+
     MESI_LINE_STATES(__to_str)
 #undef __to_str
-    default: return "Invalid State"; break;
+    default:
+      return "Invalid State";
+      break;
   }
 }
 
-const char * MesiDirectoryLineState::to_string(state_t state) {
+const char* MesiDirectoryLineState::to_string(state_t state) {
   switch (state) {
-#define __to_str(__state)                                               \
-    case MesiDirectoryLineState::__state: return #__state; break;
-    
+#define __to_str(__state)               \
+  case MesiDirectoryLineState::__state: \
+    return #__state;                    \
+    break;
+
     MESI_DIRECTORY_STATES(__to_str)
 #undef __to_str
-  default: return "Invalid State"; break;
+    default:
+      return "Invalid State";
+      break;
   }
 }
 
 struct MesiCoherentAgentModel::MesiCoherentAgentModelImpl {
-  MesiCoherentAgentModelImpl(const CoherentAgentOptions & opts)
-      : opts_(opts)
-  {}
+  MesiCoherentAgentModelImpl(const CoherentAgentOptions& opts) : opts_(opts) {}
 
-  void init(CacheLine & l) const {
-    l.set_state(MesiAgentLineState::I);
-  }
+  void init(CacheLine& l) const { l.set_state(MesiAgentLineState::I); }
 
-  bool is_stable(const CacheLine & cache_line) const {
+  bool is_stable(const CacheLine& cache_line) const {
     bool ret;
     switch (cache_line.state()) {
-    case MesiAgentLineState::I:
-    case MesiAgentLineState::S:
-    case MesiAgentLineState::M:
-    case MesiAgentLineState::E:
-      ret = true;
-      break;
+      case MesiAgentLineState::I:
+      case MesiAgentLineState::S:
+      case MesiAgentLineState::M:
+      case MesiAgentLineState::E:
+        ret = true;
+        break;
 
-    default:
-      ret = false;
-      break;
+      default:
+        ret = false;
+        break;
     }
     return ret;
   }
@@ -80,16 +84,16 @@ struct MesiCoherentAgentModel::MesiCoherentAgentModelImpl {
   std::string to_string(state_t s) const {
     return MesiAgentLineState::to_string(s);
   }
-  
+
   //
-  CoherenceActions get_actions(
-      const Transaction * t, const CacheLine & cache_line) const {
+  CoherenceActions get_actions(const Transaction* t,
+                               const CacheLine& cache_line) const {
     CoherenceActions actions;
     switch (t->type()) {
       case TransactionType::Load:
         handle__Load(t, cache_line, actions);
         break;
-        
+
       case TransactionType::Store:
         handle__Store(t, cache_line, actions);
         break;
@@ -101,8 +105,8 @@ struct MesiCoherentAgentModel::MesiCoherentAgentModelImpl {
     return actions;
   }
 
-  CoherenceActions get_actions(
-      const Message * m, const CacheLine & cache_line) const {
+  CoherenceActions get_actions(const Message* m,
+                               const CacheLine& cache_line) const {
     CoherenceActions actions;
     switch (m->type()) {
       case MessageType::FwdGetS:
@@ -125,25 +129,24 @@ struct MesiCoherentAgentModel::MesiCoherentAgentModelImpl {
       case MessageType::Data:
         handle__Data(m, cache_line, actions);
         break;
-        
+
       default:
         actions.set_error(true);
     }
     return actions;
   }
 
-private:
-  void handle__Load(
-      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
-
+ private:
+  void handle__Load(const Transaction* t, const CacheLine& cache_line,
+                    CoherenceActions& a) const {
     switch (cache_line.state()) {
-    case MesiAgentLineState::I:
+      case MesiAgentLineState::I:
         a.append_command(CoherentAgentCommand::EmitGetS);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MesiAgentLineState::IS_D);
         a.set_result(TransactionResult::Miss);
         break;
-        
+
       case MesiAgentLineState::IS_D:
       case MesiAgentLineState::IM_AD:
       case MesiAgentLineState::IM_A:
@@ -157,7 +160,7 @@ private:
       case MesiAgentLineState::E:
         a.set_result(TransactionResult::Hit);
         break;
-        
+
       case MesiAgentLineState::MI_A:
       case MesiAgentLineState::EI_A:
       case MesiAgentLineState::SI_A:
@@ -171,9 +174,8 @@ private:
     }
   }
 
-  void handle__Store(
-      const Transaction * t, const CacheLine & cache_line, CoherenceActions & a) const {
-
+  void handle__Store(const Transaction* t, const CacheLine& cache_line,
+                     CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MesiAgentLineState::I:
         a.append_command(CoherentAgentCommand::EmitGetM);
@@ -203,7 +205,7 @@ private:
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MesiAgentLineState::M);
         [[fallthrough]];
-        
+
       case MesiAgentLineState::M:
         a.set_result(TransactionResult::Hit);
         break;
@@ -221,9 +223,8 @@ private:
     }
   }
 
-  void handle__FwdGetS(
-      const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
-
+  void handle__FwdGetS(const Message* m, const CacheLine& cache_line,
+                       CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MesiAgentLineState::IM_AD:
       case MesiAgentLineState::IM_A:
@@ -231,7 +232,7 @@ private:
       case MesiAgentLineState::SM_A:
         a.set_result(MessageResult::Stall);
         break;
-        
+
       case MesiAgentLineState::M:
       case MesiAgentLineState::E:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
@@ -240,7 +241,7 @@ private:
         a.set_next_state(MesiAgentLineState::S);
         a.set_result(MessageResult::Commit);
         break;
-        
+
       case MesiAgentLineState::MI_A:
       case MesiAgentLineState::EI_A:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
@@ -256,9 +257,8 @@ private:
     }
   }
 
-  void handle__FwdGetM(
-      const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
-
+  void handle__FwdGetM(const Message* m, const CacheLine& cache_line,
+                       CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MesiAgentLineState::IM_AD:
       case MesiAgentLineState::IM_A:
@@ -274,7 +274,7 @@ private:
         a.set_next_state(MesiAgentLineState::I);
         a.set_result(MessageResult::Commit);
         break;
-        
+
       case MesiAgentLineState::MI_A:
       case MesiAgentLineState::EI_A:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
@@ -289,9 +289,8 @@ private:
     }
   }
 
-  void handle__Inv(
-      const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
-
+  void handle__Inv(const Message* m, const CacheLine& cache_line,
+                   CoherenceActions& a) const {
     if (m->is_ack()) {
       const bool is_last_ack = (cache_line.ack_count() == 1);
 
@@ -306,7 +305,7 @@ private:
             a.set_next_state(MesiAgentLineState::M);
             a.set_result(MessageResult::Commit);
             break;
-            
+
           default:
             a.set_error(true);
         }
@@ -325,14 +324,14 @@ private:
           a.set_next_state(MesiAgentLineState::I);
           a.set_result(MessageResult::Commit);
           break;
-          
+
         case MesiAgentLineState::SM_AD:
           a.append_command(CoherentAgentCommand::EmitInvAck);
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MesiAgentLineState::IM_AD);
           a.set_result(MessageResult::Commit);
           break;
-          
+
         case MesiAgentLineState::SI_A:
           a.append_command(CoherentAgentCommand::EmitInvAck);
           a.append_command(CoherentAgentCommand::UpdateState);
@@ -347,9 +346,8 @@ private:
     }
   }
 
-  void handle__PutAck(
-      const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
-
+  void handle__PutAck(const Message* m, const CacheLine& cache_line,
+                      CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MesiAgentLineState::MI_A:
       case MesiAgentLineState::EI_A:
@@ -359,32 +357,28 @@ private:
         a.set_next_state(MesiAgentLineState::I);
         a.set_result(MessageResult::Commit);
         break;
-      
+
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__Data(
-      const Message * m, const CacheLine & cache_line, CoherenceActions & a) const {
+  void handle__Data(const Message* m, const CacheLine& cache_line,
+                    CoherenceActions& a) const {
     const Platform platform = opts_.platform();
-    const bool is_from_dir =
-      platform.is_valid_snoop_filter_id(m->src_id());
-    
-    const bool is_exclusive_data_from_dir =
-      is_from_dir && m->is_exclusive();
-    
-    const bool is_data_from_dir_ack_zero =
-      is_from_dir && (m->ack_count() == 0);
-    
+    const bool is_from_dir = platform.is_valid_snoop_filter_id(m->src_id());
+
+    const bool is_exclusive_data_from_dir = is_from_dir && m->is_exclusive();
+
+    const bool is_data_from_dir_ack_zero = is_from_dir && (m->ack_count() == 0);
+
     const bool is_data_from_dir_ack_non_zero =
-      is_from_dir && (m->ack_count() != 0);
-    
+        is_from_dir && (m->ack_count() != 0);
+
     const bool is_data_from_owner = !is_from_dir;
 
     if (is_exclusive_data_from_dir) {
-
       switch (cache_line.state()) {
         case MesiAgentLineState::IS_D:
           a.append_command(CoherentAgentCommand::UpdateState);
@@ -392,14 +386,13 @@ private:
           a.set_result(MessageResult::Commit);
           a.set_transaction_done(true);
           break;
-          
+
         default:
           a.set_error(true);
           break;
       }
-      
+
     } else if (is_data_from_dir_ack_zero || is_data_from_owner) {
-      
       switch (cache_line.state()) {
         case MesiAgentLineState::IS_D:
           a.append_command(CoherentAgentCommand::UpdateState);
@@ -415,14 +408,13 @@ private:
           a.set_result(MessageResult::Commit);
           a.set_transaction_done(true);
           break;
-        
+
         default:
           a.set_error(true);
           break;
       }
-      
+
     } else if (is_data_from_dir_ack_non_zero) {
-      
       switch (cache_line.state()) {
         case MesiAgentLineState::IM_AD:
           a.append_command(CoherentAgentCommand::UpdateState);
@@ -435,31 +427,27 @@ private:
           a.set_next_state(MesiAgentLineState::SM_A);
           a.set_result(MessageResult::Commit);
           break;
-          
+
         default:
           a.set_error(true);
           break;
       }
-      
     }
   }
 
   const CoherentAgentOptions opts_;
 };
 
-MesiCoherentAgentModel::MesiCoherentAgentModel(const CoherentAgentOptions & opts)
+MesiCoherentAgentModel::MesiCoherentAgentModel(const CoherentAgentOptions& opts)
     : CoherentAgentModel(opts) {
   impl_ = std::make_unique<MesiCoherentAgentModelImpl>(opts);
 }
 
-MesiCoherentAgentModel::~MesiCoherentAgentModel() {
-}
+MesiCoherentAgentModel::~MesiCoherentAgentModel() {}
 
-void MesiCoherentAgentModel::init(CacheLine & l) const {
-  impl_->init(l);
-}
+void MesiCoherentAgentModel::init(CacheLine& l) const { impl_->init(l); }
 
-bool MesiCoherentAgentModel::is_stable(const CacheLine & l) const {
+bool MesiCoherentAgentModel::is_stable(const CacheLine& l) const {
   return impl_->is_stable(l);
 }
 
@@ -468,43 +456,41 @@ std::string MesiCoherentAgentModel::to_string(state_t state) const {
 }
 
 CoherenceActions MesiCoherentAgentModel::get_actions(
-    const Transaction * t, const CacheLine & cache_line) const {
+    const Transaction* t, const CacheLine& cache_line) const {
   return impl_->get_actions(t, cache_line);
 }
 
 CoherenceActions MesiCoherentAgentModel::get_actions(
-    const Message * m, const CacheLine & cache_line) const {
+    const Message* m, const CacheLine& cache_line) const {
   return impl_->get_actions(m, cache_line);
 }
 
 struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
-  
-  MesiSnoopFilterModelImpl(const SnoopFilterOptions & opts)
-      : opts_(opts) 
-  {}
+  MesiSnoopFilterModelImpl(const SnoopFilterOptions& opts) : opts_(opts) {}
 
-  void init(DirectoryEntry & l) const {
-    l.set_state(static_cast<DirectoryEntry::state_type>(MesiDirectoryLineState::I));
+  void init(DirectoryEntry& l) const {
+    l.set_state(
+        static_cast<DirectoryEntry::state_type>(MesiDirectoryLineState::I));
   }
-  
-  bool is_stable(const DirectoryEntry & dir_entry) {
+
+  bool is_stable(const DirectoryEntry& dir_entry) {
     bool ret{false};
     switch (dir_entry.state()) {
-    case MesiDirectoryLineState::I:
-    case MesiDirectoryLineState::S:
-    case MesiDirectoryLineState::E:
-    case MesiDirectoryLineState::M:
-      ret = true;
-      break;
-      
-    default:
-      ret = false;
-      break;
+      case MesiDirectoryLineState::I:
+      case MesiDirectoryLineState::S:
+      case MesiDirectoryLineState::E:
+      case MesiDirectoryLineState::M:
+        ret = true;
+        break;
+
+      default:
+        ret = false;
+        break;
     }
     return ret;
   }
 
-  std::string to_string(const DirectoryEntry & dir_entry) const {
+  std::string to_string(const DirectoryEntry& dir_entry) const {
     std::stringstream ss;
     ss << MesiDirectoryLineState::to_string(dir_entry.state());
     return ss.str();
@@ -514,44 +500,43 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
     return MesiDirectoryLineState::to_string(state);
   }
 
-  CoherenceActions get_actions(
-      const Message * m, const DirectoryEntry & dir_entry) {
+  CoherenceActions get_actions(const Message* m,
+                               const DirectoryEntry& dir_entry) {
     CoherenceActions actions;
     switch (m->type()) {
       case MessageType::GetS:
         handle__GetS(m, dir_entry, actions);
         break;
-          
+
       case MessageType::GetM:
         handle__GetM(m, dir_entry, actions);
         break;
-          
+
       case MessageType::PutS:
         handle__PutS(m, dir_entry, actions);
         break;
-          
+
       case MessageType::PutM:
         handle__PutM(m, dir_entry, actions);
         break;
-          
+
       case MessageType::PutE:
         handle__PutE(m, dir_entry, actions);
         break;
-          
+
       case MessageType::Data:
         handle__Data(m, dir_entry, actions);
         break;
-          
+
       default:
         actions.set_error(true);
     }
     return actions;
   }
+
  private:
-
-  void handle__GetS(
-      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
-
+  void handle__GetS(const Message* m, const DirectoryEntry& dir_entry,
+                    CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendDataToReq);
@@ -594,9 +579,8 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
     }
   }
 
-  void handle__GetM(
-      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
-
+  void handle__GetM(const Message* m, const DirectoryEntry& dir_entry,
+                    CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendDataToReq);
@@ -637,10 +621,9 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
     }
   }
 
-  void handle__PutS(
-      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
-
-    const bool is_last = false; // TODO
+  void handle__PutS(const Message* m, const DirectoryEntry& dir_entry,
+                    CoherenceActions& a) const {
+    const bool is_last = false;  // TODO
 
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
@@ -674,10 +657,9 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
         break;
     }
   }
-  
-  void handle__PutM(
-      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
+  void handle__PutM(const Message* m, const DirectoryEntry& dir_entry,
+                    CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I: {
         const bool is_from_owner = (m->src_id() == dir_entry.owner());
@@ -729,11 +711,9 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
         break;
     }
   }
-  
-  void handle__PutE(
-      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
-
+  void handle__PutE(const Message* m, const DirectoryEntry& dir_entry,
+                    CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendPutEAckToReq);
@@ -769,10 +749,9 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
         break;
     }
   }
-  
-  void handle__Data(
-      const Message * m, const DirectoryEntry & dir_entry, CoherenceActions & a) const {
 
+  void handle__Data(const Message* m, const DirectoryEntry& dir_entry,
+                    CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::S_D:
         a.append_command(SnoopFilterCommand::CpyDataToMemory);
@@ -789,23 +768,20 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
   const SnoopFilterOptions opts_;
 };
 
-MesiSnoopFilterModel::MesiSnoopFilterModel(const SnoopFilterOptions & opts)
+MesiSnoopFilterModel::MesiSnoopFilterModel(const SnoopFilterOptions& opts)
     : SnoopFilterModel(opts) {
   impl_ = std::make_unique<MesiSnoopFilterModelImpl>(opts);
 }
 
-MesiSnoopFilterModel::~MesiSnoopFilterModel() {
-}
+MesiSnoopFilterModel::~MesiSnoopFilterModel() {}
 
-void MesiSnoopFilterModel::init(DirectoryEntry & l) const {
-  impl_->init(l);
-}
+void MesiSnoopFilterModel::init(DirectoryEntry& l) const { impl_->init(l); }
 
-bool MesiSnoopFilterModel::is_stable(const DirectoryEntry & l) const {
+bool MesiSnoopFilterModel::is_stable(const DirectoryEntry& l) const {
   return impl_->is_stable(l);
 }
 
-std::string MesiSnoopFilterModel::to_string(const DirectoryEntry & l) const {
+std::string MesiSnoopFilterModel::to_string(const DirectoryEntry& l) const {
   return impl_->to_string(l);
 }
 
@@ -814,19 +790,16 @@ std::string MesiSnoopFilterModel::to_string(state_t state) const {
 }
 
 CoherenceActions MesiSnoopFilterModel::get_actions(
-    const Message * m, const DirectoryEntry & dir_entry) const {
+    const Message* m, const DirectoryEntry& dir_entry) const {
   return impl_->get_actions(m, dir_entry);
 }
 
-MesiCoherenceProtocolValidator::MesiCoherenceProtocolValidator() {
-}
+MesiCoherenceProtocolValidator::MesiCoherenceProtocolValidator() {}
 
-  bool MesiCoherenceProtocolValidator::validate_addr(addr_t addr,
-                                                     const std::vector<Entry<CacheLine> > & lines,
-                                                     const DirectoryEntry & entry) const {
-                                                   
-                                                   
+bool MesiCoherenceProtocolValidator::validate_addr(
+    addr_t addr, const std::vector<Entry<CacheLine> >& lines,
+    const DirectoryEntry& entry) const {
   return false;
 }
 
-} // namespace ccm
+}  // namespace ccm
