@@ -96,7 +96,7 @@ class LoggerScope {
   void log(const LogLevel ll, const char* s) { logger_->log(ll, s); }
 
   std::string path_;
-  Logger* logger_;
+  Logger* logger_{nullptr};
   std::unordered_map<std::string, std::unique_ptr<LoggerScope>> scopes_;
 };
 
