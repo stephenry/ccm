@@ -149,8 +149,8 @@ void Agent::eval(Context & context) {
     if (!epoch.in_interval(next.time()))
       break;
 
-    cursor.set_time(next.time());
-    set_time(next.time());
+    cursor.set_time(std::max(time(), next.time()));
+    set_time(cursor.time());
 
     CoherenceActions actions;
     switch (next.type()) {
