@@ -165,11 +165,12 @@ const char* to_string(CoherentAgentCommand command);
 // clang-format on
 
 enum class SnoopFilterCommand : command_t {
+// clang-format off
 #define __declare_state(__state) __state,
   SNOOP_FILTER_COMMANDS(__declare_state)
 #undef __declare_state
+// clang-format on
 };
-// clang-format off
 
 const char * to_string(SnoopFilterCommand command);
 
@@ -226,31 +227,40 @@ struct DirectoryEntry : CacheLine {
 
 std::string to_string(const DirectoryEntry & d);
 
+// clang-format off
 #define TRANSACTION_RESULT(__func)              \
   __func(Hit)                                   \
   __func(Miss)                                  \
   __func(Blocked)
+// clang-format on
 
 enum TransactionResult : result_t {
+// clang-format off
 #define __declare_state(__state)                \
   __state,
   TRANSACTION_RESULT(__declare_state)
 #undef __declare_state
+// clang-format on
 };
 
 const char * to_string(TransactionResult r);
 
+// clang-format off
 #define MESSAGE_RESULT(__func)                  \
   __func(Commit)                                \
   __func(Stall)
+// clang-format on
 
 enum MessageResult : result_t {
+// clang-format off
 #define __declare_state(__state)                \
   __state,
   MESSAGE_RESULT(__declare_state)
 #undef __declare_state
+// clang-format on
 };
 
+// clang-format off
 #define ACTION_FIELDS(__func)                   \
   __func(fwd_id, id_t, 0)                       \
   __func(transaction_done, bool, false)         \
@@ -274,7 +284,7 @@ struct CoherenceActions {
   }
   ACTION_FIELDS(__declare_getter_setter)
 #undef __declare_getter_setter
-  // clang-format on
+// clang-format on
 
   template <typename T>
   void append_command(const T& cmd) {

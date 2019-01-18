@@ -39,13 +39,20 @@ namespace ccm {
 
 using addr_t = std::size_t;
 
-#define EVICTION_POLICIES(__func) \
-  __func(Fixed) __func(Random) __func(PsuedoLru) __func(TrueLru)
+// clang-format off
+#define EVICTION_POLICIES(__func)               \
+  __func(Fixed)                                 \
+  __func(Random)                                \
+  __func(PsuedoLru)                             \
+  __func(TrueLru)
+// clang-format on
 
 enum class EvictionPolicy {
+// clang-format off
 #define __declare_eviction_policy(p) p,
   EVICTION_POLICIES(__declare_eviction_policy)
 #undef __declare_eviction_policy
+// clang-format on
 };
 const char* to_string(EvictionPolicy p);
 
