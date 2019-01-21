@@ -28,18 +28,18 @@
 #ifndef __SRC_PROTOCOL_HPP__
 #define __SRC_PROTOCOL_HPP__
 
+#include <map>
 #include <memory>
 #include <vector>
-#include <map>
 
 namespace ccm {
 
-  using result_t = uint8_t;
-  using state_t = uint8_t;
-  using command_t = uint8_t;
-  
-  enum class Protocol { MSI, MESI, MOSI };
-  const char* to_string(Protocol p);
+using result_t = uint8_t;
+using state_t = uint8_t;
+using command_t = uint8_t;
+
+enum class Protocol { MSI, MESI, MOSI };
+const char* to_string(Protocol p);
 
 // clang-format off
 #define AGENT_COMMANDS(__func)                  \
@@ -58,7 +58,7 @@ enum class CoherentAgentCommand : command_t {
   __state,
   AGENT_COMMANDS(__declare_state)
 #undef __declare_state
-// clang-format on
+  // clang-format on
 };
 
 const char* to_string(CoherentAgentCommand command);
@@ -89,10 +89,10 @@ enum class SnoopFilterCommand : command_t {
 #define __declare_state(__state) __state,
   SNOOP_FILTER_COMMANDS(__declare_state)
 #undef __declare_state
-// clang-format on
+  // clang-format on
 };
 
-const char * to_string(SnoopFilterCommand command);
+const char* to_string(SnoopFilterCommand command);
 
 // clang-format off
 #define TRANSACTION_RESULT(__func)              \
@@ -107,10 +107,10 @@ enum TransactionResult : result_t {
   __state,
   TRANSACTION_RESULT(__declare_state)
 #undef __declare_state
-// clang-format on
+  // clang-format on
 };
 
-const char * to_string(TransactionResult r);
+const char* to_string(TransactionResult r);
 
 // clang-format off
 #define MESSAGE_RESULT(__func)                  \
@@ -124,7 +124,7 @@ enum MessageResult : result_t {
   __state,
   MESSAGE_RESULT(__declare_state)
 #undef __declare_state
-// clang-format on
+  // clang-format on
 };
 
 // clang-format off
@@ -151,7 +151,7 @@ struct CoherenceActions {
   }
   ACTION_FIELDS(__declare_getter_setter)
 #undef __declare_getter_setter
-// clang-format on
+  // clang-format on
 
   template <typename T>
   void append_command(const T& cmd) {
@@ -175,82 +175,84 @@ struct CoherenceActions {
   // clang-format on
 };
 
-  class ProtocolBase {
-  public:
-    ProtocolBase(const ActorOptions& opts);
-    virtual ~ProtocolBase() {}
+class ProtocolBase {
+ public:
+  ProtocolBase(const ActorOptions& opts);
+  virtual ~ProtocolBase() {}
 
-    virtual Protocol protocol() const = 0;
+  virtual Protocol protocol() const = 0;
 
-  private:
-    const ActorOptions opts_;
-  };
+ private:
+  const ActorOptions opts_;
+};
 
-  class AgentProtocol : public ProtocolBase {
-  public:
-    AgentProtocol(const ActorOptions& opts);
-    virtual ~AgentProtocol() {}
+class AgentProtocol : public ProtocolBase {
+ public:
+  AgentProtocol(const ActorOptions& opts);
+  virtual ~AgentProtocol() {}
 
-    virtual void init(CacheLine& l) const = 0;
-    virtual bool is_stable(const CacheLine& l) const = 0;
-    virtual std::string to_string(state_t l) const = 0;
+  virtual void init(CacheLine& l) const = 0;
+  virtual bool is_stable(const CacheLine& l) const = 0;
+  virtual std::string to_string(state_t l) const = 0;
 
-    virtual CoherenceActions get_actions(const Message* t,
-                                         const CacheLine& cache_line) const = 0;
-    virtual CoherenceActions get_actions(const Transaction* t,
-                                         const CacheLine& cache_line) const = 0;
-  private:
-    const ActorOptions opts_;
-  };
+  virtual CoherenceActions get_actions(const Message* t,
+                                       const CacheLine& cache_line) const = 0;
+  virtual CoherenceActions get_actions(const Transaction* t,
+                                       const CacheLine& cache_line) const = 0;
 
-  std::unique_ptr<AgentProtocol> agent_protocol_factory(Protocol protocol,
-                                                        const ActorOptions & opts);
+ private:
+  const ActorOptions opts_;
+};
 
-  class SnoopFilterProtocol : public ProtocolBase {
-  public:
-    SnoopFilterProtocol(const ActorOptions& opts);
+std::unique_ptr<AgentProtocol> agent_protocol_factory(Protocol protocol,
+                                                      const ActorOptions& opts);
 
-    virtual void init(DirectoryEntry& l) const = 0;
-    virtual bool is_stable(const DirectoryEntry& l) const = 0;
-    virtual std::string to_string(const DirectoryEntry& l) const = 0;
-    virtual std::string to_string(state_t l) const = 0;
+class SnoopFilterProtocol : public ProtocolBase {
+ public:
+  SnoopFilterProtocol(const ActorOptions& opts);
 
-    virtual CoherenceActions get_actions(
-                                         const Message* t, const DirectoryEntry& dir_entry) const = 0;
-  private:
-    const ActorOptions opts_;
-  };
+  virtual void init(DirectoryEntry& l) const = 0;
+  virtual bool is_stable(const DirectoryEntry& l) const = 0;
+  virtual std::string to_string(const DirectoryEntry& l) const = 0;
+  virtual std::string to_string(state_t l) const = 0;
 
-  std::unique_ptr<SnoopFilterProtocol> snoop_filter_protocol_factory(Protocol protocol,
-                                                                     const ActorOptions & opts);
+  virtual CoherenceActions get_actions(
+      const Message* t, const DirectoryEntry& dir_entry) const = 0;
 
-  class ProtocolValidator {
-    friend class CacheVisitor;
+ private:
+  const ActorOptions opts_;
+};
 
-  public:
-    ProtocolValidator();
-    virtual ~ProtocolValidator() {}
+std::unique_ptr<SnoopFilterProtocol> snoop_filter_protocol_factory(
+    Protocol protocol, const ActorOptions& opts);
 
-    CacheVisitor get_cache_walker();
+class ProtocolValidator {
+  friend class CacheVisitor;
 
-    bool validate() const;
-    virtual bool validate_addr(addr_t addr,
-                               const std::vector<Entry<CacheLine> >& lines,
-                               const DirectoryEntry& entry) const = 0;
+ public:
+  ProtocolValidator();
+  virtual ~ProtocolValidator() {}
 
-  protected:
-    void add_cache_line(id_t id, addr_t addr, const CacheLine& cache_line);
-    void add_dir_line(addr_t addr, const DirectoryEntry& directory_entry);
+  CacheVisitor get_cache_walker();
 
-    void error(const char* str) const {}
+  bool validate() const;
+  virtual bool validate_addr(addr_t addr,
+                             const std::vector<Entry<CacheLine> >& lines,
+                             const DirectoryEntry& entry) const = 0;
 
-    std::map<addr_t, std::vector<Entry<CacheLine> > > cache_lines_;
-    std::map<addr_t, DirectoryEntry> directory_lines_;
-  };
+ protected:
+  void add_cache_line(id_t id, addr_t addr, const CacheLine& cache_line);
+  void add_dir_line(addr_t addr, const DirectoryEntry& directory_entry);
 
-  std::unique_ptr<ProtocolValidator> protocol_validator_factory(Protocol protocol);
-                                                       
-  
-} // namespace ccm
+  void error(const char* str) const {}
+
+  std::map<addr_t, std::vector<Entry<CacheLine> > > cache_lines_;
+  std::map<addr_t, DirectoryEntry> directory_lines_;
+};
+
+std::unique_ptr<ProtocolValidator> protocol_validator_factory(
+    Protocol protocol);
+
+}  // namespace ccm
 
 #endif

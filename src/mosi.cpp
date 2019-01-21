@@ -26,6 +26,7 @@
 //========================================================================== //
 
 #include "mosi.hpp"
+#include "snoopfilter.hpp"
 
 namespace ccm {
 
@@ -531,7 +532,7 @@ CoherenceActions MosiCoherentAgentModel::get_actions(
 }
 
 struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
-  MosiSnoopFilterModelImpl(const SnoopFilterOptions& opts) : opts_(opts) {}
+  MosiSnoopFilterModelImpl(const ActorOptions& opts) : opts_(opts) {}
 
   void init(DirectoryEntry& l) const { l.set_state(MosiDirectoryLineState::I); }
 
@@ -787,10 +788,10 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
     }
   }
 
-  const SnoopFilterOptions opts_;
+  const ActorOptions opts_;
 };
 
-MosiSnoopFilterModel::MosiSnoopFilterModel(const SnoopFilterOptions& opts)
+MosiSnoopFilterModel::MosiSnoopFilterModel(const ActorOptions& opts)
     : SnoopFilterModel(opts) {
   impl_ = std::make_unique<MosiSnoopFilterModelImpl>(opts);
 }

@@ -112,7 +112,7 @@ class MesiCoherentAgentModel : public CoherentAgentModel {
 
 class MesiSnoopFilterModel : public SnoopFilterModel {
  public:
-  MesiSnoopFilterModel(const SnoopFilterOptions& opts);
+  MesiSnoopFilterModel(const ActorOptions& opts);
   virtual ~MesiSnoopFilterModel();
 
   //

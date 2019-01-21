@@ -38,9 +38,9 @@ const char* to_string(LogLevel ll) {
     break;
     LOGLEVELS(__declare_to_string)
 #undef __declare_to_string
-// clang-format on
-  default:
-    return "Unknown";
+      // clang-format on
+    default:
+      return "Unknown";
   }
 }
 

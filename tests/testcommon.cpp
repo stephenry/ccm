@@ -50,8 +50,9 @@ BasicPlatform::~BasicPlatform() {
 bool BasicPlatform::validate() const {
   if (!validator_) return false;
 
-  CacheWalker cache_walker = validator_->get_cache_walker();
-  for (CoherentActor* actor : actors_) actor->walk_cache(cache_walker);
+  std::unique_ptr<CacheVisitor> cache_visitor = validator_->get_cache_visitor();
+  for (CoherentActor* actor : actors_)
+    actor->visit_cache(cache_visitor.get());
 
   return validator_->validate();
 }

@@ -33,11 +33,13 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include "common.hpp"
+#include "platform.hpp"
 #include "utility.hpp"
 
 namespace ccm {
-
-using addr_t = std::size_t;
+class CacheLine;
+class DirectoryEntry;
 
 // clang-format off
 #define EVICTION_POLICIES(__func)               \
@@ -52,7 +54,7 @@ enum class EvictionPolicy {
 #define __declare_eviction_policy(p) p,
   EVICTION_POLICIES(__declare_eviction_policy)
 #undef __declare_eviction_policy
-// clang-format on
+  // clang-format on
 };
 const char* to_string(EvictionPolicy p);
 
@@ -84,14 +86,20 @@ class CacheAddressFormat {
   }
 
   addr_t offset(addr_t a) const { return (a & mask_bytes_per_line_); }
-
   addr_t set(addr_t a) const { return (a >> l2c_bytes_per_line_); }
-
   addr_t tag(addr_t a) const { return set(a) >> l2c_sets_n_; }
 
  private:
   std::size_t bytes_per_line_, l2c_bytes_per_line_, mask_bytes_per_line_;
   std::size_t sets_n_, l2c_sets_n_;
+};
+
+struct CacheVisitor {
+  virtual ~CacheVisitor() {}
+
+  virtual void set_id(id_t id) {}
+  virtual void add_line(addr_t addr, const CacheLine& cache_line) {}
+  virtual void add_line(addr_t addr, const DirectoryEntry& directory_entry) {}
 };
 
 template <typename T>
@@ -107,6 +115,7 @@ class GenericCache {
 
   virtual T& lookup(addr_t addr) = 0;
 
+  virtual void visit(CacheVisitor* visitor) = 0;
   virtual void install(addr_t addr, const T& t) = 0;
   virtual bool evict(addr_t addr) = 0;
 
@@ -135,8 +144,11 @@ class FullyAssociativeCache : public GenericCache<T> {
     return cache_[addr];
   }
 
-  void install(addr_t addr, const T& t) override { cache_[addr] = t; }
+  void visit(CacheVisitor* visitor) override {
+    for (auto& [addr, t] : cache_) visitor->add_line(addr, t);
+  }
 
+  void install(addr_t addr, const T& t) override { cache_[addr] = t; }
   bool evict(addr_t addr) override {
     auto it = cache_.find(addr);
     const bool found = (it != cache_.end());

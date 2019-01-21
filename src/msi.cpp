@@ -431,7 +431,7 @@ const char *MsiDirectoryLineState::to_string(state_t s) {
 }
 
 struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
-  MsiSnoopFilterModelImpl(const SnoopFilterOptions &opts) : opts_(opts) {}
+  MsiSnoopFilterModelImpl(const ActorOptions &opts) : opts_(opts) {}
 
   void init(DirectoryEntry &l) const { l.set_state(MsiDirectoryLineState::I); }
 
@@ -635,10 +635,10 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
 
   bool transaction_must_hit(MessageType t) { return true; }
 
-  const SnoopFilterOptions opts_;
+  const ActorOptions opts_;
 };
 
-MsiSnoopFilterModel::MsiSnoopFilterModel(const SnoopFilterOptions &opts)
+MsiSnoopFilterModel::MsiSnoopFilterModel(const ActorOptions &opts)
     : SnoopFilterModel(opts) {
   impl_ = std::make_unique<MsiSnoopFilterModelImpl>(opts);
 }

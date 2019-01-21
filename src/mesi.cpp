@@ -26,6 +26,7 @@
 //========================================================================== //
 
 #include "mesi.hpp"
+#include "snoopfilter.hpp"
 
 namespace ccm {
 
@@ -466,7 +467,7 @@ CoherenceActions MesiCoherentAgentModel::get_actions(
 }
 
 struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
-  MesiSnoopFilterModelImpl(const SnoopFilterOptions& opts) : opts_(opts) {}
+  MesiSnoopFilterModelImpl(const ActorOptions& opts) : opts_(opts) {}
 
   void init(DirectoryEntry& l) const {
     l.set_state(
@@ -765,10 +766,10 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
     }
   }
 
-  const SnoopFilterOptions opts_;
+  const ActorOptions opts_;
 };
 
-MesiSnoopFilterModel::MesiSnoopFilterModel(const SnoopFilterOptions& opts)
+MesiSnoopFilterModel::MesiSnoopFilterModel(const ActorOptions& opts)
     : SnoopFilterModel(opts) {
   impl_ = std::make_unique<MesiSnoopFilterModelImpl>(opts);
 }

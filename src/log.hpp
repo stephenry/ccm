@@ -113,7 +113,7 @@ class Loggable {
   }
   LOGLEVELS(__declare_handler)
 #undef __declare_handler
-// clang-format on
+  // clang-format on
 
   virtual Time time() const = 0;
 

@@ -27,10 +27,12 @@
 
 #include "coherence.hpp"
 #include "actor.hpp"
+#include "cache.hpp"
 #include "common.hpp"
 #include "mesi.hpp"
 #include "mosi.hpp"
 #include "msi.hpp"
+#include "platform.hpp"
 #include "sim.hpp"
 #include "snoopfilter.hpp"
 
@@ -82,184 +84,12 @@ const char* to_string(TransactionResult r) {
 }
 // clang-format on
 
-CoherentAgentCommandInvoker::CoherentAgentCommandInvoker(
-    const CoherentAgentOptions& opts)
-    : CoherentActor(opts), msgd_(opts) {
-  cc_model_ = coherent_agent_factory(opts);
-  cache_ = cache_factory<CacheLine>(opts.cache_options());
-}
-
-CacheLine CoherentAgentCommandInvoker::cache_line(std::size_t addr) const {
-  CacheLine cl;
-  if (cache_->is_hit(addr)) {
-    cl = cache_->lookup(addr);
-  } else {
-    cc_model_->init(cl);
-  }
-  return cl;
-}
-
-void CoherentAgentCommandInvoker::walk_cache(CacheWalker& cache_walker) const {}
-
-void CoherentAgentCommandInvoker::execute(Context& context, Cursor& cursor,
-                                          const CoherenceActions& actions,
-                                          CacheLine& cache_line,
-                                          const Transaction* t) {
-  for (const command_t c : actions.commands()) {
-    const CoherentAgentCommand cmd{c};
-    log_debug("Execute: ", to_string(cmd));
-
-    switch (cmd) {
-      case CoherentAgentCommand::UpdateState:
-        execute_update_state(cache_line, actions);
-        break;
-
-      case CoherentAgentCommand::EmitGetS:
-        execute_emit_gets(context, cursor, t);
-        break;
-
-      case CoherentAgentCommand::EmitGetM:
-        execute_emit_getm(context, cursor, t);
-        break;
-
-      default:
-        break;
-    }
-  }
-}
-
-void CoherentAgentCommandInvoker::execute(Context& context, Cursor& cursor,
-                                          const CoherenceActions& actions,
-                                          CacheLine& cache_line,
-                                          const Message* msg) {
-  for (const command_t c : actions.commands()) {
-    const CoherentAgentCommand cmd{c};
-    log_debug("Execute: ", to_string(cmd));
-
-    switch (cmd) {
-      case CoherentAgentCommand::UpdateState:
-        execute_update_state(cache_line, actions);
-        break;
-
-      case CoherentAgentCommand::EmitDataToReq:
-        execute_emit_data_to_req(context, cursor, msg);
-        break;
-
-      case CoherentAgentCommand::EmitDataToDir:
-        execute_emit_data_to_dir(context, cursor, msg);
-        break;
-
-      case CoherentAgentCommand::EmitInvAck:
-        execute_emit_inv_ack(context, cursor, msg);
-        break;
-
-      case CoherentAgentCommand::SetAckCount:
-        execute_set_ack_count(cache_line, actions);
-        break;
-
-      default:
-        break;
-    }
-  }
-}
-
-void CoherentAgentCommandInvoker::execute_update_state(
-    CacheLine& cache_line, const CoherenceActions& actions) {
-  const state_t next_state = actions.next_state();
-  log_debug("Update state; current: ", cc_model_->to_string(next_state),
-            " previous: ", cc_model_->to_string(cache_line.state()));
-  cache_line.set_state(next_state);
-}
-
-void CoherentAgentCommandInvoker::execute_emit_gets(Context& context,
-                                                    Cursor& cursor,
-                                                    const Transaction* t) {
-  const Platform platform = opts_.platform();
-  MessageBuilder b = msgd_.builder();
-
-  b.set_type(MessageType::GetS);
-  b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
-  b.set_transaction(t);
-
-  log_debug("Sending GetS to home directory.");
-  emit_message(context, cursor, b);
-}
-
-void CoherentAgentCommandInvoker::execute_emit_getm(Context& context,
-                                                    Cursor& cursor,
-                                                    const Transaction* t) {
-  const Platform platform = opts_.platform();
-  MessageBuilder b = msgd_.builder();
-
-  b.set_type(MessageType::GetM);
-  b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
-  b.set_transaction(t);
-
-  log_debug("Sending GetM to home directory.");
-  emit_message(context, cursor, b);
-}
-
-void CoherentAgentCommandInvoker::execute_emit_data_to_req(Context& context,
-                                                           Cursor& cursor,
-                                                           const Message* msg) {
-  const Transaction* t = msg->transaction();
-  MessageBuilder b = msgd_.builder();
-
-  b.set_type(MessageType::Data);
-  b.set_dst_id(msg->fwd_id());
-  b.set_transaction(t);
-
-  log_debug("Emit Data To Requester.");
-  emit_message(context, cursor, b);
-}
-
-void CoherentAgentCommandInvoker::execute_emit_data_to_dir(Context& context,
-                                                           Cursor& cursor,
-                                                           const Message* msg) {
-  const Transaction* t = msg->transaction();
-  const Platform platform = opts_.platform();
-  MessageBuilder b = msgd_.builder();
-
-  b.set_type(MessageType::Data);
-  b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
-  b.set_transaction(t);
-
-  log_debug("Emit Data To Directory.");
-  emit_message(context, cursor, b);
-}
-
-void CoherentAgentCommandInvoker::execute_emit_inv_ack(Context& context,
-                                                       Cursor& cursor,
-                                                       const Message* msg) {
-  const Transaction* t = msg->transaction();
-  MessageBuilder b = msgd_.builder();
-
-  b.set_type(MessageType::Inv);
-  b.set_is_ack(true);
-
-  // TODO: This is a special case because the dst_id for the ack. is
-  // not the originator of the command.
-  b.set_dst_id(msg->src_id());
-  b.set_dst_id(0);
-  b.set_transaction(t);
-
-  log_debug("Sending invalidation acknowledgement.");
-  emit_message(context, cursor, b);
-}
-
-void CoherentAgentCommandInvoker::execute_set_ack_count(
-    CacheLine& cache_line, const CoherenceActions& actions) {
-  const CoherenceActions::ack_count_type ack_count = actions.ack_count();
-  log_debug("Update ack_count: ", (int)ack_count);
-  cache_line.set_ack_count(ack_count);
-}
-
 CoherentAgentModel::CoherentAgentModel(const CoherentAgentOptions& opts)
     : CoherentActorBase(opts) {}
 
 std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
-    const CoherentAgentOptions& opts) {
-  switch (opts.protocol()) {
+    Protocol protocol, const CoherentAgentOptions& opts) {
+  switch (protocol) {
     case Protocol::MSI:
       return std::make_unique<MsiCoherentAgentModel>(opts);
       break;
@@ -293,302 +123,6 @@ const char* to_string(SnoopFilterCommand command) {
 
 CoherentActorBase::CoherentActorBase(const ActorOptions& opts) : opts_(opts) {}
 
-SnoopFilterCommandInvoker::SnoopFilterCommandInvoker(
-    const SnoopFilterOptions& opts)
-    : opts_(opts), msgd_(opts), CoherentActor(opts) {
-  cc_model_ = snoop_filter_factory(opts);
-  cache_ = cache_factory<DirectoryEntry>(opts.cache_options());
-}
-
-DirectoryEntry SnoopFilterCommandInvoker::directory_entry(
-    std::size_t addr) const {
-  DirectoryEntry directory_entry;
-  if (cache_->is_hit(addr)) {
-    directory_entry = cache_->lookup(addr);
-  } else {
-    cc_model_->init(directory_entry);
-  }
-  return directory_entry;
-}
-
-void SnoopFilterCommandInvoker::walk_cache(CacheWalker& cache_walker) const {}
-
-void SnoopFilterCommandInvoker::execute(Context& context, Cursor& cursor,
-                                        const CoherenceActions& actions,
-                                        const Message* msg, DirectoryEntry& d) {
-  for (const command_t c : actions.commands()) {
-    const SnoopFilterCommand cmd{c};
-    log_debug("Execute: ", to_string(cmd));
-
-    switch (cmd) {
-      case SnoopFilterCommand::UpdateState:
-        execute_update_state(context, cursor, d, actions.next_state());
-        break;
-
-      case SnoopFilterCommand::SetOwnerToReq:
-        execute_set_owner_to_req(msg, context, cursor, d);
-        break;
-
-      case SnoopFilterCommand::SendDataToReq:
-        execute_send_data_to_req(msg, context, cursor, d, actions);
-        break;
-
-      case SnoopFilterCommand::SendInvToSharers:
-        execute_send_inv_to_sharers(msg, context, cursor, d);
-        break;
-
-      case SnoopFilterCommand::ClearSharers:
-        execute_clear_sharers(msg, context, cursor, d);
-        break;
-
-      case SnoopFilterCommand::AddReqToSharers:
-        execute_add_req_to_sharers(msg, context, cursor, d);
-        break;
-
-      case SnoopFilterCommand::DelReqFromSharers:
-        execute_del_req_from_sharers(msg, context, cursor, d);
-        break;
-
-      case SnoopFilterCommand::DelOwner:
-        execute_del_owner(msg, context, cursor, d);
-        break;
-
-      case SnoopFilterCommand::AddOwnerToSharers:
-        execute_add_owner_to_sharers(msg, context, cursor, d);
-        break;
-
-      case SnoopFilterCommand::CpyDataToMemory:
-        execute_cpy_data_to_memory(msg, context, cursor, d);
-        break;
-
-      case SnoopFilterCommand::SendPutSAckToReq:
-        execute_send_puts_ack_to_req(msg, context, cursor, d);
-        break;
-
-      case SnoopFilterCommand::SendPutMAckToReq:
-        execute_send_putm_ack_to_req(msg, context, cursor, d);
-        break;
-
-      case SnoopFilterCommand::SendFwdGetSToOwner:
-        execute_send_fwd_gets_to_owner(msg, context, cursor, d, actions);
-        break;
-
-      case SnoopFilterCommand::SendPutEAckToReq:
-        execute_send_pute_ack_to_req(msg, context, cursor);
-        break;
-
-      case SnoopFilterCommand::SendPutOAckToReq:
-        execute_send_puto_ack_to_req(msg, context, cursor);
-        break;
-
-      case SnoopFilterCommand::SendAckCountToReq:
-        execute_send_ack_count_to_req(msg, context, cursor, actions);
-        break;
-
-      case SnoopFilterCommand::SendFwdGetMToOwner:
-        // TODO
-        break;
-
-      default:
-        break;
-    }
-  }
-}
-
-void SnoopFilterCommandInvoker::execute_update_state(Context& context,
-                                                     Cursor& cursor,
-                                                     DirectoryEntry& d,
-                                                     state_t state_next) {
-  log_debug("Update state; current: ", cc_model_->to_string(state_next),
-            " previous: ", cc_model_->to_string(d.state()));
-
-  d.set_state(state_next);
-}
-
-void SnoopFilterCommandInvoker::execute_set_owner_to_req(const Message* msg,
-                                                         Context& context,
-                                                         Cursor& cursor,
-                                                         DirectoryEntry& d) {
-  log_debug("Set Owner To Requester: Owner = ", msg->src_id());
-
-  d.set_owner(msg->src_id());
-}
-
-void SnoopFilterCommandInvoker::execute_send_data_to_req(
-    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d,
-    const CoherenceActions& a) {
-  MessageBuilder b = msgd_.builder();
-  b.set_type(MessageType::Data);
-  b.set_dst_id(msg->src_id());
-  b.set_transaction(msg->transaction());
-
-  b.set_ack_count(a.ack_count());
-  //  b.set_ack_count(0);
-  b.set_is_exclusive(a.is_exclusive());
-
-  log_debug("Sending data to requester.");
-  emit_message(context, cursor, b);
-}
-
-void SnoopFilterCommandInvoker::execute_send_inv_to_sharers(const Message* msg,
-                                                            Context& context,
-                                                            Cursor& cursor,
-                                                            DirectoryEntry& d) {
-  log_debug("Send Invalidation(s) to sharers.");
-
-  for (const std::size_t sharer : d.sharers()) {
-    // Do not invalidation request to requester, only the other
-    // sharing agents in the system.
-    //
-    if (sharer == msg->src_id()) continue;
-
-    MessageBuilder b = msgd_.builder();
-    b.set_type(MessageType::Inv);
-    b.set_dst_id(sharer);
-    b.set_transaction(msg->transaction());
-
-    log_debug("Sending invalidation to agent ", sharer);
-    emit_message(context, cursor, b);
-  }
-}
-
-void SnoopFilterCommandInvoker::execute_clear_sharers(const Message* msg,
-                                                      Context& context,
-                                                      Cursor& cursor,
-                                                      DirectoryEntry& d) {
-  StateUpdateLogger l;
-
-  l.add(d.sharers(), " before = ");
-  d.clear_sharers();
-  l.add(d.sharers(), " after = ");
-  log_debug("Clear sharers; ", l.str());
-}
-
-void SnoopFilterCommandInvoker::execute_add_req_to_sharers(const Message* msg,
-                                                           Context& context,
-                                                           Cursor& cursor,
-                                                           DirectoryEntry& d) {
-  StateUpdateLogger l;
-
-  l.add(d.sharers(), " before = ");
-  d.add_sharer(msg->src_id());
-  l.add(d.sharers(), " after = ");
-
-  log_debug("Add requester to sharers: ", l.str());
-}
-
-void SnoopFilterCommandInvoker::execute_del_req_from_sharers(
-    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d) {
-  StateUpdateLogger l;
-
-  l.add(d.sharers(), " before = ");
-  d.remove_sharer(msg->src_id());
-  l.add(d.sharers(), " after = ");
-
-  log_debug("Remove requester from sharers; ", l.str());
-}
-
-void SnoopFilterCommandInvoker::execute_del_owner(const Message* msg,
-                                                  Context& context,
-                                                  Cursor& cursor,
-                                                  DirectoryEntry& d) {
-  log_debug("Delete owner.");
-
-  d.clear_owner();
-}
-
-void SnoopFilterCommandInvoker::execute_add_owner_to_sharers(
-    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d) {
-  log_debug("Add owner to sharers.");
-
-  d.add_sharer(d.owner());
-}
-
-void SnoopFilterCommandInvoker::execute_cpy_data_to_memory(const Message* msg,
-                                                           Context& context,
-                                                           Cursor& cursor,
-                                                           DirectoryEntry& d) {
-  log_debug("Copy Data to Memory.");
-
-  // NOP
-}
-
-void SnoopFilterCommandInvoker::execute_send_puts_ack_to_req(
-    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d) {
-  MessageBuilder b = msgd_.builder();
-  b.set_type(MessageType::PutS);
-  b.set_dst_id(msg->src_id());
-  b.set_is_ack(true);
-  b.set_transaction(msg->transaction());
-
-  log_debug("Sending PutS acknowledgement to requester.");
-  emit_message(context, cursor, b);
-}
-
-void SnoopFilterCommandInvoker::execute_send_putm_ack_to_req(
-    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d) {
-  MessageBuilder b = msgd_.builder();
-  b.set_type(MessageType::PutM);
-  b.set_dst_id(msg->src_id());
-  b.set_is_ack(true);
-  b.set_transaction(msg->transaction());
-
-  log_debug("Sending PutM acknowledgement to requester.");
-  emit_message(context, cursor, b);
-}
-
-void SnoopFilterCommandInvoker::execute_send_fwd_gets_to_owner(
-    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d,
-    const CoherenceActions& actions) {
-  MessageBuilder b = msgd_.builder();
-  b.set_type(MessageType::FwdGetS);
-  b.set_dst_id(d.owner());
-  b.set_fwd_id(actions.fwd_id());
-  b.set_transaction(msg->transaction());
-
-  log_debug("Sending FwdGetS to owner.");
-  emit_message(context, cursor, b);
-}
-
-void SnoopFilterCommandInvoker::execute_send_pute_ack_to_req(const Message* msg,
-                                                             Context& context,
-                                                             Cursor& cursor) {
-  MessageBuilder b = msgd_.builder();
-
-  b.set_type(MessageType::PutE);
-  b.set_dst_id(msg->src_id());
-  b.set_is_ack(true);
-
-  log_debug("Sending PutEAck to requester.");
-  emit_message(context, cursor, b);
-}
-
-void SnoopFilterCommandInvoker::execute_send_puto_ack_to_req(const Message* msg,
-                                                             Context& context,
-                                                             Cursor& cursor) {
-  MessageBuilder b = msgd_.builder();
-
-  b.set_type(MessageType::PutO);
-  b.set_dst_id(msg->src_id());
-  b.set_is_ack(true);
-
-  log_debug("Sending PutOAck to requester.");
-  emit_message(context, cursor, b);
-}
-
-void SnoopFilterCommandInvoker::execute_send_ack_count_to_req(
-    const Message* msg, Context& context, Cursor& cursor,
-    const CoherenceActions& actions) {
-  MessageBuilder b = msgd_.builder();
-
-  b.set_type(MessageType::AckCount);
-  b.set_dst_id(msg->src_id());
-  b.set_ack_count(actions.ack_count());
-
-  log_debug("Sending AckCount to requester.");
-  emit_message(context, cursor, b);
-}
-
 const char* to_string(EvictionPolicy p) {
   switch (p) {
 #define __declare_to_string(e) \
@@ -601,12 +135,12 @@ const char* to_string(EvictionPolicy p) {
   }
 }
 
-SnoopFilterModel::SnoopFilterModel(const SnoopFilterOptions& opts)
+SnoopFilterModel::SnoopFilterModel(const ActorOptions& opts)
     : CoherentActorBase(opts), opts_(opts) {}
 
 std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
-    const SnoopFilterOptions& opts) {
-  switch (opts.protocol()) {
+    Protocol protocol, const ActorOptions& opts) {
+  switch (protocol) {
     case Protocol::MSI:
       return std::make_unique<MsiSnoopFilterModel>(opts);
       break;
@@ -626,23 +160,26 @@ std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
   }
 }
 
-CacheWalker::CacheWalker(CoherenceProtocolValidator* validator)
-    : validator_(validator) {}
-
-void CacheWalker::add_cache_line(id_t id, addr_t addr,
-                                 const CacheLine& cache_line) {
-  validator_->add_cache_line(id, addr, cache_line);
-}
-
-void CacheWalker::add_dir_line(addr_t addr,
-                               const DirectoryEntry& directory_entry) {
-  validator_->add_dir_line(addr, directory_entry);
-}
-
 CoherenceProtocolValidator::CoherenceProtocolValidator() {}
 
-CacheWalker CoherenceProtocolValidator::get_cache_walker() {
-  return CacheWalker{this};
+struct CoherenceProtocolValidator::ProtocolValidatorVisitor : CacheVisitor {
+  ProtocolValidatorVisitor(CoherenceProtocolValidator* validator)
+      : validator_(validator) {}
+  void set_id(id_t id) override { id_ = id; }
+  void add_line(addr_t addr, const CacheLine& cache_line) override {
+    validator_->add_cache_line(id_, addr, cache_line);
+  }
+  void add_line(addr_t addr, const DirectoryEntry& directory_entry) override {
+    validator_->add_dir_line(id_, addr, directory_entry);
+  }
+
+ private:
+  id_t id_;
+  CoherenceProtocolValidator* validator_;
+};
+
+std::unique_ptr<CacheVisitor> CoherenceProtocolValidator::get_cache_visitor() {
+  return std::make_unique<ProtocolValidatorVisitor>(this);
 }
 
 bool CoherenceProtocolValidator::validate() const {
@@ -661,7 +198,7 @@ void CoherenceProtocolValidator::add_cache_line(id_t id, addr_t addr,
 }
 
 void CoherenceProtocolValidator::add_dir_line(
-    addr_t addr, const DirectoryEntry& directory_entry) {
+    id_t id, addr_t addr, const DirectoryEntry& directory_entry) {
   directory_lines_[addr] = directory_entry;
 }
 

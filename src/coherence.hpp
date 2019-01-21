@@ -30,7 +30,6 @@
 
 #include <memory>
 #include <optional>
-#include "actor.hpp"
 #include "cache.hpp"
 #include "message.hpp"
 #include "sim.hpp"
@@ -53,30 +52,17 @@ using state_t = uint8_t;
 using result_t = uint8_t;
 using command_t = uint8_t;
 
-class CacheWalker {
-  friend class CoherenceProtocolValidator;
-
-  CacheWalker(CoherenceProtocolValidator* validator);
-
- public:
-  void add_cache_line(id_t id, addr_t addr, const CacheLine& cache_line);
-  void add_dir_line(addr_t addr, const DirectoryEntry& directory_entry);
-
- private:
-  CoherenceProtocolValidator* validator_;
-};
-
 template <typename T>
 using Entry = std::tuple<id_t, const T>;
 
 class CoherenceProtocolValidator {
-  friend class CacheWalker;
+  struct ProtocolValidatorVisitor;
 
  public:
   CoherenceProtocolValidator();
   virtual ~CoherenceProtocolValidator() {}
 
-  CacheWalker get_cache_walker();
+  std::unique_ptr<CacheVisitor> get_cache_visitor();
 
   bool validate() const;
   virtual bool validate_addr(addr_t addr,
@@ -85,7 +71,8 @@ class CoherenceProtocolValidator {
 
  protected:
   void add_cache_line(id_t id, addr_t addr, const CacheLine& cache_line);
-  void add_dir_line(addr_t addr, const DirectoryEntry& directory_entry);
+  void add_dir_line(id_t id, addr_t addr,
+                    const DirectoryEntry& directory_entry);
 
   void error(const char* str) const {}
 
@@ -96,20 +83,6 @@ class CoherenceProtocolValidator {
 struct CoherentAgentOptions : ActorOptions {
   CoherentAgentOptions(std::size_t id, Protocol protocol,
                        CacheOptions cache_options, Platform& platform)
-      : ActorOptions(id, platform),
-        protocol_(protocol),
-        cache_options_(cache_options) {}
-  Protocol protocol() const { return protocol_; }
-  CacheOptions cache_options() const { return cache_options_; }
-
- private:
-  Protocol protocol_;
-  CacheOptions cache_options_;
-};
-
-struct SnoopFilterOptions : ActorOptions {
-  SnoopFilterOptions(std::size_t id, Protocol protocol,
-                     CacheOptions cache_options, Platform& platform)
       : ActorOptions(id, platform),
         protocol_(protocol),
         cache_options_(cache_options) {}
@@ -143,68 +116,39 @@ enum class CoherentAgentCommand : command_t {
 
 const char* to_string(CoherentAgentCommand command);
 
-// clang-format off
-#define SNOOP_FILTER_COMMANDS(__func)           \
-  __func(UpdateState)                           \
-  __func(SetOwnerToReq)                         \
-  __func(SendDataToReq)                         \
-  __func(SendInvToSharers)                      \
-  __func(ClearSharers)                          \
-  __func(AddReqToSharers)                       \
-  __func(DelReqFromSharers)                     \
-  __func(DelOwner)                              \
-  __func(AddOwnerToSharers)                     \
-  __func(CpyDataToMemory)                       \
-  __func(SendPutSAckToReq)                      \
-  __func(SendPutMAckToReq)                      \
-  __func(SendPutEAckToReq)                      \
-  __func(SendPutOAckToReq)                      \
-  __func(SendAckCountToReq)                     \
-  __func(SendFwdGetMToOwner)                    \
-  __func(SendFwdGetSToOwner)
-// clang-format on
-
-enum class SnoopFilterCommand : command_t {
-// clang-format off
-#define __declare_state(__state) __state,
-  SNOOP_FILTER_COMMANDS(__declare_state)
-#undef __declare_state
-// clang-format on
-};
-
-const char * to_string(SnoopFilterCommand command);
-
 struct CacheLine {
   using state_type = state_t;
   using ack_count_type = uint8_t;
 
   ack_count_type ack_count() const { return ack_count_; }
   void set_ack_count(ack_count_type ack_count) { ack_count_ = ack_count; }
-  
+
   state_type state() const { return state_; }
   void set_state(state_type state) { state_ = state; }
+
  private:
   state_type state_;
   ack_count_type ack_count_;
 };
 
 struct DirectoryEntry : CacheLine {
-  friend std::string to_string(const DirectoryEntry & d);
+  friend std::string to_string(const DirectoryEntry& d);
 
   using state_type = uint8_t;
-  
+
   DirectoryEntry() {}
-    
+
   //
   std::size_t owner() const { return owner_.value(); }
   void set_owner(std::size_t owner) { owner_ = owner; }
   void clear_owner() { owner_.reset(); }
 
   //
-  const std::vector<std::size_t> & sharers() const { return sharers_; }
+  const std::vector<std::size_t>& sharers() const { return sharers_; }
   void add_sharer(std::size_t id) { sharers_.push_back(id); }
   void remove_sharer(std::size_t id) {
-    sharers_.erase(std::find(sharers_.begin(), sharers_.end(), id), sharers_.end());
+    sharers_.erase(std::find(sharers_.begin(), sharers_.end(), id),
+                   sharers_.end());
   }
   void clear_sharers() { sharers_.clear(); }
   std::size_t num_sharers() const { return sharers_.size(); }
@@ -215,7 +159,6 @@ struct DirectoryEntry : CacheLine {
   std::size_t num_sharers_not_id(std::size_t id) const {
     return sharers_.size() - std::count(sharers_.begin(), sharers_.end(), id);
   }
-  
 
  private:
   // Current set of sharing agents
@@ -225,7 +168,7 @@ struct DirectoryEntry : CacheLine {
   std::optional<std::size_t> owner_;
 };
 
-std::string to_string(const DirectoryEntry & d);
+std::string to_string(const DirectoryEntry& d);
 
 // clang-format off
 #define TRANSACTION_RESULT(__func)              \
@@ -240,10 +183,10 @@ enum TransactionResult : result_t {
   __state,
   TRANSACTION_RESULT(__declare_state)
 #undef __declare_state
-// clang-format on
+  // clang-format on
 };
 
-const char * to_string(TransactionResult r);
+const char* to_string(TransactionResult r);
 
 // clang-format off
 #define MESSAGE_RESULT(__func)                  \
@@ -257,7 +200,7 @@ enum MessageResult : result_t {
   __state,
   MESSAGE_RESULT(__declare_state)
 #undef __declare_state
-// clang-format on
+  // clang-format on
 };
 
 // clang-format off
@@ -284,7 +227,7 @@ struct CoherenceActions {
   }
   ACTION_FIELDS(__declare_getter_setter)
 #undef __declare_getter_setter
-// clang-format on
+  // clang-format on
 
   template <typename T>
   void append_command(const T& cmd) {
@@ -334,61 +277,12 @@ class CoherentAgentModel : public CoherentActorBase {
                                        const CacheLine& cache_line) const = 0;
 };
 
-struct CoherentAgentCommandInvoker : CoherentActor {
-  friend class AgentMessageAdmissionControl;
-  friend class AgentTransactionAdmissionControl;
-
-  using ack_count_type = std::size_t;
-
-  CoherentAgentCommandInvoker(const CoherentAgentOptions& opts);
-
-  CacheLine cache_line(std::size_t addr) const;
-
-  void walk_cache(CacheWalker& cache_walker) const override;
-  void execute(Context& context, Cursor& cursor,
-               const CoherenceActions& actions, CacheLine& cache_line,
-               const Transaction* t);
-  void execute(Context& context, Cursor& cursor,
-               const CoherenceActions& actions, CacheLine& cache_line,
-               const Message* msg);
-
- protected:
-  std::unique_ptr<CoherentAgentModel> cc_model_;
-  std::unique_ptr<GenericCache<CacheLine> > cache_;
-
- private:
-  // Common
-  //
-  void execute_update_state(CacheLine& cache_line,
-                            const CoherenceActions& actions);
-  void execute_set_ack_count(CacheLine& cache_line,
-                             const CoherenceActions& actions);
-
-  // Transaction Initiated
-  //
-  void execute_emit_gets(Context& context, Cursor& cursor,
-                         const Transaction* t);
-  void execute_emit_getm(Context& context, Cursor& cursor,
-                         const Transaction* t);
-
-  // Message Initiated
-  //
-  void execute_emit_data_to_req(Context& context, Cursor& cursor,
-                                const Message* msg);
-  void execute_emit_data_to_dir(Context& context, Cursor& cursor,
-                                const Message* msg);
-  void execute_emit_inv_ack(Context& context, Cursor& cursor,
-                            const Message* msg);
-
-  MessageDirector msgd_;
-};
-
 std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
-    const CoherentAgentOptions& opts);
+    Protocol protocol, const CoherentAgentOptions& opts);
 
 class SnoopFilterModel : public CoherentActorBase {
  public:
-  SnoopFilterModel(const SnoopFilterOptions& opts);
+  SnoopFilterModel(const ActorOptions& opts);
 
   virtual void init(DirectoryEntry& l) const = 0;
   virtual bool is_stable(const DirectoryEntry& l) const = 0;
@@ -399,65 +293,12 @@ class SnoopFilterModel : public CoherentActorBase {
       const Message* t, const DirectoryEntry& dir_entry) const = 0;
 
  private:
-  const SnoopFilterOptions opts_;
-};
-
-struct SnoopFilterCommandInvoker : CoherentActor {
-  SnoopFilterCommandInvoker(const SnoopFilterOptions& opts);
-
-  DirectoryEntry directory_entry(std::size_t addr) const;
-
-  void walk_cache(CacheWalker& cache_walker) const override;
-  void execute(Context& context, Cursor& cursor,
-               const CoherenceActions& actions, const Message* msg,
-               DirectoryEntry& d);
- protected:
-  std::unique_ptr<SnoopFilterModel> cc_model_;
-  std::unique_ptr<GenericCache<DirectoryEntry> > cache_;
-
- private:
-  void execute_update_state(Context& context, Cursor& cursor, DirectoryEntry& d,
-                            state_t state_next);
-  void execute_set_owner_to_req(const Message* msg, Context& context,
-                                Cursor& cursor, DirectoryEntry& d);
-  void execute_send_data_to_req(const Message* msg, Context& context,
-                                Cursor& cursor, DirectoryEntry& d,
-                                const CoherenceActions& act);
-  void execute_send_inv_to_sharers(const Message* msg, Context& context,
-                                   Cursor& cursor, DirectoryEntry& d);
-  void execute_clear_sharers(const Message* msg, Context& context,
-                             Cursor& cursor, DirectoryEntry& d);
-  void execute_add_req_to_sharers(const Message* msg, Context& context,
-                                  Cursor& cursor, DirectoryEntry& d);
-  void execute_del_req_from_sharers(const Message* msg, Context& context,
-                                    Cursor& cursor, DirectoryEntry& d);
-  void execute_del_owner(const Message* msg, Context& context, Cursor& cursor,
-                         DirectoryEntry& d);
-  void execute_add_owner_to_sharers(const Message* msg, Context& context,
-                                    Cursor& cursor, DirectoryEntry& d);
-  void execute_cpy_data_to_memory(const Message* msg, Context& context,
-                                  Cursor& cursor, DirectoryEntry& d);
-  void execute_send_puts_ack_to_req(const Message* msg, Context& context,
-                                    Cursor& cursor, DirectoryEntry& d);
-  void execute_send_putm_ack_to_req(const Message* msg, Context& context,
-                                    Cursor& cursor, DirectoryEntry& d);
-  void execute_send_fwd_gets_to_owner(const Message* msg, Context& context,
-                                      Cursor& cursor, DirectoryEntry& d,
-                                      const CoherenceActions& actions);
-  void execute_send_pute_ack_to_req(const Message* msg, Context& context,
-                                    Cursor& cursor);
-  void execute_send_puto_ack_to_req(const Message* msg, Context& context,
-                                    Cursor& cursor);
-  void execute_send_ack_count_to_req(const Message* msg, Context& context,
-                                     Cursor& cursor,
-                                     const CoherenceActions& actions);
-
-  MessageDirector msgd_;
-  const SnoopFilterOptions opts_;
+  const ActorOptions opts_;
 };
 
 std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
-    const SnoopFilterOptions& opts);
+    Protocol protocol, const ActorOptions& opts);
+
 std::unique_ptr<CoherenceProtocolValidator> validator_factory(
     Protocol protocol);
 

@@ -32,15 +32,115 @@
 
 namespace ccm {
 
-struct SnoopFilter : SnoopFilterCommandInvoker {
-  SnoopFilter(const SnoopFilterOptions &opts);
-
-  bool is_active() const override { return !qmgr_.empty(); }
-  void apply(TimeStamped<Message *> ts) override;
-  void eval(Context &context) override;
+struct SnoopFilterOptions : ActorOptions {
+  SnoopFilterOptions(std::size_t id, Protocol protocol,
+                     CacheOptions cache_options, Platform& platform)
+      : ActorOptions(id, platform),
+        protocol_(protocol),
+        cache_options_(cache_options) {}
+  Protocol protocol() const { return protocol_; }
+  CacheOptions cache_options() const { return cache_options_; }
 
  private:
-  void handle_msg(Context &context, Cursor &cursor, TimeStamped<Message *> ts);
+  Protocol protocol_;
+  CacheOptions cache_options_;
+};
+
+// clang-format off
+#define SNOOP_FILTER_COMMANDS(__func)           \
+  __func(UpdateState)                           \
+  __func(SetOwnerToReq)                         \
+  __func(SendDataToReq)                         \
+  __func(SendInvToSharers)                      \
+  __func(ClearSharers)                          \
+  __func(AddReqToSharers)                       \
+  __func(DelReqFromSharers)                     \
+  __func(DelOwner)                              \
+  __func(AddOwnerToSharers)                     \
+  __func(CpyDataToMemory)                       \
+  __func(SendPutSAckToReq)                      \
+  __func(SendPutMAckToReq)                      \
+  __func(SendPutEAckToReq)                      \
+  __func(SendPutOAckToReq)                      \
+  __func(SendAckCountToReq)                     \
+  __func(SendFwdGetMToOwner)                    \
+  __func(SendFwdGetSToOwner)
+// clang-format on
+
+enum class SnoopFilterCommand : command_t {
+// clang-format off
+#define __declare_state(__state) __state,
+  SNOOP_FILTER_COMMANDS(__declare_state)
+#undef __declare_state
+  // clang-format on
+};
+
+const char* to_string(SnoopFilterCommand command);
+
+struct SnoopFilterCommandInvoker : CoherentActor {
+  SnoopFilterCommandInvoker(const SnoopFilterOptions& opts);
+
+  DirectoryEntry directory_entry(std::size_t addr) const;
+
+  void visit_cache(CacheVisitor* cache_visitor) const override;
+  void execute(Context& context, Cursor& cursor,
+               const CoherenceActions& actions, const Message* msg,
+               DirectoryEntry& d);
+
+ protected:
+  std::unique_ptr<SnoopFilterModel> cc_model_;
+  std::unique_ptr<GenericCache<DirectoryEntry> > cache_;
+
+ private:
+  void execute_update_state(Context& context, Cursor& cursor, DirectoryEntry& d,
+                            state_t state_next);
+  void execute_set_owner_to_req(const Message* msg, Context& context,
+                                Cursor& cursor, DirectoryEntry& d);
+  void execute_send_data_to_req(const Message* msg, Context& context,
+                                Cursor& cursor, DirectoryEntry& d,
+                                const CoherenceActions& act);
+  void execute_send_inv_to_sharers(const Message* msg, Context& context,
+                                   Cursor& cursor, DirectoryEntry& d);
+  void execute_clear_sharers(const Message* msg, Context& context,
+                             Cursor& cursor, DirectoryEntry& d);
+  void execute_add_req_to_sharers(const Message* msg, Context& context,
+                                  Cursor& cursor, DirectoryEntry& d);
+  void execute_del_req_from_sharers(const Message* msg, Context& context,
+                                    Cursor& cursor, DirectoryEntry& d);
+  void execute_del_owner(const Message* msg, Context& context, Cursor& cursor,
+                         DirectoryEntry& d);
+  void execute_add_owner_to_sharers(const Message* msg, Context& context,
+                                    Cursor& cursor, DirectoryEntry& d);
+  void execute_cpy_data_to_memory(const Message* msg, Context& context,
+                                  Cursor& cursor, DirectoryEntry& d);
+  void execute_send_puts_ack_to_req(const Message* msg, Context& context,
+                                    Cursor& cursor, DirectoryEntry& d);
+  void execute_send_putm_ack_to_req(const Message* msg, Context& context,
+                                    Cursor& cursor, DirectoryEntry& d);
+  void execute_send_fwd_gets_to_owner(const Message* msg, Context& context,
+                                      Cursor& cursor, DirectoryEntry& d,
+                                      const CoherenceActions& actions);
+  void execute_send_pute_ack_to_req(const Message* msg, Context& context,
+                                    Cursor& cursor);
+  void execute_send_puto_ack_to_req(const Message* msg, Context& context,
+                                    Cursor& cursor);
+  void execute_send_ack_count_to_req(const Message* msg, Context& context,
+                                     Cursor& cursor,
+                                     const CoherenceActions& actions);
+
+  MessageDirector msgd_;
+  const SnoopFilterOptions opts_;
+};
+
+struct SnoopFilter : SnoopFilterCommandInvoker {
+  SnoopFilter(const SnoopFilterOptions& opts);
+
+  bool is_active() const override { return !qmgr_.empty(); }
+  void apply(TimeStamped<Message*> ts) override;
+  void eval(Context& context) override;
+
+ private:
+  void handle_msg(Context& context, Cursor& cursor, TimeStamped<Message*> ts);
   QueueManager qmgr_;
   const SnoopFilterOptions opts_;
 };

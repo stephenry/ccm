@@ -111,7 +111,7 @@ class MsiCoherentAgentModel : public CoherentAgentModel {
 
 class MsiSnoopFilterModel : public SnoopFilterModel {
  public:
-  MsiSnoopFilterModel(const SnoopFilterOptions& opts);
+  MsiSnoopFilterModel(const ActorOptions& opts);
   virtual ~MsiSnoopFilterModel();
 
   //

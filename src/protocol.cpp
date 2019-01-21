@@ -26,14 +26,14 @@
 //========================================================================== //
 
 #include "protocol.hpp"
-#include "msi.hpp"
 #include "mesi.hpp"
 #include "mosi.hpp"
+#include "msi.hpp"
 
 namespace ccm {
 
-  const char* to_string(Protocol p) {
-    switch (p) {
+const char* to_string(Protocol p) {
+  switch (p) {
     case Protocol::MSI:
       return "MSI";
       break;
@@ -46,10 +46,10 @@ namespace ccm {
     default:
       return "Unknown";
       break;
-    }
   }
+}
 
-  // clang-format off
+// clang-format off
   const char* to_string(CoherentAgentCommand command) {
     switch (command) {
       // clang-format off
@@ -60,13 +60,13 @@ namespace ccm {
 #undef __declare_to_string
       // clang-format on
     default:
-        return "<Invalid Line State>";
-    }
+      return "<Invalid Line State>";
   }
+}
 
-  const char* to_string(TransactionResult r) {
-    switch (r) {
-      // clang-format off
+const char* to_string(TransactionResult r) {
+  switch (r) {
+    // clang-format off
 #define __declare_to_string(__state)            \
       case TransactionResult::__state:          \
         return #__state;                        \
@@ -75,13 +75,13 @@ namespace ccm {
 #undef __declare_to_string
       // clang-format on
     default:
-        return "<Invalid>";
-    }
+      return "<Invalid>";
   }
+}
 
-  const char* to_string(SnoopFilterCommand command) {
-    switch (command) {
-      // clang-format off
+const char* to_string(SnoopFilterCommand command) {
+  switch (command) {
+    // clang-format off
 #define __declare_to_string(__e)                \
       case SnoopFilterCommand::__e:             \
         return #__e;
@@ -89,55 +89,55 @@ namespace ccm {
 #undef __declare_to_string
       // clang-format on
     default:
-        return "<Invalid Line State>";
-    }
+      return "<Invalid Line State>";
+  }
 
   AgentProtocol::AgentProtocol(const ActorOptions& opts) : opts_(opts) {}
 
-  std::unique_ptr<AgentProtocol> agent_protocol_factory(Protocol protocol,
-                                                        const ActorOptions& opts) {
+  std::unique_ptr<AgentProtocol> agent_protocol_factory(
+      Protocol protocol, const ActorOptions& opts) {
     switch (protocol) {
-    case Protocol::MSI:
-      return std::make_unique<MsiCoherentAgentModel>(opts);
-      break;
+      case Protocol::MSI:
+        return std::make_unique<MsiCoherentAgentModel>(opts);
+        break;
 
-    case Protocol::MESI:
-      return std::make_unique<MesiCoherentAgentModel>(opts);
-      break;
+      case Protocol::MESI:
+        return std::make_unique<MesiCoherentAgentModel>(opts);
+        break;
 
-    case Protocol::MOSI:
-      return std::make_unique<MosiCoherentAgentModel>(opts);
-      break;
+      case Protocol::MOSI:
+        return std::make_unique<MosiCoherentAgentModel>(opts);
+        break;
 
-    default:
-      // TODO: Not implemented
-      return nullptr;
-      break;
+      default:
+        // TODO: Not implemented
+        return nullptr;
+        break;
     }
   }
 
   SnoopFilterModel::SnoopFilterModel(const SnoopFilterOptions& opts)
-    : AgentProtocol(opts), opts_(opts) {}
+      : AgentProtocol(opts), opts_(opts) {}
 
-  std::unique_ptr<SnoopFilterModel> snoop_filter_protocol_factory(Protocol protocol,
-                                                                  const ActorOptions& opts) {
+  std::unique_ptr<SnoopFilterModel> snoop_filter_protocol_factory(
+      Protocol protocol, const ActorOptions& opts) {
     switch (protocol) {
-    case Protocol::MSI:
-      return std::make_unique<MsiSnoopFilterModel>(opts);
-      break;
+      case Protocol::MSI:
+        return std::make_unique<MsiSnoopFilterModel>(opts);
+        break;
 
-    case Protocol::MESI:
-      return std::make_unique<MesiSnoopFilterModel>(opts);
-      break;
+      case Protocol::MESI:
+        return std::make_unique<MesiSnoopFilterModel>(opts);
+        break;
 
-    case Protocol::MOSI:
-      return std::make_unique<MosiSnoopFilterModel>(opts);
-      break;
+      case Protocol::MOSI:
+        return std::make_unique<MosiSnoopFilterModel>(opts);
+        break;
 
-    default:
-      // TODO: Not implemented
-      return nullptr;
-      break;
+      default:
+        // TODO: Not implemented
+        return nullptr;
+        break;
     }
   }
 
@@ -158,27 +158,27 @@ namespace ccm {
   }
 
   void ProtocolValidator::add_cache_line(id_t id, addr_t addr,
-                                                  const CacheLine& cache_line) {
+                                         const CacheLine& cache_line) {
     cache_lines_[addr].push_back(std::make_tuple(id, cache_line));
   }
 
-  void ProtocolValidator::add_dir_line(
-                                                addr_t addr, const DirectoryEntry& directory_entry) {
+  void ProtocolValidator::add_dir_line(addr_t addr,
+                                       const DirectoryEntry& directory_entry) {
     directory_lines_[addr] = directory_entry;
   }
 
   std::unique_ptr<ProtocolValidator> validator_factory(Protocol protocol) {
     switch (protocol) {
-    case Protocol::MSI:
-      return std::make_unique<MsiProtocolValidator>();
-      break;
-    case Protocol::MESI:
-      return std::make_unique<MesiProtocolValidator>();
-      break;
-    case Protocol::MOSI:
-      return std::make_unique<MosiProtocolValidator>();
-      break;
+      case Protocol::MSI:
+        return std::make_unique<MsiProtocolValidator>();
+        break;
+      case Protocol::MESI:
+        return std::make_unique<MesiProtocolValidator>();
+        break;
+      case Protocol::MOSI:
+        return std::make_unique<MosiProtocolValidator>();
+        break;
     }
   }
 
-} // namespace ccm
+}  // namespace ccm
