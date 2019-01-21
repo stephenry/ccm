@@ -47,8 +47,9 @@ class Poolable {
   virtual void reset() = 0;
   virtual void release() const;
   virtual ~Poolable(){};
-  //  private:
+
   void set_parent(PoolBase *parent) { parent_ = parent; }
+ private:
   PoolBase *parent_;
 };
 
