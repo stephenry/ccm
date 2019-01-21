@@ -33,15 +33,15 @@ namespace ccm {
 
 const char* CoherentAgentCommand::to_string(command_t command) {
   switch (command) {
-      // clang-format off
+    // clang-format off
 #define __declare_to_string(__e)                \
   case CoherentAgentCommand::__e:           \
     return #__e;
   AGENT_COMMANDS(__declare_to_string)
 #undef __declare_to_string
-    // clang-format on
-  default:
-    return "<Invalid Line State>";
+      // clang-format on
+    default:
+      return "<Invalid Line State>";
   }
 }
 

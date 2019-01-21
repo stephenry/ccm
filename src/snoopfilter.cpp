@@ -29,17 +29,17 @@
 
 namespace ccm {
 
-  const char* SnoopFilterCommand::to_string(command_t command) {
-    switch (command) {
-#define __declare_to_string(__e)                \
-      case SnoopFilterCommand::__e:             \
-        return #__e;
-      SNOOP_FILTER_COMMANDS(__declare_to_string)
+const char* SnoopFilterCommand::to_string(command_t command) {
+  switch (command) {
+#define __declare_to_string(__e) \
+  case SnoopFilterCommand::__e:  \
+    return #__e;
+    SNOOP_FILTER_COMMANDS(__declare_to_string)
 #undef __declare_to_string
     default:
-        return "<Invalid Line State>";
-    }
+      return "<Invalid Line State>";
   }
+}
 
 SnoopFilterCommandInvoker::SnoopFilterCommandInvoker(
     const SnoopFilterOptions& opts)

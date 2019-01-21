@@ -36,7 +36,7 @@
 namespace ccm {
 
 struct TransactionSource;
-  
+
 // clang-format off
 #define AGENT_COMMANDS(__func)                  \
   __func(UpdateState)                           \
@@ -49,7 +49,6 @@ struct TransactionSource;
 // clang-format on
 
 struct CoherentAgentCommand {
-
   enum : command_t {
 // clang-format off
 #define __declare_state(__state)                \
@@ -57,7 +56,7 @@ struct CoherentAgentCommand {
     AGENT_COMMANDS(__declare_state)
 #undef __declare_state
   };
-// clang-format on
+  // clang-format on
 
   static const char* to_string(command_t command);
 };

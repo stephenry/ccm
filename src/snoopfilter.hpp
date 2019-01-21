@@ -69,7 +69,7 @@ struct SnoopFilterOptions : ActorOptions {
 
 struct SnoopFilterCommand {
   enum : command_t {
-    // clang-format off
+  // clang-format off
 #define __declare_state(__state) __state,
     SNOOP_FILTER_COMMANDS(__declare_state)
 #undef __declare_state
@@ -78,7 +78,6 @@ struct SnoopFilterCommand {
 
   static const char* to_string(command_t command);
 };
-
 
 struct SnoopFilterCommandInvoker : CoherentActor {
   SnoopFilterCommandInvoker(const SnoopFilterOptions& opts);
