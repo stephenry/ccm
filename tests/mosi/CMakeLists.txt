@@ -27,6 +27,6 @@
 
 create_test(mosi_simple_store)
 create_test(mosi_simple_load)
-create_test(mosi_simple_load_promotion)
+create_test(mosi_simple_load_then_promotion)
 create_test(mosi_multiple_sharers)
 create_test(mosi_multiple_sharers_then_promotion)

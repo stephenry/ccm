@@ -26,7 +26,7 @@
 ##========================================================================== //
 
 create_test(mesi_simple_load)
-create_test(mesi_simple_load_promotion)
+create_test(mesi_simple_load_then_promotion)
 create_test(mesi_simple_store)
 create_test(mesi_multiple_sharers)
 create_test(mesi_multiple_sharers_then_promotion)
