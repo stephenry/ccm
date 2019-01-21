@@ -63,7 +63,7 @@ namespace ccm {
   void Memory::handle_msg(Context & context, Cursor & cursor,
                           TimeStamped<Message*> ts) {
     const Message * msg = ts.t();
-    //    msg->release();
+    msg->release();
   }
   
   bool Memory::is_active() const { return !qmgr_.empty(); }
