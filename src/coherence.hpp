@@ -256,9 +256,6 @@ class SnoopFilterProtocol : public ProtocolBase {
 
   virtual CoherenceActions get_actions(
       const Message* t, const DirectoryEntry& dir_entry) const = 0;
-
- private:
-  const ActorOptions opts_;
 };
 
 std::unique_ptr<SnoopFilterProtocol> snoop_filter_factory(

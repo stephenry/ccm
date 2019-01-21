@@ -107,7 +107,7 @@ const char* to_string(EvictionPolicy p) {
 }
 
 SnoopFilterProtocol::SnoopFilterProtocol(const ActorOptions& opts)
-    : ProtocolBase(opts), opts_(opts) {}
+    : ProtocolBase(opts) {}
 
 std::unique_ptr<SnoopFilterProtocol> snoop_filter_factory(
     Protocol protocol, const ActorOptions& opts) {
