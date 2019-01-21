@@ -25,23 +25,8 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-add_library(ccm STATIC
-  ccm.cpp
-  platform.cpp
-  actor.cpp
-  coherence.cpp
-  actor.cpp
-  utility.cpp
-  interconnect.cpp
-  message.cpp
-  log.cpp
-  agent.cpp
-  snoopfilter.cpp
-  cache.cpp
-  sim.cpp
-  transaction.cpp
-  random.cpp
-  msi.cpp
-  mesi.cpp
-  mosi.cpp
-  )
+create_test(mesi_simple_load)
+create_test(mesi_simple_load_promotion)
+create_test(mesi_simple_store)
+create_test(mesi_multiple_sharers)
+create_test(mesi_multiple_sharers_then_promotion)

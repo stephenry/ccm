@@ -30,7 +30,7 @@
 
 #include <memory>
 #include <optional>
-#include "actors.hpp"
+#include "actor.hpp"
 #include "cache.hpp"
 #include "message.hpp"
 #include "sim.hpp"

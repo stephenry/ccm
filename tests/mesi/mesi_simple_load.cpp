@@ -25,22 +25,36 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __SRC_CCM_HPP__
-#define __SRC_CCM_HPP__
+#include <gtest/gtest.h>
+#include "testcommon.hpp"
 
-#include "actor.hpp"
-#include "agent.hpp"
-#include "cache.hpp"
-#include "coherence.hpp"
-#include "interconnect.hpp"
-#include "log.hpp"
-#include "mesi.hpp"
-#include "mosi.hpp"
-#include "msi.hpp"
-#include "platform.hpp"
-#include "random.hpp"
-#include "sim.hpp"
-#include "snoopfilter.hpp"
-#include "utility.hpp"
+TEST(MESI, SimpleLoad) {
+  // Perform a single load to one agent in the system. At the end of
+  // the simulation, the line should be installed in the requestor in
+  // the shared state, and installed in the directory in the shared
+  // state.
+  //
 
-#endif
+  const std::size_t addr = 0;
+
+  ccm::Sim s;
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
+
+  p.ts(0)->add_transaction(ccm::TransactionType::Load, 10, addr);
+
+  s.run();
+
+  const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
+  EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::E);
+
+  const ccm::DirectoryEntry directory_entry =
+      p.snoop_filter()->directory_entry(addr);
+  EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::E);
+
+  EXPECT_TRUE(p.validate());
+}
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

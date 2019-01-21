@@ -25,7 +25,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#include "actors.hpp"
+#include "actor.hpp"
 #include "message.hpp"
 
 namespace ccm {

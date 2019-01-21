@@ -26,7 +26,7 @@
 //========================================================================== //
 
 #include "coherence.hpp"
-#include "actors.hpp"
+#include "actor.hpp"
 #include "common.hpp"
 #include "mesi.hpp"
 #include "mosi.hpp"

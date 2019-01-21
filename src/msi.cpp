@@ -28,7 +28,7 @@
 
 #include "msi.hpp"
 #include <algorithm>
-#include "actors.hpp"
+#include "actor.hpp"
 #include "agent.hpp"
 #include "common.hpp"
 #include "message.hpp"

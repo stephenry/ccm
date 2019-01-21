@@ -25,22 +25,42 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __SRC_CCM_HPP__
-#define __SRC_CCM_HPP__
+#include <gtest/gtest.h>
+#include "testcommon.hpp"
 
-#include "actor.hpp"
-#include "agent.hpp"
-#include "cache.hpp"
-#include "coherence.hpp"
-#include "interconnect.hpp"
-#include "log.hpp"
-#include "mesi.hpp"
-#include "mosi.hpp"
-#include "msi.hpp"
-#include "platform.hpp"
-#include "random.hpp"
-#include "sim.hpp"
-#include "snoopfilter.hpp"
-#include "utility.hpp"
+TEST(MESI, MultipleSharers) {
+  // Each agent in the system performs a load request to the same
+  // line.  Upon completion of the commands, each agent should have a
+  // line installed in its cache in the shared state. The directory
+  // should have the line in the shared state and each agent should
+  // be present in the sharer set.
+  //
 
-#endif
+  const std::size_t addr = 0;
+
+  ccm::Sim s;
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
+
+  for (std::size_t i = 0; i < p.agents(); i++) {
+    const std::size_t time = (i + 1) * 1000;
+
+    p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
+  }
+
+  s.run();
+
+  for (std::size_t i = 0; i < p.agents(); i++) {
+    const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
+
+    EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::S);
+  }
+
+  const ccm::DirectoryEntry directory_entry =
+      p.snoop_filter()->directory_entry(addr);
+  EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::S);
+}
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

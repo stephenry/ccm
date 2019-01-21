@@ -25,22 +25,32 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __SRC_CCM_HPP__
-#define __SRC_CCM_HPP__
+#include <gtest/gtest.h>
+#include "testcommon.hpp"
 
-#include "actor.hpp"
-#include "agent.hpp"
-#include "cache.hpp"
-#include "coherence.hpp"
-#include "interconnect.hpp"
-#include "log.hpp"
-#include "mesi.hpp"
-#include "mosi.hpp"
-#include "msi.hpp"
-#include "platform.hpp"
-#include "random.hpp"
-#include "sim.hpp"
-#include "snoopfilter.hpp"
-#include "utility.hpp"
+TEST(MESI, SimpleLoadPromotion) {
+  // Perform a load followed by a store to the same address in the
+  // same agent. Upon completion of the first transaction, the line
+  // should be installed in the shared state. Upon completion of the
+  // second instruction, the line should be promoted to the modified
+  // state. As no other agents hold the line, no invalidation requests
+  // should be passed to any other agent.
+  //
 
-#endif
+  const std::size_t addr = 0;
+
+  ccm::Sim s;
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
+
+  p.ts(0)->add_transaction(ccm::TransactionType::Load, 1000, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 2000, addr);
+
+  s.run();
+
+  const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
+  EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::M);
+
+  const ccm::DirectoryEntry directory_entry =
+      p.snoop_filter()->directory_entry(addr);
+  EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::E);
+}

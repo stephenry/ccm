@@ -29,7 +29,7 @@
 #define __SRC_MESSAGE_HPP__
 
 #include <string>
-#include "actors.hpp"
+#include "actor.hpp"
 #include "utility.hpp"
 
 namespace ccm {

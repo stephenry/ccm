@@ -25,22 +25,48 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __SRC_CCM_HPP__
-#define __SRC_CCM_HPP__
+#include <gtest/gtest.h>
+#include "testcommon.hpp"
 
-#include "actor.hpp"
-#include "agent.hpp"
-#include "cache.hpp"
-#include "coherence.hpp"
-#include "interconnect.hpp"
-#include "log.hpp"
-#include "mesi.hpp"
-#include "mosi.hpp"
-#include "msi.hpp"
-#include "platform.hpp"
-#include "random.hpp"
-#include "sim.hpp"
-#include "snoopfilter.hpp"
-#include "utility.hpp"
+TEST(MESI, MultipleSharersThenPromotion) {
+  // Each agent performs a load to the same line. After the loads have
+  // completed, an agent performs a Store operationp to the line.
+  // Before the Store operation completes, each line in the other
+  // agents must be invalidate and the resulting acknowlegement passed
+  // to the original requesting agent. Upon completion, the storing
+  // agent is the only agent with a copy of the line (in the modified
+  // state).
+  //
 
-#endif
+  const std::size_t addr = 0;
+
+  ccm::Sim s;
+  ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
+
+  for (std::size_t i = 0; i < p.agents(); i++) {
+    const std::size_t time = (i + 1) * 1000;
+
+    p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
+  }
+  p.ts(0)->add_transaction(ccm::TransactionType::Store, 10000, addr);
+
+  s.run();
+
+  for (std::size_t i = 0; i < p.agents(); i++) {
+    const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
+
+    if (i == 0)
+      EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::M);
+    else
+      EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::I);
+  }
+
+  const ccm::DirectoryEntry directory_entry =
+      p.snoop_filter()->directory_entry(addr);
+  EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::M);
+}
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

@@ -25,8 +25,8 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __SRC_ACTORS_HPP__
-#define __SRC_ACTORS_HPP__
+#ifndef __SRC_ACTOR_HPP__
+#define __SRC_ACTOR_HPP__
 
 #include "cache.hpp"
 #include "log.hpp"
