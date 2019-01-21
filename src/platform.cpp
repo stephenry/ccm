@@ -35,6 +35,8 @@ void Platform::add_snoop_filter(id_t id, std::shared_ptr<AddressRegion>&& ar) {
   snoop_filters_.insert(std::make_pair(id, std::move(ar)));
 }
 
+void Platform::add_memory(id_t id) { memory_id_ = id; }
+
 bool Platform::is_valid_agent_id(id_t id) const {
   return (agent_ids_.find(id) != agent_ids_.end());
 }
@@ -50,5 +52,7 @@ id_t Platform::get_snoop_filter_id(addr_t addr) const {
   // Otherwise, throw exception.
   throw std::invalid_argument("SnoopFilter for address not found.");
 }
+
+id_t Platform::memory_id() const { return memory_id_; }
 
 }  // namespace ccm

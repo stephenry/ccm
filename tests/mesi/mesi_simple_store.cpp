@@ -49,6 +49,8 @@ TEST(MESI, SimpleStore) {
   const ccm::DirectoryEntry directory_entry =
       p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::M);
+
+  EXPECT_TRUE(p.validate());
 }
 
 int main(int argc, char** argv) {

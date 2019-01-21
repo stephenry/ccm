@@ -42,5 +42,6 @@
 #include "sim.hpp"
 #include "snoopfilter.hpp"
 #include "utility.hpp"
+#include "memory.hpp"
 
 #endif

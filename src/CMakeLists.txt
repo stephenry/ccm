@@ -41,6 +41,7 @@ add_library(ccm STATIC
   sim.cpp
   transaction.cpp
   random.cpp
+  memory.cpp
   msi.cpp
   mesi.cpp
   mosi.cpp

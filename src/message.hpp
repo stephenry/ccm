@@ -36,7 +36,12 @@ namespace ccm {
 
 struct Transaction;
 
-#define MESSAGE_CLASSES(__func) __func(Request) __func(Response) __func(Data)
+// clang-format off
+#define MESSAGE_CLASSES(__func)                 \
+  __func(Request)                               \
+  __func(Response)                              \
+  __func(Data)
+// clang-format on
 
 enum MessageClass {
 // clang-format off

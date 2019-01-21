@@ -60,14 +60,18 @@ class Platform {
  public:
   void add_agent(id_t id);
   void add_snoop_filter(id_t id, std::shared_ptr<AddressRegion>&& ar);
+  void add_memory(id_t id);
 
   bool is_valid_agent_id(id_t id) const;
   bool is_valid_snoop_filter_id(id_t id) const;
   id_t get_snoop_filter_id(addr_t addr) const;
 
+  id_t memory_id() const;
+
  private:
   std::set<id_t> agent_ids_;
   std::map<id_t, std::shared_ptr<AddressRegion> > snoop_filters_;
+  id_t memory_id_;
 };
 
 }  // namespace ccm

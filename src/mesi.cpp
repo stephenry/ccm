@@ -60,8 +60,8 @@ const char* MesiDirectoryLineState::to_string(state_t state) {
   }
 }
 
-struct MesiCoherentAgentModel::MesiCoherentAgentModelImpl {
-  MesiCoherentAgentModelImpl(const CoherentAgentOptions& opts) : opts_(opts) {}
+struct MesiAgentProtocol::MesiAgentProtocolImpl {
+  MesiAgentProtocolImpl(const CoherentAgentOptions& opts) : opts_(opts) {}
 
   void init(CacheLine& l) const { l.set_state(MesiAgentLineState::I); }
 
@@ -439,35 +439,35 @@ struct MesiCoherentAgentModel::MesiCoherentAgentModelImpl {
   const CoherentAgentOptions opts_;
 };
 
-MesiCoherentAgentModel::MesiCoherentAgentModel(const CoherentAgentOptions& opts)
-    : CoherentAgentModel(opts) {
-  impl_ = std::make_unique<MesiCoherentAgentModelImpl>(opts);
+MesiAgentProtocol::MesiAgentProtocol(const CoherentAgentOptions& opts)
+    : AgentProtocol(opts) {
+  impl_ = std::make_unique<MesiAgentProtocolImpl>(opts);
 }
 
-MesiCoherentAgentModel::~MesiCoherentAgentModel() {}
+MesiAgentProtocol::~MesiAgentProtocol() {}
 
-void MesiCoherentAgentModel::init(CacheLine& l) const { impl_->init(l); }
+void MesiAgentProtocol::init(CacheLine& l) const { impl_->init(l); }
 
-bool MesiCoherentAgentModel::is_stable(const CacheLine& l) const {
+bool MesiAgentProtocol::is_stable(const CacheLine& l) const {
   return impl_->is_stable(l);
 }
 
-std::string MesiCoherentAgentModel::to_string(state_t state) const {
+std::string MesiAgentProtocol::to_string(state_t state) const {
   return impl_->to_string(state);
 }
 
-CoherenceActions MesiCoherentAgentModel::get_actions(
+CoherenceActions MesiAgentProtocol::get_actions(
     const Transaction* t, const CacheLine& cache_line) const {
   return impl_->get_actions(t, cache_line);
 }
 
-CoherenceActions MesiCoherentAgentModel::get_actions(
+CoherenceActions MesiAgentProtocol::get_actions(
     const Message* m, const CacheLine& cache_line) const {
   return impl_->get_actions(m, cache_line);
 }
 
-struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
-  MesiSnoopFilterModelImpl(const ActorOptions& opts) : opts_(opts) {}
+struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
+  MesiSnoopFilterProtocolImpl(const ActorOptions& opts) : opts_(opts) {}
 
   void init(DirectoryEntry& l) const {
     l.set_state(
@@ -769,28 +769,28 @@ struct MesiSnoopFilterModel::MesiSnoopFilterModelImpl {
   const ActorOptions opts_;
 };
 
-MesiSnoopFilterModel::MesiSnoopFilterModel(const ActorOptions& opts)
-    : SnoopFilterModel(opts) {
-  impl_ = std::make_unique<MesiSnoopFilterModelImpl>(opts);
+MesiSnoopFilterProtocol::MesiSnoopFilterProtocol(const ActorOptions& opts)
+    : SnoopFilterProtocol(opts) {
+  impl_ = std::make_unique<MesiSnoopFilterProtocolImpl>(opts);
 }
 
-MesiSnoopFilterModel::~MesiSnoopFilterModel() {}
+MesiSnoopFilterProtocol::~MesiSnoopFilterProtocol() {}
 
-void MesiSnoopFilterModel::init(DirectoryEntry& l) const { impl_->init(l); }
+void MesiSnoopFilterProtocol::init(DirectoryEntry& l) const { impl_->init(l); }
 
-bool MesiSnoopFilterModel::is_stable(const DirectoryEntry& l) const {
+bool MesiSnoopFilterProtocol::is_stable(const DirectoryEntry& l) const {
   return impl_->is_stable(l);
 }
 
-std::string MesiSnoopFilterModel::to_string(const DirectoryEntry& l) const {
+std::string MesiSnoopFilterProtocol::to_string(const DirectoryEntry& l) const {
   return impl_->to_string(l);
 }
 
-std::string MesiSnoopFilterModel::to_string(state_t state) const {
+std::string MesiSnoopFilterProtocol::to_string(state_t state) const {
   return impl_->to_string(state);
 }
 
-CoherenceActions MesiSnoopFilterModel::get_actions(
+CoherenceActions MesiSnoopFilterProtocol::get_actions(
     const Message* m, const DirectoryEntry& dir_entry) const {
   return impl_->get_actions(m, dir_entry);
 }
@@ -800,7 +800,8 @@ MesiCoherenceProtocolValidator::MesiCoherenceProtocolValidator() {}
 bool MesiCoherenceProtocolValidator::validate_addr(
     addr_t addr, const std::vector<Entry<CacheLine> >& lines,
     const DirectoryEntry& entry) const {
-  return false;
+  //
+  return true;
 }
 
 }  // namespace ccm

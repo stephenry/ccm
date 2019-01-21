@@ -49,6 +49,7 @@ DirectoryEntry SnoopFilterCommandInvoker::directory_entry(
 
 void SnoopFilterCommandInvoker::visit_cache(CacheVisitor* cache_visitor) const {
   cache_visitor->set_id(id());
+  cache_->visit(cache_visitor);
 }
 
 void SnoopFilterCommandInvoker::execute(Context& context, Cursor& cursor,
@@ -246,9 +247,14 @@ void SnoopFilterCommandInvoker::execute_cpy_data_to_memory(const Message* msg,
                                                            Context& context,
                                                            Cursor& cursor,
                                                            DirectoryEntry& d) {
+  const Platform platform = opts_.platform();
+  MessageBuilder b = msgd_.builder();
+  b.set_type(MessageType::Data);
+  b.set_dst_id(platform.memory_id());
+  b.set_transaction(msg->transaction());
+  
   log_debug("Copy Data to Memory.");
-
-  // NOP
+  emit_message(context, cursor, b);
 }
 
 void SnoopFilterCommandInvoker::execute_send_puts_ack_to_req(

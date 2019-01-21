@@ -25,44 +25,47 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __TESTS_TESTCOMMON_HPP__
-#define __TESTS_TESTCOMMON_HPP__
+#include "memory.hpp"
+#include "message.hpp"
 
-#include "ccm.hpp"
+namespace ccm {
 
-namespace ccm::test {
+  Memory::Memory(const ActorOptions & opts)
+    : CoherentActor(opts) {}
 
-struct BasicPlatform {
-  BasicPlatform(Sim &sim, Protocol protocol, std::size_t agents_n);
-  ~BasicPlatform();
+  void Memory::apply(TimeStamped<Message *> ts) { qmgr_.push(ts); }
+  
+  void Memory::eval(Context &context) {
+    const Epoch epoch = context.epoch();
+    Cursor cursor = epoch.cursor();
 
-  std::size_t agents() const { return agents_.size(); }
-  ProgrammaticTransactionSource *ts(std::size_t id) const { return ts_[id]; }
-  Protocol protocol() const { return protocol_; }
-  Agent *agent(std::size_t id) { return agents_[id]; }
-  SnoopFilter *snoop_filter() { return snoop_filter_; }
+    do {
+      const QueueEntry next = qmgr_.next();
+      if (next.type() == QueueEntryType::Invalid) break;
 
-  bool validate() const;
+      if (!epoch.in_interval(next.time())) break;
 
- private:
-  void construct_snoop_filter(std::size_t id);
-  void construct_agent(std::size_t id);
-  void construct_memory(std::size_t id);
-  void add_actor(CoherentActor *actor);
+      cursor.set_time(std::max(time(), next.time()));
+      set_time(cursor.time());
 
-  Logger logger_;
-  LoggerScope *top_;
-  SnoopFilter *snoop_filter_;
-  Sim &sim_;
-  std::vector<Agent *> agents_;
-  std::vector<CoherentActor *> actors_;
-  std::vector<std::unique_ptr<Memory>> memories_;
-  Protocol protocol_;
-  Platform platform_;
-  std::vector<ProgrammaticTransactionSource *> ts_;
-  std::unique_ptr<CoherenceProtocolValidator> validator_;
-};
+      switch (next.type()) {
+      case QueueEntryType::Message:
+        handle_msg(context, cursor, next.as_msg());
+        break;
+      default:;  // TODO: unexpected
+      }
+      next.consume();
+    } while (epoch.in_interval(cursor.time()));
 
-}  // namespace ccm::test
+    set_time(cursor.time());
+  }
 
-#endif
+  void Memory::handle_msg(Context & context, Cursor & cursor,
+                          TimeStamped<Message*> ts) {
+    const Message * msg = ts.t();
+    //    msg->release();
+  }
+  
+  bool Memory::is_active() const { return !qmgr_.empty(); }
+
+} // namespace ccm

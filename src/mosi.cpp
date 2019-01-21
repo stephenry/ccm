@@ -90,8 +90,8 @@ bool MosiDirectoryLineState::is_stable(state_t state) {
   return ret;
 }
 
-struct MosiCoherentAgentModel::MosiCoherentAgentModelImpl {
-  MosiCoherentAgentModelImpl(const CoherentAgentOptions& opts) : opts_(opts) {}
+struct MosiAgentProtocol::MosiAgentProtocolImpl {
+  MosiAgentProtocolImpl(const CoherentAgentOptions& opts) : opts_(opts) {}
 
   void init(CacheLine& cache_line) const {
     cache_line.set_state(MosiAgentLineState::I);
@@ -503,36 +503,36 @@ struct MosiCoherentAgentModel::MosiCoherentAgentModelImpl {
   const CoherentAgentOptions opts_;
 };
 
-MosiCoherentAgentModel::MosiCoherentAgentModel(const CoherentAgentOptions& opts)
-    : CoherentAgentModel(opts) {
-  impl_ = std::make_unique<MosiCoherentAgentModelImpl>(opts);
+MosiAgentProtocol::MosiAgentProtocol(const CoherentAgentOptions& opts)
+    : AgentProtocol(opts) {
+  impl_ = std::make_unique<MosiAgentProtocolImpl>(opts);
 }
 
-MosiCoherentAgentModel::~MosiCoherentAgentModel() {}
+MosiAgentProtocol::~MosiAgentProtocol() {}
 
-void MosiCoherentAgentModel::init(CacheLine& l) const { impl_->init(l); }
+void MosiAgentProtocol::init(CacheLine& l) const { impl_->init(l); }
 
-bool MosiCoherentAgentModel::is_stable(const CacheLine& l) const {
+bool MosiAgentProtocol::is_stable(const CacheLine& l) const {
   return impl_->is_stable(l.state());
 }
 
-std::string MosiCoherentAgentModel::to_string(state_t s) const {
+std::string MosiAgentProtocol::to_string(state_t s) const {
   return impl_->to_string(s);
 }
 
 //
-CoherenceActions MosiCoherentAgentModel::get_actions(
+CoherenceActions MosiAgentProtocol::get_actions(
     const Transaction* t, const CacheLine& cache_line) const {
   return impl_->get_actions(t, cache_line);
 }
 
-CoherenceActions MosiCoherentAgentModel::get_actions(
+CoherenceActions MosiAgentProtocol::get_actions(
     const Message* m, const CacheLine& cache_line) const {
   return impl_->get_actions(m, cache_line);
 }
 
-struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
-  MosiSnoopFilterModelImpl(const ActorOptions& opts) : opts_(opts) {}
+struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
+  MosiSnoopFilterProtocolImpl(const ActorOptions& opts) : opts_(opts) {}
 
   void init(DirectoryEntry& l) const { l.set_state(MosiDirectoryLineState::I); }
 
@@ -791,28 +791,28 @@ struct MosiSnoopFilterModel::MosiSnoopFilterModelImpl {
   const ActorOptions opts_;
 };
 
-MosiSnoopFilterModel::MosiSnoopFilterModel(const ActorOptions& opts)
-    : SnoopFilterModel(opts) {
-  impl_ = std::make_unique<MosiSnoopFilterModelImpl>(opts);
+MosiSnoopFilterProtocol::MosiSnoopFilterProtocol(const ActorOptions& opts)
+    : SnoopFilterProtocol(opts) {
+  impl_ = std::make_unique<MosiSnoopFilterProtocolImpl>(opts);
 }
 
-MosiSnoopFilterModel::~MosiSnoopFilterModel() {}
+MosiSnoopFilterProtocol::~MosiSnoopFilterProtocol() {}
 
-void MosiSnoopFilterModel::init(DirectoryEntry& l) const { impl_->init(l); }
+void MosiSnoopFilterProtocol::init(DirectoryEntry& l) const { impl_->init(l); }
 
-bool MosiSnoopFilterModel::is_stable(const DirectoryEntry& l) const {
+bool MosiSnoopFilterProtocol::is_stable(const DirectoryEntry& l) const {
   return impl_->is_stable(l);
 }
 
-std::string MosiSnoopFilterModel::to_string(const DirectoryEntry& l) const {
+std::string MosiSnoopFilterProtocol::to_string(const DirectoryEntry& l) const {
   return impl_->to_string(l);
 }
 
-std::string MosiSnoopFilterModel::to_string(state_t state) const {
+std::string MosiSnoopFilterProtocol::to_string(state_t state) const {
   return impl_->to_string(state);
 }
 
-CoherenceActions MosiSnoopFilterModel::get_actions(
+CoherenceActions MosiSnoopFilterProtocol::get_actions(
     const Message* m, const DirectoryEntry& dir_entry) const {
   return impl_->get_actions(m, dir_entry);
 }
@@ -822,7 +822,8 @@ MosiCoherenceProtocolValidator::MosiCoherenceProtocolValidator() {}
 bool MosiCoherenceProtocolValidator::validate_addr(
     addr_t addr, const std::vector<Entry<CacheLine> >& lines,
     const DirectoryEntry& entry) const {
-  return false;
+  // TODO
+  return true;
 }
 
 }  // namespace ccm

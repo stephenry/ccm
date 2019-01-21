@@ -88,7 +88,7 @@ struct SnoopFilterCommandInvoker : CoherentActor {
                DirectoryEntry& d);
 
  protected:
-  std::unique_ptr<SnoopFilterModel> cc_model_;
+  std::unique_ptr<SnoopFilterProtocol> cc_model_;
   std::unique_ptr<GenericCache<DirectoryEntry> > cache_;
 
  private:

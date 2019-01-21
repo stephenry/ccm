@@ -124,6 +124,7 @@ CacheLine CoherentAgentCommandInvoker::cache_line(std::size_t addr) const {
 void CoherentAgentCommandInvoker::visit_cache(
     CacheVisitor* cache_visitor) const {
   cache_visitor->set_id(id());
+  cache_->visit(cache_visitor);
 }
 
 void CoherentAgentCommandInvoker::execute(Context& context, Cursor& cursor,

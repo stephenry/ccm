@@ -60,8 +60,8 @@ bool MsiAgentLineState::is_stable(state_t s) {
   }
 }
 
-struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
-  MsiCoherentAgentModelImpl(const CoherentAgentOptions &opts) : opts_(opts) {}
+struct MsiAgentProtocol::MsiAgentProtocolImpl {
+  MsiAgentProtocolImpl(const CoherentAgentOptions &opts) : opts_(opts) {}
 
   void init(CacheLine &l) const {
     l.set_state(static_cast<CacheLine::state_type>(MsiAgentLineState::I));
@@ -392,29 +392,29 @@ struct MsiCoherentAgentModel::MsiCoherentAgentModelImpl {
   const CoherentAgentOptions opts_;
 };
 
-MsiCoherentAgentModel::MsiCoherentAgentModel(const CoherentAgentOptions &opts)
-    : CoherentAgentModel(opts) {
-  impl_ = std::make_unique<MsiCoherentAgentModelImpl>(opts);
+MsiAgentProtocol::MsiAgentProtocol(const CoherentAgentOptions &opts)
+    : AgentProtocol(opts) {
+  impl_ = std::make_unique<MsiAgentProtocolImpl>(opts);
 }
 
-MsiCoherentAgentModel::~MsiCoherentAgentModel(){};
+MsiAgentProtocol::~MsiAgentProtocol(){};
 
-void MsiCoherentAgentModel::init(CacheLine &l) const { impl_->init(l); }
+void MsiAgentProtocol::init(CacheLine &l) const { impl_->init(l); }
 
-bool MsiCoherentAgentModel::is_stable(const CacheLine &l) const {
+bool MsiAgentProtocol::is_stable(const CacheLine &l) const {
   return impl_->is_stable(l);
 }
 
-std::string MsiCoherentAgentModel::to_string(CacheLine::state_type s) const {
+std::string MsiAgentProtocol::to_string(CacheLine::state_type s) const {
   return impl_->to_string(s);
 }
 
-CoherenceActions MsiCoherentAgentModel::get_actions(
+CoherenceActions MsiAgentProtocol::get_actions(
     const Transaction *t, const CacheLine &cache_line) const {
   return impl_->get_actions(t, cache_line);
 }
 
-CoherenceActions MsiCoherentAgentModel::get_actions(
+CoherenceActions MsiAgentProtocol::get_actions(
     const Message *m, const CacheLine &cache_line) const {
   return impl_->get_actions(m, cache_line);
 }
@@ -430,8 +430,8 @@ const char *MsiDirectoryLineState::to_string(state_t s) {
   return "<Invalid Directory State>";
 }
 
-struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
-  MsiSnoopFilterModelImpl(const ActorOptions &opts) : opts_(opts) {}
+struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
+  MsiSnoopFilterProtocolImpl(const ActorOptions &opts) : opts_(opts) {}
 
   void init(DirectoryEntry &l) const { l.set_state(MsiDirectoryLineState::I); }
 
@@ -638,28 +638,28 @@ struct MsiSnoopFilterModel::MsiSnoopFilterModelImpl {
   const ActorOptions opts_;
 };
 
-MsiSnoopFilterModel::MsiSnoopFilterModel(const ActorOptions &opts)
-    : SnoopFilterModel(opts) {
-  impl_ = std::make_unique<MsiSnoopFilterModelImpl>(opts);
+MsiSnoopFilterProtocol::MsiSnoopFilterProtocol(const ActorOptions &opts)
+    : SnoopFilterProtocol(opts) {
+  impl_ = std::make_unique<MsiSnoopFilterProtocolImpl>(opts);
 }
 
-MsiSnoopFilterModel::~MsiSnoopFilterModel() {}
+MsiSnoopFilterProtocol::~MsiSnoopFilterProtocol() {}
 
-void MsiSnoopFilterModel::init(DirectoryEntry &l) const { impl_->init(l); }
+void MsiSnoopFilterProtocol::init(DirectoryEntry &l) const { impl_->init(l); }
 
-bool MsiSnoopFilterModel::is_stable(const DirectoryEntry &l) const {
+bool MsiSnoopFilterProtocol::is_stable(const DirectoryEntry &l) const {
   return impl_->is_stable(l);
 }
 
-std::string MsiSnoopFilterModel::to_string(const DirectoryEntry &l) const {
+std::string MsiSnoopFilterProtocol::to_string(const DirectoryEntry &l) const {
   return impl_->to_string(l);
 }
 
-std::string MsiSnoopFilterModel::to_string(state_t l) const {
+std::string MsiSnoopFilterProtocol::to_string(state_t l) const {
   return impl_->to_string(l);
 }
 
-CoherenceActions MsiSnoopFilterModel::get_actions(
+CoherenceActions MsiSnoopFilterProtocol::get_actions(
     const Message *m, const DirectoryEntry &dir_entry) const {
   return impl_->get_actions(m, dir_entry);
 }
@@ -669,7 +669,7 @@ MsiCoherenceProtocolValidator::MsiCoherenceProtocolValidator() {}
 bool MsiCoherenceProtocolValidator::validate_addr(
     addr_t addr, const std::vector<Entry<CacheLine> > &lines,
     const DirectoryEntry &entry) const {
-  bool fail = false;
+  bool pass = true;
 
   std::array<std::size_t, MsiAgentLineState::STATE_COUNT> state_count;
   std::fill(state_count.begin(), state_count.end(), 0);
@@ -682,19 +682,18 @@ bool MsiCoherenceProtocolValidator::validate_addr(
 
   if ((state_count[MsiAgentLineState::M] != 1) &&
       (state_count[MsiAgentLineState::M] != 0)) {
-    fail = true;
+    pass = false;
 
     error("Multiple MODIFIED agents are present.");
   }
 
   if ((state_count[MsiAgentLineState::M] > 0) &&
       (state_count[MsiAgentLineState::S] != 0)) {
-    fail = true;
+    pass = false;
 
     error("When MODIFIED is present, other SHARED agents cannot be present.");
   }
-
-  return fail;
+  return pass;
 }
 
 }  // namespace ccm

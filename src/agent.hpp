@@ -62,7 +62,7 @@ struct CoherentAgentCommandInvoker : CoherentActor {
                const Message* msg);
 
  protected:
-  std::unique_ptr<CoherentAgentModel> cc_model_;
+  std::unique_ptr<AgentProtocol> cc_model_;
   std::unique_ptr<GenericCache<CacheLine> > cache_;
 
  private:

@@ -251,10 +251,10 @@ struct CoherenceActions {
   // clang-format on
 };
 
-class CoherentActorBase {
+class ProtocolBase {
  public:
-  CoherentActorBase(const ActorOptions& opts);
-  virtual ~CoherentActorBase() {}
+  ProtocolBase(const ActorOptions& opts);
+  virtual ~ProtocolBase() {}
 
   virtual Protocol protocol() const = 0;
 
@@ -262,10 +262,10 @@ class CoherentActorBase {
   const ActorOptions opts_;
 };
 
-class CoherentAgentModel : public CoherentActorBase {
+class AgentProtocol : public ProtocolBase {
  public:
-  CoherentAgentModel(const CoherentAgentOptions& opts);
-  virtual ~CoherentAgentModel() {}
+  AgentProtocol(const CoherentAgentOptions& opts);
+  virtual ~AgentProtocol() {}
 
   virtual void init(CacheLine& l) const = 0;
   virtual bool is_stable(const CacheLine& l) const = 0;
@@ -277,12 +277,12 @@ class CoherentAgentModel : public CoherentActorBase {
                                        const CacheLine& cache_line) const = 0;
 };
 
-std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
+std::unique_ptr<AgentProtocol> coherent_agent_factory(
     Protocol protocol, const CoherentAgentOptions& opts);
 
-class SnoopFilterModel : public CoherentActorBase {
+class SnoopFilterProtocol : public ProtocolBase {
  public:
-  SnoopFilterModel(const ActorOptions& opts);
+  SnoopFilterProtocol(const ActorOptions& opts);
 
   virtual void init(DirectoryEntry& l) const = 0;
   virtual bool is_stable(const DirectoryEntry& l) const = 0;
@@ -296,7 +296,7 @@ class SnoopFilterModel : public CoherentActorBase {
   const ActorOptions opts_;
 };
 
-std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
+std::unique_ptr<SnoopFilterProtocol> snoop_filter_factory(
     Protocol protocol, const ActorOptions& opts);
 
 std::unique_ptr<CoherenceProtocolValidator> validator_factory(

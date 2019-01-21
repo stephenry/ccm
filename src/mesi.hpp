@@ -85,10 +85,10 @@ struct MesiDirectoryLineState {
   static const char* to_string(state_t state);
 };
 
-class MesiCoherentAgentModel : public CoherentAgentModel {
+class MesiAgentProtocol : public AgentProtocol {
  public:
-  MesiCoherentAgentModel(const CoherentAgentOptions& opts);
-  virtual ~MesiCoherentAgentModel();
+  MesiAgentProtocol(const CoherentAgentOptions& opts);
+  virtual ~MesiAgentProtocol();
 
   //
   Protocol protocol() const override { return Protocol::MESI; }
@@ -105,15 +105,15 @@ class MesiCoherentAgentModel : public CoherentAgentModel {
                                const CacheLine& cache_line) const override;
 
  private:
-  struct MesiCoherentAgentModelImpl;
+  struct MesiAgentProtocolImpl;
 
-  std::unique_ptr<MesiCoherentAgentModelImpl> impl_;
+  std::unique_ptr<MesiAgentProtocolImpl> impl_;
 };
 
-class MesiSnoopFilterModel : public SnoopFilterModel {
+class MesiSnoopFilterProtocol : public SnoopFilterProtocol {
  public:
-  MesiSnoopFilterModel(const ActorOptions& opts);
-  virtual ~MesiSnoopFilterModel();
+  MesiSnoopFilterProtocol(const ActorOptions& opts);
+  virtual ~MesiSnoopFilterProtocol();
 
   //
   Protocol protocol() const override { return Protocol::MESI; }
@@ -129,9 +129,9 @@ class MesiSnoopFilterModel : public SnoopFilterModel {
                                const DirectoryEntry& dir_entry) const override;
 
  private:
-  struct MesiSnoopFilterModelImpl;
+  struct MesiSnoopFilterProtocolImpl;
 
-  std::unique_ptr<MesiSnoopFilterModelImpl> impl_;
+  std::unique_ptr<MesiSnoopFilterProtocolImpl> impl_;
 };
 
 class MesiCoherenceProtocolValidator : public CoherenceProtocolValidator {

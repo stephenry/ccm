@@ -84,24 +84,21 @@ const char* to_string(TransactionResult r) {
 }
 // clang-format on
 
-CoherentAgentModel::CoherentAgentModel(const CoherentAgentOptions& opts)
-    : CoherentActorBase(opts) {}
+AgentProtocol::AgentProtocol(const CoherentAgentOptions& opts)
+    : ProtocolBase(opts) {}
 
-std::unique_ptr<CoherentAgentModel> coherent_agent_factory(
+std::unique_ptr<AgentProtocol> coherent_agent_factory(
     Protocol protocol, const CoherentAgentOptions& opts) {
   switch (protocol) {
     case Protocol::MSI:
-      return std::make_unique<MsiCoherentAgentModel>(opts);
+      return std::make_unique<MsiAgentProtocol>(opts);
       break;
-
     case Protocol::MESI:
-      return std::make_unique<MesiCoherentAgentModel>(opts);
+      return std::make_unique<MesiAgentProtocol>(opts);
       break;
-
     case Protocol::MOSI:
-      return std::make_unique<MosiCoherentAgentModel>(opts);
+      return std::make_unique<MosiAgentProtocol>(opts);
       break;
-
     default:
       // TODO: Not implemented
       return nullptr;
@@ -121,7 +118,7 @@ const char* to_string(SnoopFilterCommand command) {
   }
 }
 
-CoherentActorBase::CoherentActorBase(const ActorOptions& opts) : opts_(opts) {}
+ProtocolBase::ProtocolBase(const ActorOptions& opts) : opts_(opts) {}
 
 const char* to_string(EvictionPolicy p) {
   switch (p) {
@@ -135,22 +132,22 @@ const char* to_string(EvictionPolicy p) {
   }
 }
 
-SnoopFilterModel::SnoopFilterModel(const ActorOptions& opts)
-    : CoherentActorBase(opts), opts_(opts) {}
+SnoopFilterProtocol::SnoopFilterProtocol(const ActorOptions& opts)
+    : ProtocolBase(opts), opts_(opts) {}
 
-std::unique_ptr<SnoopFilterModel> snoop_filter_factory(
+std::unique_ptr<SnoopFilterProtocol> snoop_filter_factory(
     Protocol protocol, const ActorOptions& opts) {
   switch (protocol) {
     case Protocol::MSI:
-      return std::make_unique<MsiSnoopFilterModel>(opts);
+      return std::make_unique<MsiSnoopFilterProtocol>(opts);
       break;
 
     case Protocol::MESI:
-      return std::make_unique<MesiSnoopFilterModel>(opts);
+      return std::make_unique<MesiSnoopFilterProtocol>(opts);
       break;
 
     case Protocol::MOSI:
-      return std::make_unique<MosiSnoopFilterModel>(opts);
+      return std::make_unique<MosiSnoopFilterProtocol>(opts);
       break;
 
     default:

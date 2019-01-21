@@ -35,9 +35,11 @@ BasicPlatform::BasicPlatform(Sim& sim, Protocol protocol, std::size_t agents_n)
 
   for (std::size_t i = 0; i < agents_n; i++) platform_.add_agent(i);
   platform_.add_snoop_filter(4, std::make_shared<DefaultAddressRegion>());
+  platform_.add_memory(5);
 
   for (std::size_t i = 0; i < agents_n; i++) construct_agent(i);
   construct_snoop_filter(4);
+  construct_memory(platform_.memory_id());
 
   validator_ = validator_factory(protocol);
 }
@@ -80,6 +82,12 @@ void BasicPlatform::construct_agent(std::size_t id) {
 
   agents_.back()->set_transaction_source(ts_.back());
   add_actor(agents_.back());
+}
+
+void BasicPlatform::construct_memory(id_t id) {
+  const ActorOptions opts(id, platform_);
+  memories_.push_back(std::make_unique<Memory>(opts));
+  sim_.add_actor(memories_.back().get());
 }
 
 void BasicPlatform::add_actor(CoherentActor* actor) {

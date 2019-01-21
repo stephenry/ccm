@@ -25,44 +25,28 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __TESTS_TESTCOMMON_HPP__
-#define __TESTS_TESTCOMMON_HPP__
+#ifndef __SRC_MEMORY_HPP__
+#define __SRC_MEMORY_HPP__
 
-#include "ccm.hpp"
+#include "actor.hpp"
 
-namespace ccm::test {
+namespace ccm {
 
-struct BasicPlatform {
-  BasicPlatform(Sim &sim, Protocol protocol, std::size_t agents_n);
-  ~BasicPlatform();
+  struct Memory : CoherentActor {
+    Memory(const ActorOptions & opts);
+    
+    void apply(TimeStamped<Message *> ts);
+    void eval(Context &ctxt);
+    bool is_active() const;
 
-  std::size_t agents() const { return agents_.size(); }
-  ProgrammaticTransactionSource *ts(std::size_t id) const { return ts_[id]; }
-  Protocol protocol() const { return protocol_; }
-  Agent *agent(std::size_t id) { return agents_[id]; }
-  SnoopFilter *snoop_filter() { return snoop_filter_; }
+    // TODO: Remove this from the CoherentActor class
+    void visit_cache(CacheVisitor *cache_visitor) const {}
 
-  bool validate() const;
-
- private:
-  void construct_snoop_filter(std::size_t id);
-  void construct_agent(std::size_t id);
-  void construct_memory(std::size_t id);
-  void add_actor(CoherentActor *actor);
-
-  Logger logger_;
-  LoggerScope *top_;
-  SnoopFilter *snoop_filter_;
-  Sim &sim_;
-  std::vector<Agent *> agents_;
-  std::vector<CoherentActor *> actors_;
-  std::vector<std::unique_ptr<Memory>> memories_;
-  Protocol protocol_;
-  Platform platform_;
-  std::vector<ProgrammaticTransactionSource *> ts_;
-  std::unique_ptr<CoherenceProtocolValidator> validator_;
-};
-
-}  // namespace ccm::test
+  private:
+    void handle_msg(Context & context, Cursor & cursor,
+                    TimeStamped<Message*> ts);
+    QueueManager qmgr_;
+  };
+} // namespace ccm
 
 #endif
