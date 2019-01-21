@@ -29,6 +29,18 @@
 
 namespace ccm {
 
+  const char* SnoopFilterCommand::to_string(command_t command) {
+    switch (command) {
+#define __declare_to_string(__e)                \
+      case SnoopFilterCommand::__e:             \
+        return #__e;
+      SNOOP_FILTER_COMMANDS(__declare_to_string)
+#undef __declare_to_string
+    default:
+        return "<Invalid Line State>";
+    }
+  }
+
 SnoopFilterCommandInvoker::SnoopFilterCommandInvoker(
     const SnoopFilterOptions& opts)
     : opts_(opts), msgd_(opts), CoherentActor(opts) {
@@ -55,9 +67,8 @@ void SnoopFilterCommandInvoker::visit_cache(CacheVisitor* cache_visitor) const {
 void SnoopFilterCommandInvoker::execute(Context& context, Cursor& cursor,
                                         const CoherenceActions& actions,
                                         const Message* msg, DirectoryEntry& d) {
-  for (const command_t c : actions.commands()) {
-    const SnoopFilterCommand cmd{c};
-    log_debug("Execute: ", to_string(cmd));
+  for (command_t cmd : actions.commands()) {
+    log_debug("Execute: ", SnoopFilterCommand::to_string(cmd));
 
     switch (cmd) {
       case SnoopFilterCommand::UpdateState:
@@ -252,7 +263,7 @@ void SnoopFilterCommandInvoker::execute_cpy_data_to_memory(const Message* msg,
   b.set_type(MessageType::Data);
   b.set_dst_id(platform.memory_id());
   b.set_transaction(msg->transaction());
-  
+
   log_debug("Copy Data to Memory.");
   emit_message(context, cursor, b);
 }

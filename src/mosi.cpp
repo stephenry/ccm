@@ -26,6 +26,7 @@
 //========================================================================== //
 
 #include "mosi.hpp"
+#include "agent.hpp"
 #include "snoopfilter.hpp"
 
 namespace ccm {

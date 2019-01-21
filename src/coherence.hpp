@@ -94,29 +94,8 @@ struct CoherentAgentOptions : ActorOptions {
   CacheOptions cache_options_;
 };
 
-// clang-format off
-#define AGENT_COMMANDS(__func)                  \
-  __func(UpdateState)                           \
-  __func(SetAckCount)                           \
-  __func(EmitGetS)                              \
-  __func(EmitGetM)                              \
-  __func(EmitDataToReq)                         \
-  __func(EmitDataToDir)                         \
-  __func(EmitInvAck)
-// clang-format on
-
-// clang-format off
-enum class CoherentAgentCommand : command_t {
-#define __declare_state(__state)                \
-  __state,
-  AGENT_COMMANDS(__declare_state)
-#undef __declare_state
-};
-// clang-format on
-
-const char* to_string(CoherentAgentCommand command);
-
-struct CacheLine {
+class CacheLine {
+ public:
   using state_type = state_t;
   using ack_count_type = uint8_t;
 
@@ -131,41 +110,30 @@ struct CacheLine {
   ack_count_type ack_count_;
 };
 
-struct DirectoryEntry : CacheLine {
+class DirectoryEntry {
   friend std::string to_string(const DirectoryEntry& d);
 
-  using state_type = uint8_t;
+ public:
+  using state_type = state_t;
 
   DirectoryEntry() {}
 
-  //
-  std::size_t owner() const { return owner_.value(); }
-  void set_owner(std::size_t owner) { owner_ = owner; }
-  void clear_owner() { owner_.reset(); }
-
-  //
-  const std::vector<std::size_t>& sharers() const { return sharers_; }
-  void add_sharer(std::size_t id) { sharers_.push_back(id); }
-  void remove_sharer(std::size_t id) {
-    sharers_.erase(std::find(sharers_.begin(), sharers_.end(), id),
-                   sharers_.end());
-  }
-  void clear_sharers() { sharers_.clear(); }
-  std::size_t num_sharers() const { return sharers_.size(); }
-
-  // TODO: refactor the size of the sharer set, minus the current ID (if
-  // present in the sharer list). Denotes the number of invalidations
-  // to emit to everything but the requester.
-  std::size_t num_sharers_not_id(std::size_t id) const {
-    return sharers_.size() - std::count(sharers_.begin(), sharers_.end(), id);
-  }
+  state_type state() const;
+  id_t owner() const;
+  const std::vector<id_t>& sharers() const;
+  std::size_t num_sharers() const;
+  void set_state(state_type state);
+  void set_owner(id_t owner);
+  void clear_owner();
+  void add_sharer(id_t id);
+  void remove_sharer(id_t id);
+  void clear_sharers();
+  id_t num_sharers_not_id(id_t id) const;
 
  private:
-  // Current set of sharing agents
-  std::vector<std::size_t> sharers_;
-
-  // Current owner agent
-  std::optional<std::size_t> owner_;
+  state_type state_;
+  std::vector<id_t> sharers_;
+  std::optional<id_t> owner_;
 };
 
 std::string to_string(const DirectoryEntry& d);
@@ -229,10 +197,7 @@ struct CoherenceActions {
 #undef __declare_getter_setter
   // clang-format on
 
-  template <typename T>
-  void append_command(const T& cmd) {
-    commands_.push_back(static_cast<command_t>(cmd));
-  }
+  void append_command(command_t cmd) { commands_.push_back(cmd); }
 
  private:
   void reset() {

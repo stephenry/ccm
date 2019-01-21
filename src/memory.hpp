@@ -32,21 +32,20 @@
 
 namespace ccm {
 
-  struct Memory : CoherentActor {
-    Memory(const ActorOptions & opts);
-    
-    void apply(TimeStamped<Message *> ts);
-    void eval(Context &ctxt);
-    bool is_active() const;
+struct Memory : CoherentActor {
+  Memory(const ActorOptions &opts);
 
-    // TODO: Remove this from the CoherentActor class
-    void visit_cache(CacheVisitor *cache_visitor) const {}
+  void apply(TimeStamped<Message *> ts);
+  void eval(Context &ctxt);
+  bool is_active() const;
 
-  private:
-    void handle_msg(Context & context, Cursor & cursor,
-                    TimeStamped<Message*> ts);
-    QueueManager qmgr_;
-  };
-} // namespace ccm
+  // TODO: Remove this from the CoherentActor class
+  void visit_cache(CacheVisitor *cache_visitor) const {}
+
+ private:
+  void handle_msg(Context &context, Cursor &cursor, TimeStamped<Message *> ts);
+  QueueManager qmgr_;
+};
+}  // namespace ccm
 
 #endif

@@ -34,6 +34,7 @@
 #include "coherence.hpp"
 #include "interconnect.hpp"
 #include "log.hpp"
+#include "memory.hpp"
 #include "mesi.hpp"
 #include "mosi.hpp"
 #include "msi.hpp"
@@ -42,6 +43,5 @@
 #include "sim.hpp"
 #include "snoopfilter.hpp"
 #include "utility.hpp"
-#include "memory.hpp"
 
 #endif

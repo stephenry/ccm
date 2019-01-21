@@ -26,6 +26,7 @@
 //========================================================================== //
 
 #include "mesi.hpp"
+#include "agent.hpp"
 #include "snoopfilter.hpp"
 
 namespace ccm {
@@ -469,10 +470,7 @@ CoherenceActions MesiAgentProtocol::get_actions(
 struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
   MesiSnoopFilterProtocolImpl(const ActorOptions& opts) : opts_(opts) {}
 
-  void init(DirectoryEntry& l) const {
-    l.set_state(
-        static_cast<DirectoryEntry::state_type>(MesiDirectoryLineState::I));
-  }
+  void init(DirectoryEntry& l) const { l.set_state(MesiDirectoryLineState::I); }
 
   bool is_stable(const DirectoryEntry& dir_entry) {
     bool ret{false};

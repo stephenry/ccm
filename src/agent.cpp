@@ -31,6 +31,20 @@
 
 namespace ccm {
 
+const char* CoherentAgentCommand::to_string(command_t command) {
+  switch (command) {
+      // clang-format off
+#define __declare_to_string(__e)                \
+  case CoherentAgentCommand::__e:           \
+    return #__e;
+  AGENT_COMMANDS(__declare_to_string)
+#undef __declare_to_string
+    // clang-format on
+  default:
+    return "<Invalid Line State>";
+  }
+}
+
 class AgentMessageAdmissionControl : public MessageAdmissionControl {
  public:
   AgentMessageAdmissionControl(Agent* agent) : agent_(agent) {}
@@ -131,23 +145,19 @@ void CoherentAgentCommandInvoker::execute(Context& context, Cursor& cursor,
                                           const CoherenceActions& actions,
                                           CacheLine& cache_line,
                                           const Transaction* t) {
-  for (const command_t c : actions.commands()) {
-    const CoherentAgentCommand cmd{c};
-    log_debug("Execute: ", to_string(cmd));
+  for (command_t cmd : actions.commands()) {
+    log_debug("Execute: ", CoherentAgentCommand::to_string(cmd));
 
     switch (cmd) {
       case CoherentAgentCommand::UpdateState:
         execute_update_state(cache_line, actions);
         break;
-
       case CoherentAgentCommand::EmitGetS:
         execute_emit_gets(context, cursor, t);
         break;
-
       case CoherentAgentCommand::EmitGetM:
         execute_emit_getm(context, cursor, t);
         break;
-
       default:
         break;
     }
@@ -158,31 +168,25 @@ void CoherentAgentCommandInvoker::execute(Context& context, Cursor& cursor,
                                           const CoherenceActions& actions,
                                           CacheLine& cache_line,
                                           const Message* msg) {
-  for (const command_t c : actions.commands()) {
-    const CoherentAgentCommand cmd{c};
-    log_debug("Execute: ", to_string(cmd));
+  for (command_t cmd : actions.commands()) {
+    log_debug("Execute: ", CoherentAgentCommand::to_string(cmd));
 
     switch (cmd) {
       case CoherentAgentCommand::UpdateState:
         execute_update_state(cache_line, actions);
         break;
-
       case CoherentAgentCommand::EmitDataToReq:
         execute_emit_data_to_req(context, cursor, msg);
         break;
-
       case CoherentAgentCommand::EmitDataToDir:
         execute_emit_data_to_dir(context, cursor, msg);
         break;
-
       case CoherentAgentCommand::EmitInvAck:
         execute_emit_inv_ack(context, cursor, msg);
         break;
-
       case CoherentAgentCommand::SetAckCount:
         execute_set_ack_count(cache_line, actions);
         break;
-
       default:
         break;
     }

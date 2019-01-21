@@ -30,45 +30,44 @@
 
 namespace ccm {
 
-  Memory::Memory(const ActorOptions & opts)
-    : CoherentActor(opts) {}
+Memory::Memory(const ActorOptions &opts) : CoherentActor(opts) {}
 
-  void Memory::apply(TimeStamped<Message *> ts) { qmgr_.push(ts); }
-  
-  void Memory::eval(Context &context) {
-    const Epoch epoch = context.epoch();
-    Cursor cursor = epoch.cursor();
+void Memory::apply(TimeStamped<Message *> ts) { qmgr_.push(ts); }
 
-    do {
-      const QueueEntry next = qmgr_.next();
-      if (next.type() == QueueEntryType::Invalid) break;
+void Memory::eval(Context &context) {
+  const Epoch epoch = context.epoch();
+  Cursor cursor = epoch.cursor();
 
-      if (!epoch.in_interval(next.time())) break;
+  do {
+    const QueueEntry next = qmgr_.next();
+    if (next.type() == QueueEntryType::Invalid) break;
 
-      cursor.set_time(std::max(time(), next.time()));
-      set_time(cursor.time());
+    if (!epoch.in_interval(next.time())) break;
 
-      switch (next.type()) {
+    cursor.set_time(std::max(time(), next.time()));
+    set_time(cursor.time());
+
+    switch (next.type()) {
       case QueueEntryType::Message:
         handle_msg(context, cursor, next.as_msg());
         break;
       default:;  // TODO: unexpected
-      }
-      next.consume();
-    } while (epoch.in_interval(cursor.time()));
+    }
+    next.consume();
+  } while (epoch.in_interval(cursor.time()));
 
-    set_time(cursor.time());
-  }
+  set_time(cursor.time());
+}
 
-  void Memory::handle_msg(Context & context, Cursor & cursor,
-                          TimeStamped<Message*> ts) {
-    const Message * msg = ts.t();
-    CCM_AGENT_ASSERT(msg->type() == MessageType::Data);
-    cursor.advance(MessageType::to_cost(msg->type()));
-    log_debug("Write-back to memory:", to_string(*msg));
-    msg->release();
-  }
-  
-  bool Memory::is_active() const { return !qmgr_.empty(); }
+void Memory::handle_msg(Context &context, Cursor &cursor,
+                        TimeStamped<Message *> ts) {
+  const Message *msg = ts.t();
+  CCM_AGENT_ASSERT(msg->type() == MessageType::Data);
+  cursor.advance(MessageType::to_cost(msg->type()));
+  log_debug("Write-back to memory:", to_string(*msg));
+  msg->release();
+}
 
-} // namespace ccm
+bool Memory::is_active() const { return !qmgr_.empty(); }
+
+}  // namespace ccm

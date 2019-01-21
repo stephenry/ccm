@@ -67,15 +67,18 @@ struct SnoopFilterOptions : ActorOptions {
   __func(SendFwdGetSToOwner)
 // clang-format on
 
-enum class SnoopFilterCommand : command_t {
-// clang-format off
+struct SnoopFilterCommand {
+  enum : command_t {
+    // clang-format off
 #define __declare_state(__state) __state,
-  SNOOP_FILTER_COMMANDS(__declare_state)
+    SNOOP_FILTER_COMMANDS(__declare_state)
 #undef __declare_state
-  // clang-format on
+    // clang-format on
+  };
+
+  static const char* to_string(command_t command);
 };
 
-const char* to_string(SnoopFilterCommand command);
 
 struct SnoopFilterCommandInvoker : CoherentActor {
   SnoopFilterCommandInvoker(const SnoopFilterOptions& opts);

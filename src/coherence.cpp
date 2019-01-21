@@ -56,20 +56,6 @@ const char* to_string(Protocol p) {
 }
 
 // clang-format off
-const char* to_string(CoherentAgentCommand command) {
-  switch (command) {
-#define __declare_to_string(__e)  \
-  case CoherentAgentCommand::__e:             \
-    return #__e;
-    AGENT_COMMANDS(__declare_to_string)
-#undef __declare_to_string
-  default:
-    return "<Invalid Line State>";
-  }
-}
-// clang-format on
-
-// clang-format off
 const char* to_string(TransactionResult r) {
   switch (r) {
 #define __declare_to_string(__state) \
@@ -103,18 +89,6 @@ std::unique_ptr<AgentProtocol> coherent_agent_factory(
       // TODO: Not implemented
       return nullptr;
       break;
-  }
-}
-
-const char* to_string(SnoopFilterCommand command) {
-  switch (command) {
-#define __declare_to_string(__e) \
-  case SnoopFilterCommand::__e:  \
-    return #__e;
-    SNOOP_FILTER_COMMANDS(__declare_to_string)
-#undef __declare_to_string
-    default:
-      return "<Invalid Line State>";
   }
 }
 
@@ -155,6 +129,24 @@ std::unique_ptr<SnoopFilterProtocol> snoop_filter_factory(
       return nullptr;
       break;
   }
+}
+
+state_t DirectoryEntry::state() const { return state_; }
+id_t DirectoryEntry::owner() const { return owner_.value(); }
+const std::vector<id_t>& DirectoryEntry::sharers() const { return sharers_; }
+std::size_t DirectoryEntry::num_sharers() const { return sharers_.size(); }
+
+void DirectoryEntry::set_state(state_t state) { state_ = state; }
+void DirectoryEntry::set_owner(id_t owner) { owner_ = owner; }
+void DirectoryEntry::clear_owner() { owner_.reset(); }
+void DirectoryEntry::add_sharer(id_t id) { sharers_.push_back(id); }
+void DirectoryEntry::remove_sharer(id_t id) {
+  sharers_.erase(std::find(sharers_.begin(), sharers_.end(), id),
+                 sharers_.end());
+}
+void DirectoryEntry::clear_sharers() { sharers_.clear(); }
+id_t DirectoryEntry::num_sharers_not_id(id_t id) const {
+  return sharers_.size() - std::count(sharers_.begin(), sharers_.end(), id);
 }
 
 CoherenceProtocolValidator::CoherenceProtocolValidator() {}

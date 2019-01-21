@@ -36,6 +36,31 @@
 namespace ccm {
 
 struct TransactionSource;
+  
+// clang-format off
+#define AGENT_COMMANDS(__func)                  \
+  __func(UpdateState)                           \
+  __func(SetAckCount)                           \
+  __func(EmitGetS)                              \
+  __func(EmitGetM)                              \
+  __func(EmitDataToReq)                         \
+  __func(EmitDataToDir)                         \
+  __func(EmitInvAck)
+// clang-format on
+
+struct CoherentAgentCommand {
+
+  enum : command_t {
+// clang-format off
+#define __declare_state(__state)                \
+    __state,
+    AGENT_COMMANDS(__declare_state)
+#undef __declare_state
+  };
+// clang-format on
+
+  static const char* to_string(command_t command);
+};
 
 struct AgentOptions : CoherentAgentOptions {
   AgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options,
