@@ -93,7 +93,6 @@ class LoggerScope {
 
  private:
   void log(const LogLevel ll, const std::string& s) { logger_->log(ll, s); }
-  void log(const LogLevel ll, const char* s) { logger_->log(ll, s); }
 
   std::string path_;
   Logger* logger_{nullptr};
