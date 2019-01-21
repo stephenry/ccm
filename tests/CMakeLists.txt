@@ -43,5 +43,5 @@ build_common_library()
 
 add_subdirectory(msi)
 add_subdirectory(mesi)
-create_test(mosi)
+add_subdirectory(mosi)
 
