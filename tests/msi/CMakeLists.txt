@@ -25,23 +25,9 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-macro (build_common_library)
-  add_library(testcommon testcommon.cpp)
-  target_include_directories(testcommon PUBLIC ${CMAKE_SOURCE_DIR}/src)
-  target_include_directories(testcommon PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-  target_link_libraries(testcommon ccm)
-endmacro ()
-
-macro (create_test fn)
-  add_executable(${fn} ${fn}.cpp)
-  target_link_libraries(${fn} ccm gtest_main gtest pthread testcommon)
-  target_include_directories(${fn} PUBLIC ${CMAKE_SOURCE_DIR}/src)
-  add_test(NAME ${fn} COMMAND ${fn})
-endmacro ()
-
-build_common_library()
-
-add_subdirectory(msi)
-add_subdirectory(mesi)
-create_test(mosi)
+create_test(msi_simple_store)
+create_test(msi_simple_load)
+create_test(msi_simple_load_then_promotion)
+create_test(msi_multiple_sharers)
+create_test(msi_multiple_sharers_then_promotion)
 
