@@ -129,6 +129,9 @@ struct SnoopFilterCommandInvoker : CoherentActor {
   void execute_send_ack_count_to_req(const Message* msg, Context& context,
                                      Cursor& cursor,
                                      const CoherenceActions& actions);
+  void execute_send_fwd_getm_to_owner(const Message* msg, Context& context,
+                                      Cursor& cursor, DirectoryEntry& d,
+                                      const CoherenceActions& actions);
 
   MessageDirector msgd_;
   const SnoopFilterOptions opts_;

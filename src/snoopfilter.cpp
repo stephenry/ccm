@@ -136,7 +136,7 @@ void SnoopFilterCommandInvoker::execute(Context& context, Cursor& cursor,
         break;
 
       case SnoopFilterCommand::SendFwdGetMToOwner:
-        // TODO
+        execute_send_fwd_getm_to_owner(msg, context, cursor, d, actions);
         break;
 
       default:
@@ -341,6 +341,18 @@ void SnoopFilterCommandInvoker::execute_send_ack_count_to_req(
   b.set_ack_count(actions.ack_count());
 
   log_debug("Sending AckCount to requester.");
+  emit_message(context, cursor, b);
+}
+
+void SnoopFilterCommandInvoker::execute_send_fwd_getm_to_owner(
+    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d,
+    const CoherenceActions& actions) {
+  MessageBuilder b = msgd_.builder();
+  b.set_type(MessageType::FwdGetM);
+  b.set_dst_id(d.owner());
+  b.set_fwd_id(msg->src_id());
+  b.set_transaction(msg->transaction());
+  log_debug("Sending FwdGetM to owner.");
   emit_message(context, cursor, b);
 }
 

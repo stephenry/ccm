@@ -49,6 +49,7 @@ class Poolable {
   virtual ~Poolable(){};
 
   void set_parent(PoolBase *parent) { parent_ = parent; }
+
  private:
   PoolBase *parent_;
 };
