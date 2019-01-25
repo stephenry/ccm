@@ -363,24 +363,21 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
   void handle__Inv(const Message* m, const CacheLine& cache_line,
                    CoherenceActions& a) const {
     if (m->is_ack()) {
-      const bool is_last_ack = (cache_line.ack_count() == 1);
+      a.append_command(CoherentAgentCommand::IncAckCount);
 
-      a.append_command(CoherentAgentCommand::SetAckCount);
-      a.set_ack_count(cache_line.ack_count() - 1);
-
-      if (is_last_ack) {
-        switch (cache_line.state()) {
-          case MosiAgentLineState::IM_A:
-          case MosiAgentLineState::SM_A:
-          case MosiAgentLineState::OM_A:
+      switch (cache_line.state()) {
+        case MosiAgentLineState::IM_A:
+        case MosiAgentLineState::SM_A:
+        case MosiAgentLineState::OM_A: {
+          const bool is_last_ack =
+              ((cache_line.ack_count() - 1) == cache_line.expected_ack_count());
+          if (is_last_ack) {
             a.append_command(CoherentAgentCommand::UpdateState);
             a.set_next_state(MosiAgentLineState::M);
-            break;
-
-          default:
-            a.set_error(true);
-            break;
-        }
+          }
+        } break;
+        default:
+          break;
       }
 
     } else {
@@ -599,6 +596,7 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
 
       case MosiDirectoryLineState::O:
         a.append_command(SnoopFilterCommand::SendFwdGetSToOwner);
+        a.set_fwd_id(m->src_id());
         a.append_command(SnoopFilterCommand::AddReqToSharers);
         break;
 
@@ -655,16 +653,18 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
 
         case MosiDirectoryLineState::O:
           a.append_command(SnoopFilterCommand::SendFwdGetMToOwner);
+          a.set_ack_count(2);
+          a.set_fwd_id(m->src_id());
           a.append_command(SnoopFilterCommand::SendInvToSharers);
           a.append_command(SnoopFilterCommand::SetOwnerToReq);
           a.append_command(SnoopFilterCommand::ClearSharers);
-          a.append_command(SnoopFilterCommand::SendAckCountToReq);
           a.append_command(SnoopFilterCommand::UpdateState);
           a.set_next_state(MosiDirectoryLineState::M);
           break;
 
         case MosiDirectoryLineState::M:
           a.append_command(SnoopFilterCommand::SendFwdGetMToOwner);
+          a.set_fwd_id(m->src_id());
           a.append_command(SnoopFilterCommand::SetOwnerToReq);
           break;
 

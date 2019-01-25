@@ -102,7 +102,8 @@ struct SnoopFilterCommandInvoker : CoherentActor {
                                 Cursor& cursor, DirectoryEntry& d,
                                 const CoherenceActions& act);
   void execute_send_inv_to_sharers(const Message* msg, Context& context,
-                                   Cursor& cursor, DirectoryEntry& d);
+                                   Cursor& cursor, DirectoryEntry& d,
+                                   const CoherenceActions& actions);
   void execute_clear_sharers(const Message* msg, Context& context,
                              Cursor& cursor, DirectoryEntry& d);
   void execute_add_req_to_sharers(const Message* msg, Context& context,

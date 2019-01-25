@@ -99,6 +99,13 @@ class CacheLine {
   using state_type = state_t;
   using ack_count_type = uint8_t;
 
+  CacheLine() : state_(0), ack_count_(0), expected_ack_count_(0) {}
+
+  ack_count_type expected_ack_count() const { return expected_ack_count_; }
+  void expected_set_ack_count(ack_count_type expected_ack_count) {
+    expected_ack_count_ = expected_ack_count;
+  }
+
   ack_count_type ack_count() const { return ack_count_; }
   void set_ack_count(ack_count_type ack_count) { ack_count_ = ack_count; }
 
@@ -107,7 +114,7 @@ class CacheLine {
 
  private:
   state_type state_;
-  ack_count_type ack_count_;
+  ack_count_type ack_count_, expected_ack_count_;
 };
 
 class DirectoryEntry {

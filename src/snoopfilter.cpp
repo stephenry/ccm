@@ -84,7 +84,7 @@ void SnoopFilterCommandInvoker::execute(Context& context, Cursor& cursor,
         break;
 
       case SnoopFilterCommand::SendInvToSharers:
-        execute_send_inv_to_sharers(msg, context, cursor, d);
+        execute_send_inv_to_sharers(msg, context, cursor, d, actions);
         break;
 
       case SnoopFilterCommand::ClearSharers:
@@ -171,19 +171,16 @@ void SnoopFilterCommandInvoker::execute_send_data_to_req(
   b.set_type(MessageType::Data);
   b.set_dst_id(msg->src_id());
   b.set_transaction(msg->transaction());
-
   b.set_ack_count(a.ack_count());
-  //  b.set_ack_count(0);
   b.set_is_exclusive(a.is_exclusive());
 
   log_debug("Sending data to requester.");
   emit_message(context, cursor, b);
 }
 
-void SnoopFilterCommandInvoker::execute_send_inv_to_sharers(const Message* msg,
-                                                            Context& context,
-                                                            Cursor& cursor,
-                                                            DirectoryEntry& d) {
+void SnoopFilterCommandInvoker::execute_send_inv_to_sharers(
+    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d,
+    const CoherenceActions& actions) {
   log_debug("Send Invalidation(s) to sharers.");
 
   for (const std::size_t sharer : d.sharers()) {
@@ -195,6 +192,7 @@ void SnoopFilterCommandInvoker::execute_send_inv_to_sharers(const Message* msg,
     MessageBuilder b = msgd_.builder();
     b.set_type(MessageType::Inv);
     b.set_dst_id(sharer);
+    b.set_fwd_id(actions.fwd_id());
     b.set_transaction(msg->transaction());
 
     log_debug("Sending invalidation to agent ", sharer);
@@ -300,6 +298,7 @@ void SnoopFilterCommandInvoker::execute_send_fwd_gets_to_owner(
   b.set_dst_id(d.owner());
   b.set_fwd_id(actions.fwd_id());
   b.set_transaction(msg->transaction());
+  b.set_ack_count(0);
 
   log_debug("Sending FwdGetS to owner.");
   emit_message(context, cursor, b);
@@ -309,10 +308,10 @@ void SnoopFilterCommandInvoker::execute_send_pute_ack_to_req(const Message* msg,
                                                              Context& context,
                                                              Cursor& cursor) {
   MessageBuilder b = msgd_.builder();
-
   b.set_type(MessageType::PutE);
   b.set_dst_id(msg->src_id());
   b.set_is_ack(true);
+  b.set_transaction(msg->transaction());
 
   log_debug("Sending PutEAck to requester.");
   emit_message(context, cursor, b);
@@ -322,10 +321,10 @@ void SnoopFilterCommandInvoker::execute_send_puto_ack_to_req(const Message* msg,
                                                              Context& context,
                                                              Cursor& cursor) {
   MessageBuilder b = msgd_.builder();
-
   b.set_type(MessageType::PutO);
   b.set_dst_id(msg->src_id());
   b.set_is_ack(true);
+  b.set_transaction(msg->transaction());
 
   log_debug("Sending PutOAck to requester.");
   emit_message(context, cursor, b);
@@ -335,10 +334,10 @@ void SnoopFilterCommandInvoker::execute_send_ack_count_to_req(
     const Message* msg, Context& context, Cursor& cursor,
     const CoherenceActions& actions) {
   MessageBuilder b = msgd_.builder();
-
   b.set_type(MessageType::AckCount);
   b.set_dst_id(msg->src_id());
   b.set_ack_count(actions.ack_count());
+  b.set_transaction(msg->transaction());
 
   log_debug("Sending AckCount to requester.");
   emit_message(context, cursor, b);
@@ -351,6 +350,7 @@ void SnoopFilterCommandInvoker::execute_send_fwd_getm_to_owner(
   b.set_type(MessageType::FwdGetM);
   b.set_dst_id(d.owner());
   b.set_fwd_id(msg->src_id());
+  b.set_ack_count(actions.ack_count());
   b.set_transaction(msg->transaction());
   log_debug("Sending FwdGetM to owner.");
   emit_message(context, cursor, b);

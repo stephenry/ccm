@@ -40,6 +40,7 @@ struct TransactionSource;
 // clang-format off
 #define AGENT_COMMANDS(__func)                  \
   __func(UpdateState)                           \
+  __func(IncAckCount)                           \
   __func(SetAckCount)                           \
   __func(EmitGetS)                              \
   __func(EmitGetM)                              \
@@ -95,6 +96,8 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   void execute_update_state(CacheLine& cache_line,
                             const CoherenceActions& actions);
   void execute_set_ack_count(CacheLine& cache_line,
+                             const CoherenceActions& actions);
+  void execute_inc_ack_count(CacheLine& cache_line,
                              const CoherenceActions& actions);
 
   // Transaction Initiated

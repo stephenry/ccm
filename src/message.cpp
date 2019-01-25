@@ -95,6 +95,9 @@ std::string to_string(const Message& m) {
     case MessageType::FwdGetM:
       sr.add("fwd_id", to_string(m.fwd_id()));
       break;
+    case MessageType::AckCount:
+      sr.add("ack_count", to_string(m.ack_count()));
+      break;
     default:
       break;
   }

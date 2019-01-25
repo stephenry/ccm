@@ -59,11 +59,9 @@ class AgentMessageAdmissionControl : public MessageAdmissionControl {
       case MessageResult::Stall:
         return false;
         break;
-
       case MessageResult::Commit:
         return true;
         break;
-
       default:
         // TODO: Error
         break;
@@ -184,6 +182,9 @@ void CoherentAgentCommandInvoker::execute(Context& context, Cursor& cursor,
       case CoherentAgentCommand::EmitInvAck:
         execute_emit_inv_ack(context, cursor, msg);
         break;
+      case CoherentAgentCommand::IncAckCount:
+        execute_inc_ack_count(cache_line, actions);
+        break;
       case CoherentAgentCommand::SetAckCount:
         execute_set_ack_count(cache_line, actions);
         break;
@@ -237,6 +238,7 @@ void CoherentAgentCommandInvoker::execute_emit_data_to_req(Context& context,
 
   b.set_type(MessageType::Data);
   b.set_dst_id(msg->fwd_id());
+  b.set_ack_count(msg->ack_count());
   b.set_transaction(t);
 
   log_debug("Emit Data To Requester.");
@@ -261,17 +263,11 @@ void CoherentAgentCommandInvoker::execute_emit_data_to_dir(Context& context,
 void CoherentAgentCommandInvoker::execute_emit_inv_ack(Context& context,
                                                        Cursor& cursor,
                                                        const Message* msg) {
-  const Transaction* t = msg->transaction();
   MessageBuilder b = msgd_.builder();
-
   b.set_type(MessageType::Inv);
   b.set_is_ack(true);
-
-  // TODO: This is a special case because the dst_id for the ack. is
-  // not the originator of the command.
-  b.set_dst_id(msg->src_id());
-  b.set_dst_id(0);
-  b.set_transaction(t);
+  b.set_dst_id(msg->fwd_id());
+  b.set_transaction(msg->transaction());
 
   log_debug("Sending invalidation acknowledgement.");
   emit_message(context, cursor, b);
@@ -282,6 +278,13 @@ void CoherentAgentCommandInvoker::execute_set_ack_count(
   const CoherenceActions::ack_count_type ack_count = actions.ack_count();
   log_debug("Update ack_count: ", (int)ack_count);
   cache_line.set_ack_count(ack_count);
+}
+
+void CoherentAgentCommandInvoker::execute_inc_ack_count(
+    CacheLine& cache_line, const CoherenceActions& actions) {
+  const CoherenceActions::ack_count_type ack_count = actions.ack_count();
+  log_debug("Increment ack_count: ", (int)ack_count + 1);
+  cache_line.set_ack_count(ack_count + 1);
 }
 
 Agent::Agent(const AgentOptions& opts)
