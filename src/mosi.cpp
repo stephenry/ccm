@@ -604,6 +604,7 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
 
       case MosiDirectoryLineState::M:
         a.append_command(SnoopFilterCommand::SendFwdGetSToOwner);
+        a.set_fwd_id(m->src_id());
         a.append_command(SnoopFilterCommand::AddReqToSharers);
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MosiDirectoryLineState::O);
