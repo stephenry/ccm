@@ -87,7 +87,7 @@ std::string to_string(const QueueEntry &eq) {
 }
 
 bool operator<(const QueueEntry &lhs, const QueueEntry &rhs) {
-  return lhs.time() < rhs.time();
+  return QueueEntry::compare_lt(lhs, rhs);
 }
 
 bool operator>(const QueueEntry &lhs, const QueueEntry &rhs) {
@@ -99,11 +99,13 @@ Time QueueEntry::time() const {
   switch (type_) {
     case QueueEntryType::Message: {
       typename message_queue_type::value_type ts = msgq_->top();
+
       ret = ts.time();
     } break;
 
     case QueueEntryType::Transaction: {
       typename transaction_queue_type::value_type ts = trnq_->top();
+
       ret = ts.time();
     } break;
 
@@ -122,6 +124,31 @@ typename transaction_queue_type::value_type QueueEntry::as_trn() const {
   return trnq_->top();
 }
 
+bool QueueEntry::compare_lt(const QueueEntry & lhs, const QueueEntry & rhs) {
+  // Transactions and messages are typically ordereds by the time they
+  // are scheduled to be issued. In the case, where two entries arrive
+  // at the same time, the tie is broken by ordering Replacement
+  // transactions before any other. This occurs specifically in the
+  // case of a cache way-conflict miss where an eviction (Replacement)
+  // transaction takes place at the same time as the initiating
+  // transaction (the transaction causing the Replacement). In this case,
+  // the replacement must first.
+  //
+  if (lhs.time() == rhs.time()) {
+    if (lhs.type() == QueueEntryType::Transaction) {
+      const Transaction * t = lhs.as_trn().t();
+      if (t->type() == TransactionType::Replacement)
+        return true;
+    }
+    if (rhs.type() == QueueEntryType::Transaction) {
+      const Transaction * t = rhs.as_trn().t();
+      if (t->type() == TransactionType::Replacement)
+        return true;
+    }
+  }
+  return (lhs.time() < rhs.time());
+}
+                       
 QueueManager::QueueManager() { messages_.resize(CLASS_COUNT); }
 
 bool QueueManager::empty() const {

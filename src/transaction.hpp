@@ -51,9 +51,12 @@ enum class TransactionEvent {
 
 const char *to_string(TransactionEvent event);
 
+// clang-format off
 #define TRANSACTION_FIELDS(__func)                        \
   __func(TransactionType, type, TransactionType::Invalid) \
-      __func(uint64_t, addr, 0) __func(std::size_t, tid, 0)
+  __func(uint64_t, addr, 0)                               \
+  __func(std::size_t, tid, 0)
+// clang-format on
 
 struct Transaction : ccm::Poolable {
   Transaction() {}
@@ -84,6 +87,14 @@ struct Transaction : ccm::Poolable {
 };
 
 std::string to_string(const Transaction &t);
+
+class TransactionFactory : Loggable {
+ public:
+  Time time() const override { return 0; }
+  Transaction * construct();
+ private:
+  Pool<Transaction> pool_;
+};
 
 struct TransactionSource : Loggable {
   virtual ~TransactionSource() {}

@@ -137,10 +137,12 @@ struct Agent : CoherentAgentCommandInvoker {
 
   void handle_msg(Context& ctxt, Cursor& cursor, TimeStamped<Message*> ts);
 
-  void handle_trn(Context& ctxt, Cursor& cursor, TimeStamped<Transaction*> ts);
+  bool handle_trn(Context& ctxt, Cursor& cursor, TimeStamped<Transaction*> ts);
+  void enqueue_replacement(Time time, uint64_t addr);
 
   QueueManager qmgr_;
   TransactionSource* trns_;
+  TransactionFactory tfac_;
   const AgentOptions opts_;
 };
 

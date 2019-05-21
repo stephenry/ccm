@@ -329,9 +329,32 @@ void Agent::eval(Context& context) {
         handle_msg(context, cursor, next.as_msg());
         break;
 
-      case QueueEntryType::Transaction:
-        handle_trn(context, cursor, next.as_trn());
-        break;
+      case QueueEntryType::Transaction: {
+        const TimeStamped<Transaction*> trnts = next.as_trn();
+        const bool requires_eviction =
+            handle_trn(context, cursor, trnts);
+        if (requires_eviction) {
+          // In this simple model, a transaction issue fails whenever
+          // the transaction would require a eviction of a previously
+          // installed line in the cache. To handle this case, the
+          // current transaction is aborted, time is advanced (to
+          // account for the lookup overhead, a new 'replacement'
+          // transaction is inserted on the head of the transaction
+          // queue and the transaction replayed.
+          //
+          log_debug("Transaction causes eviction at: ", trnts.t()->addr());
+
+          // Create new replacement transaction to the current address
+          // and place at the head of the queue manager.
+          //
+          enqueue_replacement(cursor.time(), trnts.t()->addr());
+
+          // TODO, replace with appropriate parameterization.
+#define CACHE_LOOKUP_PENALTY 1
+          // Incur penalty of failed cache-lookup.
+          cursor.advance(CACHE_LOOKUP_PENALTY);
+        }
+      } break;
 
       default:
         break;
@@ -340,6 +363,13 @@ void Agent::eval(Context& context) {
   } while (epoch.in_interval(cursor.time()));
 
   set_time(cursor.time());
+}
+
+void Agent::enqueue_replacement(Time time, uint64_t addr) {
+  Transaction * trpl = tfac_.construct();
+  trpl->set_type(TransactionType::Replacement);
+  trpl->set_addr(addr);
+  qmgr_.push(TimeStamped{time, trpl});
 }
 
 void Agent::fetch_transactions(std::size_t n) {
@@ -362,7 +392,7 @@ void Agent::handle_msg(Context& context, Cursor& cursor,
   CCM_AGENT_ASSERT(!actions.error());
 
   execute(context, cursor, actions, cache_line, msg);
-  // TODO: assertion that confirms commital
+  // TODO: assertion that confirms committal
 
   if (actions.transaction_done())
     trns_->event(TransactionEvent::End,
@@ -371,26 +401,31 @@ void Agent::handle_msg(Context& context, Cursor& cursor,
   msg->release();
 }
 
-void Agent::handle_trn(Context& context, Cursor& cursor,
+bool Agent::handle_trn(Context& context, Cursor& cursor,
                        TimeStamped<Transaction*> ts) {
+  bool requires_eviction{false};
   const Transaction* trn = ts.t();
 
   trns_->event(TransactionEvent::Start, TimeStamped{time(), trn});
 
   if (trn->type() != TransactionType::Replacement)
-    CCM_AGENT_ASSERT(!cache_->requires_eviction(trn->addr()));
+    requires_eviction = cache_->requires_eviction(trn->addr());
 
-  if (!cache_->is_hit(trn->addr())) {
-    CacheLine cache_line;
-    cc_model_->init(cache_line);
-    cache_->install(trn->addr(), cache_line);
+  if (!requires_eviction) {
+
+    if (!cache_->is_hit(trn->addr())) {
+      CacheLine cache_line;
+      cc_model_->init(cache_line);
+      cache_->install(trn->addr(), cache_line);
+    }
+
+    CacheLine& cache_line = cache_->lookup(trn->addr());
+    const CoherenceActions actions = cc_model_->get_actions(trn, cache_line);
+    CCM_AGENT_ASSERT(!actions.error());
+
+    execute(context, cursor, actions, cache_line, trn);
   }
-
-  CacheLine& cache_line = cache_->lookup(trn->addr());
-  const CoherenceActions actions = cc_model_->get_actions(trn, cache_line);
-  CCM_AGENT_ASSERT(!actions.error());
-
-  execute(context, cursor, actions, cache_line, trn);
+  return requires_eviction;
 }
 
 void Agent::apply(TimeStamped<Message*> ts) { qmgr_.push(ts); }

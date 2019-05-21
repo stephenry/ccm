@@ -69,6 +69,10 @@ const char *to_string(TransactionEvent event) {
   }
 }
 
+Transaction * TransactionFactory::construct() {
+  return pool_.alloc();
+}
+
 bool NullTransactionSource::get_transaction(TimeStamped<Transaction *> &ts) {
   return false;
 }

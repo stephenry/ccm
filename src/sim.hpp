@@ -134,7 +134,10 @@ class AdmissionControl {
 using MessageAdmissionControl = AdmissionControl<Message>;
 using TransactionAdmissionControl = AdmissionControl<Transaction>;
 
-struct QueueEntry {
+class QueueEntry {
+  friend bool operator<(const QueueEntry &lhs, const QueueEntry &rhs);
+  
+ public:
   QueueEntry();
   QueueEntry(message_queue_type *msgq);
   QueueEntry(transaction_queue_type *trnq);
@@ -148,6 +151,9 @@ struct QueueEntry {
   void consume() const;
 
  private:
+  static bool compare_lt(const QueueEntry & lhs,
+                         const QueueEntry & rhs);
+  
   QueueEntryType type_;
 
   union {

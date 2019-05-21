@@ -28,6 +28,7 @@
 
 #include "msi.hpp"
 #include <algorithm>
+#include <array>
 #include "actor.hpp"
 #include "agent.hpp"
 #include "common.hpp"
