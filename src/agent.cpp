@@ -301,6 +301,7 @@ void CoherentAgentCommandInvoker::execute_emit_inv_ack(Context& context,
 void CoherentAgentCommandInvoker::execute_inc_ack_count(const Transaction * t) {
   CacheLine & cache_line = cache_->lookup(t->addr());
   cache_line.set_inv_ack_count(cache_line.inv_ack_count() + 1);
+  log_debug("Update invalidation count: ", cache_line.inv_ack_count());
 }
 
 void CoherentAgentCommandInvoker::execute_set_ack_expect_count(const Message * msg) {
@@ -308,6 +309,7 @@ void CoherentAgentCommandInvoker::execute_set_ack_expect_count(const Message * m
   CacheLine & cache_line = cache_->lookup(t->addr());
   cache_line.set_inv_ack_expect_valid(true);
   cache_line.set_inv_ack_expect(msg->ack_count());
+  log_debug("Update expected invalidation count: ", cache_line.inv_ack_expect());
 }
 
 Agent::Agent(const AgentOptions& opts)
@@ -456,18 +458,18 @@ CoherenceActions Agent::get_actions(Context& context, Cursor& cursor,
 CoherenceActions Agent::get_actions(Context& context, Cursor& cursor,
                                     TimeStamped<Transaction*> ts) {
   CoherenceActions actions;
-  const Transaction* trn = ts.t();
-  if (trn->type() != TransactionType::Replacement)
-    actions.set_requires_eviction(cache_->requires_eviction(trn->addr()));
+  const Transaction* t = ts.t();
+  if (t->type() != TransactionType::Replacement)
+    actions.set_requires_eviction(cache_->requires_eviction(t->addr()));
 
   if (!actions.requires_eviction()) {
-    CacheLine cache_line;
-    if (cache_->is_hit(trn->addr())) {
-      cache_->lookup(trn->addr());
-    } else {
+    if (!cache_->is_hit(t->addr())) {
+      CacheLine cache_line;
       cc_model_->init(cache_line);
+      cache_->install(t->addr(), cache_line);
     }
-    actions = cc_model_->get_actions(trn, cache_line);
+    CacheLine & cache_line = cache_->lookup(t->addr());
+    actions = cc_model_->get_actions(t, cache_line);
     actions.set_cost(CoherenceActions::compute_cost(actions));
   } else {
 #define CACHE_LOOKUP_PENALTY 1

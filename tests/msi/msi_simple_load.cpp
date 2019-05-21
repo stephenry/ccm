@@ -45,7 +45,7 @@ TEST(MSI, SimpleLoad) {
   auto raddr = rnd::UniformRandomInterval<ccm::addr_t>(1 << 12);
 
   std::vector<std::set<ccm::addr_t> > addrs_id{p.agents()};
-  for (std::size_t i = 0; i < 1000; i++) {
+  for (std::size_t i = 0; i < 1; i++) {
     const ccm::Time t = (1 + i) * 1000;
     const ccm::addr_t addr = raddr();
     const ccm::id_t id = ragent();

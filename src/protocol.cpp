@@ -149,10 +149,10 @@ void CacheLine::set_invalid() {
 }
 
 bool CacheLine::is_last_inv_ack() const {
-  if (inv_ack_expect_valid())
+  if (!inv_ack_expect_valid())
     return false;
 
-  return (inv_ack_expect() == (inv_ack_count() - 1));
+  return (inv_ack_count() == (inv_ack_expect() - 1));
 }
 
 AgentProtocol::AgentProtocol() {}

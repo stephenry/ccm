@@ -135,8 +135,8 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
                     CoherenceActions &a) const {
     switch (cache_line.state()) {
       case MsiAgentLineState::I:
-        a.append_command(CoherentAgentCommand::EmitGetS);
         a.append_command(CoherentAgentCommand::UpdateState);
+        a.append_command(CoherentAgentCommand::EmitGetS);
         a.set_next_state(MsiAgentLineState::IS_D);
         a.set_result(TransactionResult::Miss);
         break;
@@ -166,8 +166,8 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
                      CoherenceActions &a) const {
     switch (cache_line.state()) {
       case MsiAgentLineState::I:
-        a.append_command(CoherentAgentCommand::EmitGetM);
         a.append_command(CoherentAgentCommand::UpdateState);
+        a.append_command(CoherentAgentCommand::EmitGetM);
         a.set_next_state(MsiAgentLineState::IM_AD);
         a.set_result(TransactionResult::Miss);
         break;
