@@ -330,9 +330,8 @@ void Agent::eval(Context& context) {
         break;
 
       case QueueEntryType::Transaction: {
-        const TimeStamped<Transaction*> trnts = next.as_trn();
         const bool requires_eviction =
-            handle_trn(context, cursor, trnts);
+            handle_trn(context, cursor, next.as_trn());
         if (requires_eviction) {
           // In this simple model, a transaction issue fails whenever
           // the transaction would require a eviction of a previously
@@ -342,12 +341,14 @@ void Agent::eval(Context& context) {
           // transaction is inserted on the head of the transaction
           // queue and the transaction replayed.
           //
-          log_debug("Transaction causes eviction at: ", trnts.t()->addr());
+          const Transaction * trn = next.as_trn().t();
+
+          log_debug("Transaction causes eviction at: ", trn->addr());
 
           // Create new replacement transaction to the current address
           // and place at the head of the queue manager.
           //
-          enqueue_replacement(cursor.time(), trnts.t()->addr());
+          enqueue_replacement(cursor.time(), trn->addr());
 
           // TODO, replace with appropriate parameterization.
 #define CACHE_LOOKUP_PENALTY 1
