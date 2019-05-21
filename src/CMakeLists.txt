@@ -25,11 +25,11 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-add_library(ccm STATIC
+set(SRCS
   ccm.cpp
   platform.cpp
   actor.cpp
-  coherence.cpp
+#  coherence.cpp
   actor.cpp
   utility.cpp
   interconnect.cpp
@@ -42,7 +42,17 @@ add_library(ccm STATIC
   transaction.cpp
   random.cpp
   memory.cpp
+  protocol.cpp
   msi.cpp
-  mesi.cpp
-  mosi.cpp
   )
+
+if (ENABLE_MESI)
+  list(APPEND SRCS mesi.cpp)
+endif ()
+if (ENABLE_MOSI)
+  list(APPEND SRCS mosi.cpp)
+endif ()
+
+configure_file(options.hpp.in options.hpp)
+add_library(ccm STATIC ${SRCS})
+target_include_directories(ccm PUBLIC ${CMAKE_CURRENT_BINARY_DIR})

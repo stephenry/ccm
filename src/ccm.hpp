@@ -28,6 +28,7 @@
 #ifndef __SRC_CCM_HPP__
 #define __SRC_CCM_HPP__
 
+#include "options.hpp"
 #include "actor.hpp"
 #include "agent.hpp"
 #include "cache.hpp"
@@ -35,13 +36,17 @@
 #include "interconnect.hpp"
 #include "log.hpp"
 #include "memory.hpp"
-#include "mesi.hpp"
-#include "mosi.hpp"
-#include "msi.hpp"
 #include "platform.hpp"
 #include "random.hpp"
 #include "sim.hpp"
 #include "snoopfilter.hpp"
 #include "utility.hpp"
+#include "msi.hpp"
+#ifdef ENABLE_MESI
+#  include "mesi.hpp"
+#endif
+#ifdef ENABLE_MOSI
+#  include "mosi.hpp"
+#endif
 
 #endif

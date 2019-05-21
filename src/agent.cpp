@@ -28,22 +28,9 @@
 #include "agent.hpp"
 #include <queue>
 #include "common.hpp"
+#include "protocol.hpp"
 
 namespace ccm {
-
-const char* CoherentAgentCommand::to_string(command_t command) {
-  switch (command) {
-    // clang-format off
-#define __declare_to_string(__e)                \
-  case CoherentAgentCommand::__e:           \
-    return #__e;
-  AGENT_COMMANDS(__declare_to_string)
-#undef __declare_to_string
-      // clang-format on
-    default:
-      return "<Invalid Line State>";
-  }
-}
 
 class AgentMessageAdmissionControl : public MessageAdmissionControl {
  public:
@@ -103,6 +90,7 @@ class AgentTransactionAdmissionControl : public TransactionAdmissionControl {
 
       case TransactionResult::Hit:
       case TransactionResult::Miss:
+      case TransactionResult::Consumed:
         return true;
         break;
 
@@ -119,11 +107,12 @@ class AgentTransactionAdmissionControl : public TransactionAdmissionControl {
 CoherentAgentCommandInvoker::CoherentAgentCommandInvoker(
     const CoherentAgentOptions& opts)
     : CoherentActor(opts), msgd_(opts) {
-  cc_model_ = coherent_agent_factory(opts.protocol(), opts);
+  cc_model_ = agent_protocol_factory(opts.protocol());
   cache_ = cache_factory<CacheLine>(opts.cache_options());
 }
 
 CacheLine CoherentAgentCommandInvoker::cache_line(std::size_t addr) const {
+  // TODO: deprecate
   CacheLine cl;
   if (cache_->is_hit(addr)) {
     cl = cache_->lookup(addr);
@@ -139,16 +128,16 @@ void CoherentAgentCommandInvoker::visit_cache(
   cache_->visit(cache_visitor);
 }
 
-void CoherentAgentCommandInvoker::execute(Context& context, Cursor& cursor,
-                                          const CoherenceActions& actions,
-                                          CacheLine& cache_line,
-                                          const Transaction* t) {
+void CoherentAgentCommandInvoker::execute(Context& context,
+                                          Cursor & cursor,
+                                          const CoherenceActions & actions,
+                                          const Transaction * t) {
   for (command_t cmd : actions.commands()) {
     log_debug("Execute: ", CoherentAgentCommand::to_string(cmd));
 
     switch (cmd) {
       case CoherentAgentCommand::UpdateState:
-        execute_update_state(cache_line, actions);
+        execute_update_state(t, actions.next_state());
         break;
       case CoherentAgentCommand::EmitGetS:
         execute_emit_gets(context, cursor, t);
@@ -156,135 +145,169 @@ void CoherentAgentCommandInvoker::execute(Context& context, Cursor& cursor,
       case CoherentAgentCommand::EmitGetM:
         execute_emit_getm(context, cursor, t);
         break;
+      case CoherentAgentCommand::EmitPutS:
+        execute_emit_puts(context, cursor, t);
+        break;
+      case CoherentAgentCommand::EmitDataToDir:
+        execute_emit_data_to_dir(context, cursor, t);
+        break;
       default:
         break;
     }
+    cursor.advance(CoherentAgentCommand::to_cost(cmd));
   }
 }
 
-void CoherentAgentCommandInvoker::execute(Context& context, Cursor& cursor,
+void CoherentAgentCommandInvoker::execute(Context& context,
+                                          Cursor& cursor,
                                           const CoherenceActions& actions,
-                                          CacheLine& cache_line,
                                           const Message* msg) {
   for (command_t cmd : actions.commands()) {
     log_debug("Execute: ", CoherentAgentCommand::to_string(cmd));
 
+    const Transaction * t = msg->transaction();
     switch (cmd) {
-      case CoherentAgentCommand::UpdateState:
-        execute_update_state(cache_line, actions);
-        break;
       case CoherentAgentCommand::EmitDataToReq:
         execute_emit_data_to_req(context, cursor, msg);
         break;
       case CoherentAgentCommand::EmitDataToDir:
-        execute_emit_data_to_dir(context, cursor, msg);
+        execute_emit_data_to_dir(context, cursor, t);
         break;
       case CoherentAgentCommand::EmitInvAck:
         execute_emit_inv_ack(context, cursor, msg);
         break;
-      case CoherentAgentCommand::IncAckCount:
-        execute_inc_ack_count(cache_line, actions);
+      case CoherentAgentCommand::UpdateState:
+        execute_update_state(t, actions.next_state());
         break;
-      case CoherentAgentCommand::SetAckCount:
-        execute_set_ack_count(cache_line, actions);
+      case CoherentAgentCommand::IncAckCount:
+        execute_inc_ack_count(t);
+        break;
+      case CoherentAgentCommand::SetAckExpectCount:
+        execute_set_ack_expect_count(msg);
         break;
       default:
         break;
     }
+    cursor.advance(CoherentAgentCommand::to_cost(cmd));
   }
 }
 
-void CoherentAgentCommandInvoker::execute_update_state(
-    CacheLine& cache_line, const CoherenceActions& actions) {
-  const state_t next_state = actions.next_state();
+void CoherentAgentCommandInvoker::execute_update_state(const Transaction* t,
+                                                       state_t next_state) {
+  CacheLine & cache_line = cache_->lookup(t->addr());
+  
   log_debug("Update state; current: ", cc_model_->to_string(next_state),
             " previous: ", cc_model_->to_string(cache_line.state()));
   cache_line.set_state(next_state);
 }
 
 void CoherentAgentCommandInvoker::execute_emit_gets(Context& context,
-                                                    Cursor& cursor,
+                                                    const Cursor& cursor,
                                                     const Transaction* t) {
   const Platform platform = opts_.platform();
   MessageBuilder b = msgd_.builder();
 
+  b.set_src_id(id());
   b.set_type(MessageType::GetS);
   b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
   b.set_transaction(t);
 
-  log_debug("Sending GetS to home directory.");
-  emit_message(context, cursor, b);
+  Message *msg = b.msg();
+  log_debug("Sending GetS to home directory: ", to_string(*msg));
+  context.emit_message(TimeStamped{cursor.time(), msg});
 }
 
 void CoherentAgentCommandInvoker::execute_emit_getm(Context& context,
-                                                    Cursor& cursor,
+                                                    const Cursor& cursor,
                                                     const Transaction* t) {
   const Platform platform = opts_.platform();
   MessageBuilder b = msgd_.builder();
 
+  b.set_src_id(id());
   b.set_type(MessageType::GetM);
   b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
   b.set_transaction(t);
 
-  log_debug("Sending GetM to home directory.");
-  emit_message(context, cursor, b);
+  Message *msg = b.msg();
+  log_debug("Sending GetM to home directory: ", to_string(*msg));
+  context.emit_message(TimeStamped{cursor.time(), msg});
 }
 
-void CoherentAgentCommandInvoker::execute_emit_data_to_req(Context& context,
-                                                           Cursor& cursor,
-                                                           const Message* msg) {
-  const Transaction* t = msg->transaction();
-  MessageBuilder b = msgd_.builder();
-
-  b.set_type(MessageType::Data);
-  b.set_dst_id(msg->fwd_id());
-  b.set_ack_count(msg->ack_count());
-  b.set_transaction(t);
-
-  log_debug("Emit Data To Requester.");
-  emit_message(context, cursor, b);
-}
-
-void CoherentAgentCommandInvoker::execute_emit_data_to_dir(Context& context,
-                                                           Cursor& cursor,
-                                                           const Message* msg) {
-  const Transaction* t = msg->transaction();
+void CoherentAgentCommandInvoker::execute_emit_puts(Context& context,
+                                                    const Cursor& cursor,
+                                                    const Transaction* t) {
   const Platform platform = opts_.platform();
   MessageBuilder b = msgd_.builder();
 
+  b.set_src_id(id());
+  b.set_type(MessageType::PutS);
+  b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
+  b.set_transaction(t);
+
+  Message *msg = b.msg();
+  log_debug("Sending PutS to home directory: ", to_string(*msg));
+  context.emit_message(TimeStamped{cursor.time(), msg});
+}
+
+void CoherentAgentCommandInvoker::execute_emit_data_to_dir(Context& context,
+                                                           const Cursor& cursor,
+                                                           const Transaction* t) {
+  const Platform platform = opts_.platform();
+  MessageBuilder b = msgd_.builder();
+
+  b.set_src_id(id());
   b.set_type(MessageType::Data);
   b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
   b.set_transaction(t);
 
-  log_debug("Emit Data To Directory.");
-  emit_message(context, cursor, b);
+  Message *msg = b.msg();
+  log_debug("Emit Data To Directory: ", to_string(*msg));
+  context.emit_message(TimeStamped{cursor.time(), msg});
+}
+
+void CoherentAgentCommandInvoker::execute_emit_data_to_req(Context& context,
+                                                           const Cursor& cursor,
+                                                           const Message* msg) {
+  const Transaction* t = msg->transaction();
+  MessageBuilder b = msgd_.builder();
+
+  b.set_src_id(id());
+  b.set_type(MessageType::Data);
+  b.set_dst_id(msg->fwd_id());
+  // TODO: is this really necessary; should come from the directory.
+  b.set_ack_count(msg->ack_count());
+  b.set_transaction(t);
+
+  Message *out = b.msg();
+  log_debug("Emit Data To Requester: ", to_string(*out));
+  context.emit_message(TimeStamped{cursor.time(), out});
 }
 
 void CoherentAgentCommandInvoker::execute_emit_inv_ack(Context& context,
-                                                       Cursor& cursor,
+                                                       const Cursor& cursor,
                                                        const Message* msg) {
   MessageBuilder b = msgd_.builder();
+  b.set_src_id(id());
   b.set_type(MessageType::Inv);
   b.set_is_ack(true);
   b.set_dst_id(msg->fwd_id());
   b.set_transaction(msg->transaction());
 
-  log_debug("Sending invalidation acknowledgement.");
-  emit_message(context, cursor, b);
+  Message *out = b.msg();
+  log_debug("Sending invalidation acknowledgement.", to_string(*out));
+  context.emit_message(TimeStamped{cursor.time(), out});
 }
 
-void CoherentAgentCommandInvoker::execute_set_ack_count(
-    CacheLine& cache_line, const CoherenceActions& actions) {
-  const CoherenceActions::ack_count_type ack_count = actions.ack_count();
-  log_debug("Update ack_count: ", (int)ack_count);
-  cache_line.set_ack_count(ack_count);
+void CoherentAgentCommandInvoker::execute_inc_ack_count(const Transaction * t) {
+  CacheLine & cache_line = cache_->lookup(t->addr());
+  cache_line.set_inv_ack_count(cache_line.inv_ack_count() + 1);
 }
 
-void CoherentAgentCommandInvoker::execute_inc_ack_count(
-    CacheLine& cache_line, const CoherenceActions& actions) {
-  const CoherenceActions::ack_count_type ack_count = actions.ack_count();
-  log_debug("Increment ack_count: ", (int)ack_count + 1);
-  cache_line.set_ack_count(ack_count + 1);
+void CoherentAgentCommandInvoker::execute_set_ack_expect_count(const Message * msg) {
+  const Transaction * t = msg->transaction();
+  CacheLine & cache_line = cache_->lookup(t->addr());
+  cache_line.set_inv_ack_expect_valid(true);
+  cache_line.set_inv_ack_expect(msg->ack_count());
 }
 
 Agent::Agent(const AgentOptions& opts)
@@ -324,15 +347,29 @@ void Agent::eval(Context& context) {
     set_time(cursor.time());
 
     CoherenceActions actions;
+    std::size_t cost{0};
     switch (next.type()) {
-      case QueueEntryType::Message:
-        handle_msg(context, cursor, next.as_msg());
-        break;
+      case QueueEntryType::Message: {
+        const TimeStamped<Message*> ts{next.as_msg()};
+        actions = get_actions(context, cursor, ts);
+        if (actions.result() == MessageResult::Commit) {
+          Cursor mcur{cursor};
+          Message * msg = ts.t();
+          execute(context, mcur, actions, msg);
+          if (actions.transaction_done())
+            trns_->event(TransactionEvent::End,
+                         TimeStamped{mcur.time(), msg->transaction()});
+          msg->release();
+          next.consume();
+        }
+        cost += actions.cost();
+      } break;
 
       case QueueEntryType::Transaction: {
-        const bool requires_eviction =
-            handle_trn(context, cursor, next.as_trn());
-        if (requires_eviction) {
+        actions = get_actions(context, cursor, next.as_trn());
+        CCM_AGENT_ASSERT(!actions.error());
+        const Transaction * trn = next.as_trn().t();
+        if (actions.requires_eviction()) {
           // In this simple model, a transaction issue fails whenever
           // the transaction would require a eviction of a previously
           // installed line in the cache. To handle this case, the
@@ -341,36 +378,59 @@ void Agent::eval(Context& context) {
           // transaction is inserted on the head of the transaction
           // queue and the transaction replayed.
           //
-          const Transaction * trn = next.as_trn().t();
-
           log_debug("Transaction causes eviction at: ", trn->addr());
 
           // Create new replacement transaction to the current address
           // and place at the head of the queue manager.
           //
-          enqueue_replacement(cursor.time(), trn->addr());
+          Transaction * trpl = tfac_.construct();
+          trpl->set_type(TransactionType::Replacement);
+          trpl->set_addr(trn->addr());
+          qmgr_.push(TimeStamped{cursor.time(), trpl});
+        } else {
+          // TODO: this should really be associated with the transaction
+          // itself, not the transaction source.
+          if ((trn->type() == TransactionType::Load) ||
+              (trn->type() == TransactionType::Store)) {
+            trns_->event(TransactionEvent::Start, TimeStamped{cursor.time(), trn});
+          }
+          std::size_t misses_n{0}; // TODO: move to statistics
+          std::size_t hits_n{0};
+          bool do_commit{true};
+          switch (actions.result()) {
+            case TransactionResult::Blocked:
+              // The transaction may not advance because there are
+              // pending operations on the line.
+              //
+              do_commit = false;
+              break;
 
-          // TODO, replace with appropriate parameterization.
-#define CACHE_LOOKUP_PENALTY 1
-          // Incur penalty of failed cache-lookup.
-          cursor.advance(CACHE_LOOKUP_PENALTY);
+            case TransactionResult::Miss:
+              ++misses_n;
+              break;
+            case TransactionResult::Hit:
+              ++hits_n;
+              break;
+          }
+          if (do_commit) {
+            Cursor tcur{cursor};
+            execute(context, tcur, actions, trn);
+            next.consume();
+          }
         }
+        cost += actions.cost();
       } break;
 
       default:
         break;
     }
-    next.consume();
+    // On completion of an operation, whether successful or not,
+    // time must advance to reflect its cost.
+    //
+    cursor.advance(cost);
   } while (epoch.in_interval(cursor.time()));
 
   set_time(cursor.time());
-}
-
-void Agent::enqueue_replacement(Time time, uint64_t addr) {
-  Transaction * trpl = tfac_.construct();
-  trpl->set_type(TransactionType::Replacement);
-  trpl->set_addr(addr);
-  qmgr_.push(TimeStamped{time, trpl});
 }
 
 void Agent::fetch_transactions(std::size_t n) {
@@ -382,51 +442,38 @@ void Agent::fetch_transactions(std::size_t n) {
   }
 }
 
-void Agent::handle_msg(Context& context, Cursor& cursor,
-                       TimeStamped<Message*> ts) {
-  const Message* msg = ts.t();
-  const Transaction* trn = msg->transaction();
-
-  CCM_AGENT_ASSERT(cache_->is_hit(trn->addr()));
-  CacheLine& cache_line = cache_->lookup(trn->addr());
-  const CoherenceActions actions = cc_model_->get_actions(msg, cache_line);
+CoherenceActions Agent::get_actions(Context& context, Cursor& cursor,
+                                    TimeStamped<Message*> ts) {
+  const Message * msg = ts.t();
+  const Transaction * t = msg->transaction();
+  CCM_AGENT_ASSERT(cache_->is_hit(t->addr()));
+  CacheLine& cache_line = cache_->lookup(t->addr());
+  CoherenceActions actions = cc_model_->get_actions(msg, cache_line);
   CCM_AGENT_ASSERT(!actions.error());
-
-  execute(context, cursor, actions, cache_line, msg);
-  // TODO: assertion that confirms committal
-
-  if (actions.transaction_done())
-    trns_->event(TransactionEvent::End,
-                 TimeStamped{time(), msg->transaction()});
-
-  msg->release();
+  return actions;
 }
 
-bool Agent::handle_trn(Context& context, Cursor& cursor,
-                       TimeStamped<Transaction*> ts) {
-  bool requires_eviction{false};
+CoherenceActions Agent::get_actions(Context& context, Cursor& cursor,
+                                    TimeStamped<Transaction*> ts) {
+  CoherenceActions actions;
   const Transaction* trn = ts.t();
-
-  trns_->event(TransactionEvent::Start, TimeStamped{time(), trn});
-
   if (trn->type() != TransactionType::Replacement)
-    requires_eviction = cache_->requires_eviction(trn->addr());
+    actions.set_requires_eviction(cache_->requires_eviction(trn->addr()));
 
-  if (!requires_eviction) {
-
-    if (!cache_->is_hit(trn->addr())) {
-      CacheLine cache_line;
+  if (!actions.requires_eviction()) {
+    CacheLine cache_line;
+    if (cache_->is_hit(trn->addr())) {
+      cache_->lookup(trn->addr());
+    } else {
       cc_model_->init(cache_line);
-      cache_->install(trn->addr(), cache_line);
     }
-
-    CacheLine& cache_line = cache_->lookup(trn->addr());
-    const CoherenceActions actions = cc_model_->get_actions(trn, cache_line);
-    CCM_AGENT_ASSERT(!actions.error());
-
-    execute(context, cursor, actions, cache_line, trn);
+    actions = cc_model_->get_actions(trn, cache_line);
+    actions.set_cost(CoherenceActions::compute_cost(actions));
+  } else {
+#define CACHE_LOOKUP_PENALTY 1
+    actions.set_cost(CACHE_LOOKUP_PENALTY);
   }
-  return requires_eviction;
+  return actions;
 }
 
 void Agent::apply(TimeStamped<Message*> ts) { qmgr_.push(ts); }

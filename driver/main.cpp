@@ -35,8 +35,13 @@ const char * VERSION{"0.0.1"};
 ccm::Protocol string_to_protocol(const std::string & s) {
   static const std::map<std::string, ccm::Protocol> pmap{
     { "MSI", ccm::Protocol::MSI },
+#ifdef ENABLE_MESI
     { "MESI", ccm::Protocol::MESI },
-    { "MOSI", ccm::Protocol::MOSI }
+#endif
+#ifdef ENABLE_MOSI
+    { "MOSI", ccm::Protocol::MOSI },
+#endif
+    { "INVALID", ccm::Protocol::INVALID }
   };
 
   auto it = pmap.find(s);

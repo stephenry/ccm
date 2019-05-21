@@ -62,7 +62,7 @@ bool MsiAgentLineState::is_stable(state_t s) {
 }
 
 struct MsiAgentProtocol::MsiAgentProtocolImpl {
-  MsiAgentProtocolImpl(const CoherentAgentOptions &opts) : opts_(opts) {}
+  MsiAgentProtocolImpl() {}
 
   void init(CacheLine &l) const {
     l.set_state(static_cast<CacheLine::state_type>(MsiAgentLineState::I));
@@ -89,6 +89,9 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
         break;
 
       case TransactionType::Replacement:
+        handle__Replacement(t, cache_line, actions);
+        break;
+        
       case TransactionType::Invalid:
         break;
     }
@@ -196,6 +199,42 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
     }
   }
 
+  void handle__Replacement(const Transaction *t, const CacheLine &cache_line,
+                           CoherenceActions &a) const {
+    switch (cache_line.state()) {
+      case MsiAgentLineState::S:
+        a.append_command(CoherentAgentCommand::EmitPutS);
+        a.set_next_state(MsiAgentLineState::SI_A);
+        a.set_result(TransactionResult::Consumed);
+        break;
+
+      case MsiAgentLineState::M:
+        a.append_command(CoherentAgentCommand::EmitPutM);
+        a.append_command(CoherentAgentCommand::EmitDataToDir);
+        a.set_next_state(MsiAgentLineState::MI_A);
+        a.set_result(TransactionResult::Consumed);
+        break;
+      
+      case MsiAgentLineState::IS_D:
+      case MsiAgentLineState::IM_AD:
+      case MsiAgentLineState::IM_A:
+      case MsiAgentLineState::SM_AD:
+      case MsiAgentLineState::SM_A:
+      case MsiAgentLineState::MI_A:
+      case MsiAgentLineState::SI_A:
+      case MsiAgentLineState::II_A:
+        // Cannot evict a line for which there are already messages
+        // in- flight.
+        a.set_result(TransactionResult::Blocked);
+        break;
+      
+      default:
+        // State: [I]; cannot evict a line that is not installed in
+        // the cache.
+        a.set_error(true);
+    }
+  }
+
   void handle__FwdGetS(const Message *m, const CacheLine &cache_line,
                        CoherenceActions &a) const {
     switch (cache_line.state()) {
@@ -259,10 +298,9 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
   void handle__Inv(const Message *m, const CacheLine &cache_line,
                    CoherenceActions &a) const {
     if (m->is_ack()) {
-      const bool is_last_ack = (cache_line.ack_count() == 1);
+      const bool is_last_ack = cache_line.is_last_inv_ack();
 
-      a.append_command(CoherentAgentCommand::SetAckCount);
-      a.set_ack_count(cache_line.ack_count() - 1);
+      a.append_command(CoherentAgentCommand::IncAckCount);
 
       if (is_last_ack) {
         switch (cache_line.state()) {
@@ -332,6 +370,10 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
 
   void handle__Data(const Message *m, const CacheLine &cache_line,
                     CoherenceActions &a) const {
+    // The snoop filter advertises that this Data is unique and that
+    // the agent need not block awaiting invalidation acknowledgements
+    // for other agents in the system.
+    //
     const bool is_last_ack = (m->ack_count() == 0);
 
     if (is_last_ack) {
@@ -369,7 +411,7 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
       //
       switch (cache_line.state()) {
         case MsiAgentLineState::IM_AD:
-          a.append_command(CoherentAgentCommand::SetAckCount);
+          a.append_command(CoherentAgentCommand::SetAckExpectCount);
           a.set_ack_count(m->ack_count());
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::IM_A);
@@ -377,7 +419,7 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
           break;
 
         case MsiAgentLineState::SM_AD:
-          a.append_command(CoherentAgentCommand::SetAckCount);
+          a.append_command(CoherentAgentCommand::SetAckExpectCount);
           a.set_ack_count(m->ack_count());
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::SM_A);
@@ -389,13 +431,10 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
       }
     }
   }
-
-  const CoherentAgentOptions opts_;
 };
 
-MsiAgentProtocol::MsiAgentProtocol(const CoherentAgentOptions &opts)
-    : AgentProtocol(opts) {
-  impl_ = std::make_unique<MsiAgentProtocolImpl>(opts);
+MsiAgentProtocol::MsiAgentProtocol() {
+  impl_ = std::make_unique<MsiAgentProtocolImpl>();
 }
 
 MsiAgentProtocol::~MsiAgentProtocol(){};
@@ -432,7 +471,7 @@ const char *MsiDirectoryLineState::to_string(state_t s) {
 }
 
 struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
-  MsiSnoopFilterProtocolImpl(const ActorOptions &opts) : opts_(opts) {}
+  MsiSnoopFilterProtocolImpl() {}
 
   void init(DirectoryEntry &l) const { l.set_state(MsiDirectoryLineState::I); }
 
@@ -635,13 +674,10 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
   bool message_requires_recall(const Message *m) { return false; }
 
   bool transaction_must_hit(MessageType t) { return true; }
-
-  const ActorOptions opts_;
 };
 
-MsiSnoopFilterProtocol::MsiSnoopFilterProtocol(const ActorOptions &opts)
-    : SnoopFilterProtocol(opts) {
-  impl_ = std::make_unique<MsiSnoopFilterProtocolImpl>(opts);
+MsiSnoopFilterProtocol::MsiSnoopFilterProtocol() {
+  impl_ = std::make_unique<MsiSnoopFilterProtocolImpl>();
 }
 
 MsiSnoopFilterProtocol::~MsiSnoopFilterProtocol() {}

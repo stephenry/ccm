@@ -42,6 +42,10 @@ endmacro ()
 build_common_library()
 
 add_subdirectory(msi)
-add_subdirectory(mesi)
-add_subdirectory(mosi)
+if (ENABLE_MESI)
+  add_subdirectory(mesi)
+endif ()
+if (ENABLE_MOSI)
+  add_subdirectory(mosi)
+endif ()
 

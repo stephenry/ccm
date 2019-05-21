@@ -30,6 +30,7 @@
 
 #include <memory>
 #include <optional>
+#include "protocol.hpp"
 #include "cache.hpp"
 #include "message.hpp"
 #include "sim.hpp"
@@ -43,42 +44,9 @@ class Platform;
 class CacheLine;
 class DirectoryEntry;
 
-enum class Protocol { MSI, MESI, MOSI };
-
-const char* to_string(Protocol p);
-
 using state_t = uint8_t;
-
 using result_t = uint8_t;
 using command_t = uint8_t;
-
-template <typename T>
-using Entry = std::tuple<id_t, const T>;
-
-class CoherenceProtocolValidator {
-  struct ProtocolValidatorVisitor;
-
- public:
-  CoherenceProtocolValidator();
-  virtual ~CoherenceProtocolValidator() {}
-
-  std::unique_ptr<CacheVisitor> get_cache_visitor();
-
-  bool validate() const;
-  virtual bool validate_addr(addr_t addr,
-                             const std::vector<Entry<CacheLine> >& lines,
-                             const DirectoryEntry& entry) const = 0;
-
- protected:
-  void add_cache_line(id_t id, addr_t addr, const CacheLine& cache_line);
-  void add_dir_line(id_t id, addr_t addr,
-                    const DirectoryEntry& directory_entry);
-
-  void error(const char* str) const {}
-
-  std::map<addr_t, std::vector<Entry<CacheLine> > > cache_lines_;
-  std::map<addr_t, DirectoryEntry> directory_lines_;
-};
 
 struct CoherentAgentOptions : ActorOptions {
   CoherentAgentOptions(std::size_t id, Protocol protocol,
@@ -93,183 +61,6 @@ struct CoherentAgentOptions : ActorOptions {
   Protocol protocol_;
   CacheOptions cache_options_;
 };
-
-class CacheLine {
- public:
-  using state_type = state_t;
-  using ack_count_type = uint8_t;
-
-  CacheLine() : state_(0), ack_count_(0), expected_ack_count_(0) {}
-
-  ack_count_type expected_ack_count() const { return expected_ack_count_; }
-  void expected_set_ack_count(ack_count_type expected_ack_count) {
-    expected_ack_count_ = expected_ack_count;
-  }
-
-  ack_count_type ack_count() const { return ack_count_; }
-  void set_ack_count(ack_count_type ack_count) { ack_count_ = ack_count; }
-
-  state_type state() const { return state_; }
-  void set_state(state_type state) { state_ = state; }
-
- private:
-  state_type state_;
-  ack_count_type ack_count_, expected_ack_count_;
-};
-
-class DirectoryEntry {
-  friend std::string to_string(const DirectoryEntry& d);
-
- public:
-  using state_type = state_t;
-
-  DirectoryEntry() {}
-
-  state_type state() const;
-  id_t owner() const;
-  const std::vector<id_t>& sharers() const;
-  std::size_t num_sharers() const;
-  void set_state(state_type state);
-  void set_owner(id_t owner);
-  void clear_owner();
-  void add_sharer(id_t id);
-  void remove_sharer(id_t id);
-  void clear_sharers();
-  id_t num_sharers_not_id(id_t id) const;
-
- private:
-  state_type state_;
-  std::vector<id_t> sharers_;
-  std::optional<id_t> owner_;
-};
-
-std::string to_string(const DirectoryEntry& d);
-
-// clang-format off
-#define TRANSACTION_RESULT(__func)              \
-  __func(Hit)                                   \
-  __func(Miss)                                  \
-  __func(Blocked)
-// clang-format on
-
-enum TransactionResult : result_t {
-// clang-format off
-#define __declare_state(__state)                \
-  __state,
-  TRANSACTION_RESULT(__declare_state)
-#undef __declare_state
-  // clang-format on
-};
-
-const char* to_string(TransactionResult r);
-
-// clang-format off
-#define MESSAGE_RESULT(__func)                  \
-  __func(Commit)                                \
-  __func(Stall)
-// clang-format on
-
-enum MessageResult : result_t {
-// clang-format off
-#define __declare_state(__state)                \
-  __state,
-  MESSAGE_RESULT(__declare_state)
-#undef __declare_state
-  // clang-format on
-};
-
-// clang-format off
-#define ACTION_FIELDS(__func)                   \
-  __func(fwd_id, id_t, 0)                       \
-  __func(transaction_done, bool, false)         \
-  __func(next_state, state_t, 0)                \
-  __func(is_exclusive, bool, false)             \
-  __func(error, bool, false)                    \
-  __func(ack_count, uint8_t, 0)                 \
-  __func(result, result_t, 0)                   \
-  __func(commands, std::vector<command_t>, {})
-// clang-format on
-
-struct CoherenceActions {
-  CoherenceActions() { reset(); }
-// clang-format off
-#define __declare_getter_setter(__name, __type, __default)      \
-  using __name ## _type = __type;                               \
-  __type __name() const { return __name ## _; }                 \
-  template<typename T>                                          \
-  void set_ ## __name(const T & __name) {                       \
-    __name ## _ = static_cast<__type>(__name);                  \
-  }
-  ACTION_FIELDS(__declare_getter_setter)
-#undef __declare_getter_setter
-  // clang-format on
-
-  void append_command(command_t cmd) { commands_.push_back(cmd); }
-
- private:
-  void reset() {
-// clang-format off
-#define __declare_default(__name, __type, __default)    \
-    __name ## _ = __default;
-    ACTION_FIELDS(__declare_default)
-#undef __declare_default
-    // clang-format on
-  }
-// clang-format off
-#define __declare_field(__name, __type, __default)      \
-  __type __name ## _;
-  ACTION_FIELDS(__declare_field)
-#undef __declare_field
-  // clang-format on
-};
-
-class ProtocolBase {
- public:
-  ProtocolBase(const ActorOptions& opts);
-  virtual ~ProtocolBase() {}
-
-  virtual Protocol protocol() const = 0;
-
- private:
-  const ActorOptions opts_;
-};
-
-class AgentProtocol : public ProtocolBase {
- public:
-  AgentProtocol(const CoherentAgentOptions& opts);
-  virtual ~AgentProtocol() {}
-
-  virtual void init(CacheLine& l) const = 0;
-  virtual bool is_stable(const CacheLine& l) const = 0;
-  virtual std::string to_string(state_t l) const = 0;
-
-  virtual CoherenceActions get_actions(const Message* t,
-                                       const CacheLine& cache_line) const = 0;
-  virtual CoherenceActions get_actions(const Transaction* t,
-                                       const CacheLine& cache_line) const = 0;
-};
-
-std::unique_ptr<AgentProtocol> coherent_agent_factory(
-    Protocol protocol, const CoherentAgentOptions& opts);
-
-class SnoopFilterProtocol : public ProtocolBase {
- public:
-  SnoopFilterProtocol(const ActorOptions& opts);
-
-  virtual void init(DirectoryEntry& l) const = 0;
-  virtual bool is_stable(const DirectoryEntry& l) const = 0;
-  virtual std::string to_string(const DirectoryEntry& l) const = 0;
-  virtual std::string to_string(state_t l) const = 0;
-
-  virtual CoherenceActions get_actions(
-      const Message* t, const DirectoryEntry& dir_entry) const = 0;
-};
-
-std::unique_ptr<SnoopFilterProtocol> snoop_filter_factory(
-    Protocol protocol, const ActorOptions& opts);
-
-std::unique_ptr<CoherenceProtocolValidator> validator_factory(
-    Protocol protocol);
 
 }  // namespace ccm
 

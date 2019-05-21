@@ -46,39 +46,6 @@ struct SnoopFilterOptions : ActorOptions {
   CacheOptions cache_options_;
 };
 
-// clang-format off
-#define SNOOP_FILTER_COMMANDS(__func)           \
-  __func(UpdateState)                           \
-  __func(SetOwnerToReq)                         \
-  __func(SendDataToReq)                         \
-  __func(SendInvToSharers)                      \
-  __func(ClearSharers)                          \
-  __func(AddReqToSharers)                       \
-  __func(DelReqFromSharers)                     \
-  __func(DelOwner)                              \
-  __func(AddOwnerToSharers)                     \
-  __func(CpyDataToMemory)                       \
-  __func(SendPutSAckToReq)                      \
-  __func(SendPutMAckToReq)                      \
-  __func(SendPutEAckToReq)                      \
-  __func(SendPutOAckToReq)                      \
-  __func(SendAckCountToReq)                     \
-  __func(SendFwdGetMToOwner)                    \
-  __func(SendFwdGetSToOwner)
-// clang-format on
-
-struct SnoopFilterCommand {
-  enum : command_t {
-  // clang-format off
-#define __declare_state(__state) __state,
-    SNOOP_FILTER_COMMANDS(__declare_state)
-#undef __declare_state
-    // clang-format on
-  };
-
-  static const char* to_string(command_t command);
-};
-
 struct SnoopFilterCommandInvoker : CoherentActor {
   SnoopFilterCommandInvoker(const SnoopFilterOptions& opts);
 

@@ -41,7 +41,7 @@ BasicPlatform::BasicPlatform(Sim& sim, Protocol protocol, std::size_t agents_n)
   construct_snoop_filter(4);
   construct_memory(platform_.memory_id());
 
-  validator_ = validator_factory(protocol);
+  validator_ = coherence_protocol_validator_factory(protocol);
 }
 
 BasicPlatform::~BasicPlatform() {

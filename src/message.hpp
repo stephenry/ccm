@@ -55,17 +55,18 @@ enum MessageClass {
 
 // clang-format off
 #define MESSAGE_TYPES(__func)                   \
-  __func(GetS, 1)                               \
-  __func(GetM, 1)                               \
-  __func(PutS, 1)                               \
-  __func(PutM, 1)                               \
-  __func(PutE, 1)                               \
-  __func(PutO, 1)                               \
-  __func(FwdGetS, 1)                            \
-  __func(FwdGetM, 1)                            \
-  __func(Inv, 1)                                \
-  __func(AckCount, 1)                           \
-  __func(Data, 4)
+  __func(GetS, 4)                               \
+  __func(GetM, 4)                               \
+  __func(PutS, 4)                               \
+  __func(PutM, 4)                               \
+  __func(PutE, 4)                               \
+  __func(PutO, 4)                               \
+  __func(FwdGetS, 4)                            \
+  __func(FwdGetM, 4)                            \
+  __func(Inv, 4)                                \
+  __func(InvAck, 4)                             \
+  __func(AckCount, 4)                           \
+  __func(Data, 16)
 // clang-format on
 
 struct MessageType {

@@ -86,7 +86,7 @@ struct MsiDirectoryLineState {
 
 class MsiAgentProtocol : public AgentProtocol {
  public:
-  MsiAgentProtocol(const CoherentAgentOptions& opts);
+  MsiAgentProtocol();
   virtual ~MsiAgentProtocol();
 
   //
@@ -111,7 +111,7 @@ class MsiAgentProtocol : public AgentProtocol {
 
 class MsiSnoopFilterProtocol : public SnoopFilterProtocol {
  public:
-  MsiSnoopFilterProtocol(const ActorOptions& opts);
+  MsiSnoopFilterProtocol();
   virtual ~MsiSnoopFilterProtocol();
 
   //

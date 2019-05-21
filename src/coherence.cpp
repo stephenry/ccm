@@ -29,12 +29,13 @@
 #include "actor.hpp"
 #include "cache.hpp"
 #include "common.hpp"
-#include "mesi.hpp"
-#include "mosi.hpp"
 #include "msi.hpp"
+//#include "mesi.hpp"
+//#include "mosi.hpp"
 #include "platform.hpp"
 #include "sim.hpp"
 #include "snoopfilter.hpp"
+#include "protocol.hpp"
 
 namespace ccm {
 
@@ -70,8 +71,11 @@ const char* to_string(TransactionResult r) {
 }
 // clang-format on
 
-AgentProtocol::AgentProtocol(const CoherentAgentOptions& opts)
-    : ProtocolBase(opts) {}
+void CacheLine::set_invalid() {
+#define __declare_invalid(__name, __type, __default) __name##_ = __default;
+  CACHE_LINE_FIELDS(__declare_invalid)
+#undef __declare_invalid
+}
 
 std::unique_ptr<AgentProtocol> coherent_agent_factory(
     Protocol protocol, const CoherentAgentOptions& opts) {
@@ -80,10 +84,12 @@ std::unique_ptr<AgentProtocol> coherent_agent_factory(
       return std::make_unique<MsiAgentProtocol>(opts);
       break;
     case Protocol::MESI:
-      return std::make_unique<MesiAgentProtocol>(opts);
+      //      return std::make_unique<MesiAgentProtocol>(opts);
+      return nullptr;
       break;
     case Protocol::MOSI:
-      return std::make_unique<MosiAgentProtocol>(opts);
+      //      return std::make_unique<MosiAgentProtocol>(opts);
+      return nullptr;
       break;
     default:
       // TODO: Not implemented
@@ -91,8 +97,6 @@ std::unique_ptr<AgentProtocol> coherent_agent_factory(
       break;
   }
 }
-
-ProtocolBase::ProtocolBase(const ActorOptions& opts) : opts_(opts) {}
 
 const char* to_string(EvictionPolicy p) {
   switch (p) {
@@ -106,22 +110,21 @@ const char* to_string(EvictionPolicy p) {
   }
 }
 
-SnoopFilterProtocol::SnoopFilterProtocol(const ActorOptions& opts)
-    : ProtocolBase(opts) {}
-
 std::unique_ptr<SnoopFilterProtocol> snoop_filter_factory(
     Protocol protocol, const ActorOptions& opts) {
   switch (protocol) {
     case Protocol::MSI:
-      return std::make_unique<MsiSnoopFilterProtocol>(opts);
+      return std::make_unique<MsiSnoopFilterProtocol>();
       break;
 
     case Protocol::MESI:
-      return std::make_unique<MesiSnoopFilterProtocol>(opts);
+      //      return std::make_unique<MesiSnoopFilterProtocol>();
+      return nullptr;
       break;
 
     case Protocol::MOSI:
-      return std::make_unique<MosiSnoopFilterProtocol>(opts);
+      //      return std::make_unique<MosiSnoopFilterProtocol>();
+      return nullptr;
       break;
 
     default:
@@ -131,66 +134,6 @@ std::unique_ptr<SnoopFilterProtocol> snoop_filter_factory(
   }
 }
 
-state_t DirectoryEntry::state() const { return state_; }
-id_t DirectoryEntry::owner() const { return owner_.value(); }
-const std::vector<id_t>& DirectoryEntry::sharers() const { return sharers_; }
-std::size_t DirectoryEntry::num_sharers() const { return sharers_.size(); }
-
-void DirectoryEntry::set_state(state_t state) { state_ = state; }
-void DirectoryEntry::set_owner(id_t owner) { owner_ = owner; }
-void DirectoryEntry::clear_owner() { owner_.reset(); }
-void DirectoryEntry::add_sharer(id_t id) { sharers_.push_back(id); }
-void DirectoryEntry::remove_sharer(id_t id) {
-  sharers_.erase(std::find(sharers_.begin(), sharers_.end(), id),
-                 sharers_.end());
-}
-void DirectoryEntry::clear_sharers() { sharers_.clear(); }
-id_t DirectoryEntry::num_sharers_not_id(id_t id) const {
-  return sharers_.size() - std::count(sharers_.begin(), sharers_.end(), id);
-}
-
-CoherenceProtocolValidator::CoherenceProtocolValidator() {}
-
-struct CoherenceProtocolValidator::ProtocolValidatorVisitor : CacheVisitor {
-  ProtocolValidatorVisitor(CoherenceProtocolValidator* validator)
-      : validator_(validator) {}
-  void set_id(id_t id) override { id_ = id; }
-  void add_line(addr_t addr, const CacheLine& cache_line) override {
-    validator_->add_cache_line(id_, addr, cache_line);
-  }
-  void add_line(addr_t addr, const DirectoryEntry& directory_entry) override {
-    validator_->add_dir_line(id_, addr, directory_entry);
-  }
-
- private:
-  id_t id_;
-  CoherenceProtocolValidator* validator_;
-};
-
-std::unique_ptr<CacheVisitor> CoherenceProtocolValidator::get_cache_visitor() {
-  return std::make_unique<ProtocolValidatorVisitor>(this);
-}
-
-bool CoherenceProtocolValidator::validate() const {
-  for (auto& l : directory_lines_) {
-    auto lines = cache_lines_.find(l.first);
-    if (lines == cache_lines_.end()) return false;
-
-    if (!validate_addr(l.first, lines->second, l.second)) return false;
-  }
-  return true;
-}
-
-void CoherenceProtocolValidator::add_cache_line(id_t id, addr_t addr,
-                                                const CacheLine& cache_line) {
-  cache_lines_[addr].push_back(std::make_tuple(id, cache_line));
-}
-
-void CoherenceProtocolValidator::add_dir_line(
-    id_t id, addr_t addr, const DirectoryEntry& directory_entry) {
-  directory_lines_[addr] = directory_entry;
-}
-
 std::unique_ptr<CoherenceProtocolValidator> validator_factory(
     Protocol protocol) {
   switch (protocol) {
@@ -198,10 +141,12 @@ std::unique_ptr<CoherenceProtocolValidator> validator_factory(
       return std::make_unique<MsiCoherenceProtocolValidator>();
       break;
     case Protocol::MESI:
-      return std::make_unique<MesiCoherenceProtocolValidator>();
+      //      return std::make_unique<MesiCoherenceProtocolValidator>();
+      return nullptr;
       break;
     case Protocol::MOSI:
-      return std::make_unique<MosiCoherenceProtocolValidator>();
+      //      return std::make_unique<MosiCoherenceProtocolValidator>();
+      return nullptr;
       break;
   }
 }

@@ -37,31 +37,6 @@ namespace ccm {
 
 struct TransactionSource;
 
-// clang-format off
-#define AGENT_COMMANDS(__func)                  \
-  __func(UpdateState)                           \
-  __func(IncAckCount)                           \
-  __func(SetAckCount)                           \
-  __func(EmitGetS)                              \
-  __func(EmitGetM)                              \
-  __func(EmitDataToReq)                         \
-  __func(EmitDataToDir)                         \
-  __func(EmitInvAck)
-// clang-format on
-
-struct CoherentAgentCommand {
-  enum : command_t {
-// clang-format off
-#define __declare_state(__state)                \
-    __state,
-    AGENT_COMMANDS(__declare_state)
-#undef __declare_state
-  };
-  // clang-format on
-
-  static const char* to_string(command_t command);
-};
-
 struct AgentOptions : CoherentAgentOptions {
   AgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options,
                Platform platform)
@@ -80,10 +55,10 @@ struct CoherentAgentCommandInvoker : CoherentActor {
 
   void visit_cache(CacheVisitor* cache_visitor) const override;
   void execute(Context& context, Cursor& cursor,
-               const CoherenceActions& actions, CacheLine& cache_line,
-               const Transaction* t);
+               const CoherenceActions& actions,
+               const Transaction * t);
   void execute(Context& context, Cursor& cursor,
-               const CoherenceActions& actions, CacheLine& cache_line,
+               const CoherenceActions& actions,
                const Message* msg);
 
  protected:
@@ -93,27 +68,20 @@ struct CoherentAgentCommandInvoker : CoherentActor {
  private:
   // Common
   //
-  void execute_update_state(CacheLine& cache_line,
-                            const CoherenceActions& actions);
-  void execute_set_ack_count(CacheLine& cache_line,
-                             const CoherenceActions& actions);
-  void execute_inc_ack_count(CacheLine& cache_line,
-                             const CoherenceActions& actions);
-
-  // Transaction Initiated
-  //
-  void execute_emit_gets(Context& context, Cursor& cursor,
+  void execute_update_state(const Transaction* t, state_t next_state);
+  void execute_set_ack_expect_count(const Message * msg);
+  void execute_inc_ack_count(const Transaction * t);
+  void execute_emit_gets(Context& context, const Cursor& cursor,
                          const Transaction* t);
-  void execute_emit_getm(Context& context, Cursor& cursor,
+  void execute_emit_getm(Context& context, const Cursor& cursor,
                          const Transaction* t);
-
-  // Message Initiated
-  //
-  void execute_emit_data_to_req(Context& context, Cursor& cursor,
+  void execute_emit_puts(Context& context, const Cursor& cursor,
+                         const Transaction* t);
+  void execute_emit_data_to_dir(Context& context, const Cursor& cursor,
+                                const Transaction * t);
+  void execute_emit_data_to_req(Context& context, const Cursor& cursor,
                                 const Message* msg);
-  void execute_emit_data_to_dir(Context& context, Cursor& cursor,
-                                const Message* msg);
-  void execute_emit_inv_ack(Context& context, Cursor& cursor,
+  void execute_emit_inv_ack(Context& context, const Cursor& cursor,
                             const Message* msg);
 
   MessageDirector msgd_;
@@ -137,7 +105,8 @@ struct Agent : CoherentAgentCommandInvoker {
 
   void handle_msg(Context& ctxt, Cursor& cursor, TimeStamped<Message*> ts);
 
-  bool handle_trn(Context& ctxt, Cursor& cursor, TimeStamped<Transaction*> ts);
+  CoherenceActions get_actions(Context& ctxt, Cursor& cursor, TimeStamped<Transaction*> ts);
+  CoherenceActions get_actions(Context& ctxt, Cursor& cursor, TimeStamped<Message*> ts);
   void enqueue_replacement(Time time, uint64_t addr);
 
   QueueManager qmgr_;

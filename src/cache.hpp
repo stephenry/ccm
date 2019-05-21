@@ -36,6 +36,7 @@
 #include "common.hpp"
 #include "platform.hpp"
 #include "utility.hpp"
+#include "protocol.hpp"
 
 namespace ccm {
 class CacheLine;
@@ -92,14 +93,6 @@ class CacheAddressFormat {
  private:
   std::size_t bytes_per_line_, l2c_bytes_per_line_, mask_bytes_per_line_;
   std::size_t sets_n_, l2c_sets_n_;
-};
-
-struct CacheVisitor {
-  virtual ~CacheVisitor() {}
-
-  virtual void set_id(id_t id) {}
-  virtual void add_line(addr_t addr, const CacheLine& cache_line) {}
-  virtual void add_line(addr_t addr, const DirectoryEntry& directory_entry) {}
 };
 
 template <typename T>
