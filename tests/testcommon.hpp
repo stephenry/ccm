@@ -33,12 +33,12 @@
 namespace ccm::test {
 
 struct BasicPlatform {
-  BasicPlatform(Sim &sim, Protocol protocol, std::size_t agents_n);
+  BasicPlatform(Sim &sim, Protocol::type protocol, std::size_t agents_n);
   ~BasicPlatform();
 
   std::size_t agents() const { return agents_.size(); }
   ProgrammaticTransactionSource *ts(std::size_t id) const { return ts_[id]; }
-  Protocol protocol() const { return protocol_; }
+  Protocol::type protocol() const { return protocol_; }
   Agent *agent(std::size_t id) { return agents_[id]; }
   SnoopFilter *snoop_filter() { return snoop_filter_; }
 
@@ -48,7 +48,6 @@ struct BasicPlatform {
   void construct_snoop_filter(std::size_t id);
   void construct_agent(std::size_t id);
   void construct_memory(std::size_t id);
-  void add_actor(CoherentActor *actor);
 
   Logger logger_;
   LoggerScope *top_;
@@ -56,8 +55,8 @@ struct BasicPlatform {
   Sim &sim_;
   std::vector<Agent *> agents_;
   std::vector<CoherentActor *> actors_;
-  std::vector<std::unique_ptr<Memory>> memories_;
-  Protocol protocol_;
+  std::vector<Memory *> memories_;
+  Protocol::type protocol_;
   Platform platform_;
   std::vector<ProgrammaticTransactionSource *> ts_;
   std::unique_ptr<CoherenceProtocolValidator> validator_;

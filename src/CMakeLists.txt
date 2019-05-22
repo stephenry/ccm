@@ -26,7 +26,6 @@
 ##========================================================================== //
 
 set(SRCS
-  ccm.cpp
   platform.cpp
   actor.cpp
   utility.cpp
@@ -35,12 +34,12 @@ set(SRCS
   log.cpp
   agent.cpp
   snoopfilter.cpp
-  cache.cpp
   sim.cpp
   transaction.cpp
   random.cpp
   memory.cpp
   protocol.cpp
+  cache.cpp
   msi.cpp
   )
 
@@ -50,11 +49,13 @@ endif ()
 if (ENABLE_MOSI)
   list(APPEND SRCS mosi.cpp)
 endif ()
+if (ENABLE_JSON)
+  list(APPEND SRCS builder.cpp)
+endif ()
 
 configure_file(options.hpp.in options.hpp)
 add_library(ccm STATIC ${SRCS})
 target_include_directories(ccm PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 if (ENABLE_JSON)
-  list (APPEND SRCS builder.cpp)
   target_link_libraries(ccm PUBLIC nlohmann_json::nlohmann_json)
 endif ()

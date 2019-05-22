@@ -31,6 +31,7 @@
 #include <map>
 #include <vector>
 #include "utility.hpp"
+#include "platform.hpp"
 
 namespace ccm {
 
@@ -226,9 +227,13 @@ class RunOptions {
 };
 
 struct Sim {
+  friend class Builder;
+  
   Sim() : time_(0) {}
 
-  void add_actor(CoherentActor *a);
+  const Platform & platform() const { return platform_; }
+
+  void add_actor(std::unique_ptr<CoherentActor> && actor);
 
   void run(const RunOptions &run_options = RunOptions{});
 
@@ -238,8 +243,9 @@ struct Sim {
 
   bool has_active_actors() const;
 
+  Platform platform_;
   Time time_;
-  std::map<std::size_t, CoherentActor *> actors_;
+  std::map<std::size_t, std::unique_ptr<CoherentActor> > actors_;
 };
 
 }  // namespace ccm

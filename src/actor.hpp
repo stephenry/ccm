@@ -44,17 +44,15 @@ class MessageBuilder;
 
 struct ActorOptions {
   ActorOptions(id_t id, Platform platform) : id_(id), platform_(platform) {}
+
   id_t id() const { return id_; }
   LoggerScope *logger_scope() const { return logger_scope_; }
-  Platform platform() const { return platform_; }
-
+  const Platform & platform() const { return platform_; }
   void set_logger_scope(LoggerScope *logger_scope) {
     logger_scope_ = logger_scope;
   }
-
  private:
   id_t id_;
-  CacheOptions cache_options_;
   LoggerScope *logger_scope_;
   Platform platform_;
 };

@@ -26,38 +26,15 @@
 //========================================================================== //
 
 #include "ccm.hpp"
-#include <iostream>
-#include <map>
-#include <sstream>
 #include <nlohmann/json.hpp>
-
-const char * VERSION{"0.0.1"};
-
-ccm::Protocol string_to_protocol(const std::string & s) {
-  static const std::map<std::string, ccm::Protocol> pmap{
-    { "MSI", ccm::Protocol::MSI },
-#ifdef ENABLE_MESI
-    { "MESI", ccm::Protocol::MESI },
-#endif
-#ifdef ENABLE_MOSI
-    { "MOSI", ccm::Protocol::MOSI },
-#endif
-    { "INVALID", ccm::Protocol::INVALID }
-  };
-
-  auto it = pmap.find(s);
-  if (it == pmap.end())
-    throw std::invalid_argument("Unknown protocol: "  + s);
-
-  return it->second;
-}
 
 int main(int argc, char **argv) {
   nlohmann::json j;
 
-  j << std::cin;
-  j >> std::cout;
+  auto sim = ccm::Builder::construct(j);
 
+  ccm::RunOptions ropts;
+  sim->run(ropts);
   
   return 0;
 }

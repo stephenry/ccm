@@ -27,4 +27,12 @@
 
 #include "cache.hpp"
 
-namespace ccm {}  // namespace ccm
+namespace ccm {
+#ifdef ENABLE_JSON
+
+CacheOptions CacheOptions::from_json(nlohmann::json j) {
+  // TODO: remains TBD
+  return CacheOptions();
+}
+#endif
+}  // namespace ccm

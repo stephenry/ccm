@@ -34,6 +34,7 @@
 #include "log.hpp"
 #include "sim.hpp"
 #include "utility.hpp"
+#include "actor.hpp"
 
 namespace ccm {
 

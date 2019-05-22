@@ -29,6 +29,7 @@
 #include "coherence.hpp"
 #include "interconnect.hpp"
 #include "message.hpp"
+#include "actor.hpp"
 
 namespace ccm {
 
@@ -217,8 +218,8 @@ bool RunOptions::has_completed(Time current) const {
   return ret;
 }
 
-void Sim::add_actor(CoherentActor *a) {
-  actors_.insert(std::make_pair(a->id(), a));
+void Sim::add_actor(std::unique_ptr<CoherentActor> && actor) {
+  actors_.insert(std::make_pair(actor->id(), std::move(actor)));
 }
 
 void Sim::run(const RunOptions &run_options) {
@@ -229,7 +230,8 @@ void Sim::run(const RunOptions &run_options) {
     if (run_options.has_completed(current_epoch.start())) break;
 
     Context ctxt{current_epoch};
-    for (auto [t, actor] : actors_) actor->eval(ctxt);
+    for (auto it = actors_.begin(); it != actors_.end(); ++it)
+      it->second->eval(ctxt);
 
     for (TimeStamped<Message *> ts : ctxt.msgs_) {
       interconnect_model.apply(ts);
@@ -242,9 +244,8 @@ void Sim::run(const RunOptions &run_options) {
 }
 
 bool Sim::has_active_actors() const {
-  for (auto [t, actor] : actors_) {
-    if (actor->is_active()) return true;
-  }
+  for (auto it = actors_.begin(); it != actors_.end(); ++it)
+    if (it->second->is_active()) return true;
   return false;
 }
 

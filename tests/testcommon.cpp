@@ -29,10 +29,11 @@
 
 namespace ccm::test {
 
-BasicPlatform::BasicPlatform(Sim& sim, Protocol protocol, std::size_t agents_n)
+BasicPlatform::BasicPlatform(Sim& sim, Protocol::type protocol, std::size_t agents_n)
     : sim_(sim), protocol_(protocol) {
   top_ = logger_.top();
 
+  platform_ = Platform{protocol};
   for (std::size_t i = 0; i < agents_n; i++) platform_.add_agent(i);
   platform_.add_snoop_filter(4, std::make_shared<DefaultAddressRegion>());
   platform_.add_memory(5);
@@ -45,7 +46,6 @@ BasicPlatform::BasicPlatform(Sim& sim, Protocol protocol, std::size_t agents_n)
 }
 
 BasicPlatform::~BasicPlatform() {
-  for (CoherentActor* actor : actors_) delete actor;
   for (TransactionSource* ts : ts_) delete ts;
 }
 
@@ -60,39 +60,40 @@ bool BasicPlatform::validate() const {
 }
 
 void BasicPlatform::construct_snoop_filter(std::size_t id) {
-  SnoopFilterOptions opts(4, protocol(), CacheOptions(), platform_);
+  SnoopFilterOptions opts(4, platform_, CacheOptions());
   opts.set_logger_scope(top_->child_scope("SnoopFilter"));
 
-  snoop_filter_ = new SnoopFilter(opts);
-  add_actor(snoop_filter_);
+  std::unique_ptr<SnoopFilter> snoop_filter =
+      std::make_unique<SnoopFilter>(opts);
+  snoop_filter_ = snoop_filter.get();
+  actors_.push_back(snoop_filter_);
+  sim_.add_actor(std::move(snoop_filter));
 }
 
 void BasicPlatform::construct_agent(std::size_t id) {
-  AgentOptions opts(id, protocol(), CacheOptions(), platform_);
+  AgentOptions opts(id, platform_, CacheOptions());
 
   std::stringstream ss;
   ss << "Agent" << id;
   opts.set_logger_scope(top_->child_scope(ss.str()));
 
-  agents_.push_back(new Agent(opts));
+  std::unique_ptr<Agent> agent = std::make_unique<Agent>(opts);
+  actors_.push_back(agent.get());
+  agents_.push_back(agent.get());
+  sim_.add_actor(std::move(agent));
   ts_.push_back(new ProgrammaticTransactionSource());
 
   ss << "Src";
   ts_.back()->set_logger_scope(top_->child_scope(ss.str()));
 
   agents_.back()->set_transaction_source(ts_.back());
-  add_actor(agents_.back());
 }
 
 void BasicPlatform::construct_memory(id_t id) {
   const ActorOptions opts(id, platform_);
-  memories_.push_back(std::make_unique<Memory>(opts));
-  sim_.add_actor(memories_.back().get());
-}
-
-void BasicPlatform::add_actor(CoherentActor* actor) {
-  actors_.push_back(actor);
-  sim_.add_actor(actor);
+  std::unique_ptr<Memory> mem = std::make_unique<Memory>(opts);
+  memories_.push_back(mem.get());
+  sim_.add_actor(std::move(mem));
 }
 
 }  // namespace ccm::test

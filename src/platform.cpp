@@ -28,6 +28,40 @@
 #include "platform.hpp"
 
 namespace ccm {
+#ifdef ENABLE_JSON
+std::shared_ptr<AddressRegion> AddressRegion::from_json(nlohmann::json j) {
+  if (j["type"] == "contiguous")
+    return ContiguousAddressRegion::from_json(j);
+  // ERROR
+  return nullptr;
+}
+#ifdef ENABLE_JSON
+
+std::shared_ptr<AddressRegion> ContiguousAddressRegion::from_json(nlohmann::json j) {
+  const addr_t lo = j["lo"];
+  const addr_t hi = j["hi"];
+  return std::shared_ptr<AddressRegion>(new ContiguousAddressRegion(lo, hi));
+}
+#endif
+
+#endif
+
+#ifdef ENABLE_JSON
+Platform Platform::from_json(nlohmann::json j) {
+  Platform p{Protocol::from_json(j)};
+  for (const nlohmann::json & j_agent : j["agents"]) {
+    const id_t id = j_agent["id"];
+    p.add_agent(id);
+  }
+  for (const nlohmann::json & j_snoop : j["snoopfilters"]) {
+    const id_t id = j_snoop["id"];
+    p.add_snoop_filter(j_snoop["id"],
+                       AddressRegion::from_json(j_snoop["aperture"]));
+  }
+return p;
+}
+
+#endif
 
 void Platform::add_agent(id_t id) { agent_ids_.insert(id); }
 

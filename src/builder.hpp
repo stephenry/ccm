@@ -28,11 +28,15 @@
 #ifndef __BUILDER_HPP__
 #define __BUILDER_HPP__
 
+#include "sim.hpp"
 #include <nlohmann/json.hpp>
 
 namespace ccm {
 
-class Builder {
+struct Builder {
+  static std::unique_ptr<Sim> construct(nlohmann::json & j);
+ private:
+  static void drc(nlohmann::json & j);
 };
 
 } // namespace ccm

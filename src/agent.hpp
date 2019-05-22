@@ -29,21 +29,25 @@
 #define __SRC_AGENT_HPP__
 
 #include <deque>
-#ifdef ENABLE_JSON
-#  include <nlohmann/json.hpp>
-#endif
 #include "coherence.hpp"
 #include "message.hpp"
 #include "sim.hpp"
+#include "options.hpp"
+#ifdef ENABLE_JSON
+#  include <nlohmann/json.hpp>
+#  include <memory>
+#endif
 
 namespace ccm {
 
 struct TransactionSource;
 
 struct AgentOptions : CoherentAgentOptions {
-  AgentOptions(std::size_t id, Protocol protocol, CacheOptions cache_options,
-               Platform platform)
-      : CoherentAgentOptions(id, protocol, cache_options, platform) {}
+  AgentOptions(std::size_t id, Platform platform, CacheOptions cache_options)
+      : CoherentAgentOptions(id, platform, cache_options) {}
+#ifdef ENABLE_JSON
+  static AgentOptions from_json(const Platform & platform, nlohmann::json j);
+#endif
 };
 
 struct CoherentAgentCommandInvoker : CoherentActor {
@@ -98,7 +102,7 @@ struct Agent : CoherentAgentCommandInvoker {
   Agent(const AgentOptions& opts);
 
   bool is_active() const override;
-  Protocol protocol() const { return opts_.protocol(); }
+  Protocol::type protocol() const { return opts_.protocol(); }
   CacheOptions cache_options() const { return opts_.cache_options(); }
 
   void set_transaction_source(TransactionSource* trns) { trns_ = trns; }
@@ -121,6 +125,13 @@ struct Agent : CoherentAgentCommandInvoker {
   TransactionFactory tfac_;
   const AgentOptions opts_;
 };
+#ifdef ENABLE_JSON
+
+struct AgentBuilder {
+  static std::unique_ptr<Agent> construct(
+      const Platform & platform, nlohmann::json j);
+};
+#endif
 
 }  // namespace ccm
 

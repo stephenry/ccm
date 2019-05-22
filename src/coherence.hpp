@@ -48,18 +48,16 @@ using state_t = uint8_t;
 using result_t = uint8_t;
 using command_t = uint8_t;
 
+// TODO: move to protocol, deprecate this file.
 struct CoherentAgentOptions : ActorOptions {
-  CoherentAgentOptions(std::size_t id, Protocol protocol,
-                       CacheOptions cache_options, Platform& platform)
-      : ActorOptions(id, platform),
-        protocol_(protocol),
-        cache_options_(cache_options) {}
-  Protocol protocol() const { return protocol_; }
-  CacheOptions cache_options() const { return cache_options_; }
+  CoherentAgentOptions(std::size_t id, const Platform & platform,
+                       const CacheOptions & cache_options)
+      : ActorOptions(id, platform), cache_options_(cache_options) {}
+  Protocol::type protocol() const { return platform().protocol(); }
+  const CacheOptions & cache_options() const { return cache_options_; }
 
  private:
-  Protocol protocol_;
-  CacheOptions cache_options_;
+  const CacheOptions cache_options_;
 };
 
 }  // namespace ccm

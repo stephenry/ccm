@@ -36,19 +36,19 @@
 
 namespace ccm {
 
-const char* to_string(Protocol p) {
+const char* Protocol::to_string(Protocol::type p) {
   switch (p) {
     case Protocol::MSI:
-      return "MSI";
+      return "msi";
       break;
 #ifdef ENABLE_MESI
     case Protocol::MESI:
-      return "MESI";
+      return "mesi";
       break;
 #endif
 #ifdef ENABLE_MOSI
     case Protocol::MOSI:
-      return "MOSI";
+      return "mosi";
       break;
 #endif
     default:
@@ -56,6 +56,18 @@ const char* to_string(Protocol p) {
       break;
   }
 }
+#ifdef ENABLE_JSON
+Protocol::type Protocol::from_json(nlohmann::json j) {
+  Protocol::type p{Protocol::INVALID};
+  if (j["protocol"] == "msi")
+    p = Protocol::MSI;
+  if (j["protocol"] == "mesi")
+    p = Protocol::MESI;
+  if (j["protocol"] == "mosi")
+    p = Protocol::MOSI;
+  return p;
+}
+#endif
 
 const char* CoherentAgentCommand::to_string(command_t command) {
     switch (command) {
@@ -158,7 +170,7 @@ bool CacheLine::is_last_inv_ack() const {
 AgentProtocol::AgentProtocol() {}
 
 std::unique_ptr<AgentProtocol> agent_protocol_factory(
-    Protocol protocol, const Platform & platform) {
+    Protocol::type protocol, const Platform & platform) {
   switch (protocol) {
     case Protocol::MSI:
       return std::make_unique<MsiAgentProtocol>(platform);
@@ -199,7 +211,7 @@ id_t DirectoryEntry::num_sharers_not_id(id_t id) const {
 }
 
 std::unique_ptr<SnoopFilterProtocol> snoop_filter_protocol_factory(
-    Protocol protocol) {
+    Protocol::type protocol) {
   switch (protocol) {
     case Protocol::MSI:
       return std::make_unique<MsiSnoopFilterProtocol>();
@@ -264,7 +276,7 @@ void CoherenceProtocolValidator::add_dir_line(
 }
 
 std::unique_ptr<CoherenceProtocolValidator>
-coherence_protocol_validator_factory(Protocol protocol) {
+coherence_protocol_validator_factory(Protocol::type protocol) {
   switch (protocol) {
     case Protocol::MSI:
       return std::make_unique<MsiCoherenceProtocolValidator>();

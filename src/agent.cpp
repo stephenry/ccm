@@ -31,6 +31,12 @@
 #include "protocol.hpp"
 
 namespace ccm {
+#ifdef ENABLE_JSON
+AgentOptions AgentOptions::from_json(const Platform & platform, nlohmann::json j) {
+  const id_t id = j["id"];
+  return AgentOptions(id, platform, CacheOptions::from_json(j["cache_options"]));
+}
+#endif
 
 class AgentMessageAdmissionControl : public MessageAdmissionControl {
  public:
@@ -539,4 +545,10 @@ void Agent::apply(TimeStamped<Message*> ts) { qmgr_.push(ts); }
 
 bool Agent::is_active() const { return !qmgr_.empty(); }
 
+#ifdef ENABLE_JSON
+std::unique_ptr<Agent> AgentBuilder::construct(
+    const Platform & platform, nlohmann::json j) {
+  return std::make_unique<Agent>(AgentOptions::from_json(platform, j));
+}
+#endif
 }  // namespace ccm

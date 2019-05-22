@@ -111,7 +111,7 @@ const char* to_string(EvictionPolicy p) {
 }
 
 std::unique_ptr<SnoopFilterProtocol> snoop_filter_factory(
-    Protocol protocol, const ActorOptions& opts) {
+    Protocol::type protocol, const ActorOptions& opts) {
   switch (protocol) {
     case Protocol::MSI:
       return std::make_unique<MsiSnoopFilterProtocol>();
@@ -135,7 +135,7 @@ std::unique_ptr<SnoopFilterProtocol> snoop_filter_factory(
 }
 
 std::unique_ptr<CoherenceProtocolValidator> validator_factory(
-    Protocol protocol) {
+    Protocol::type protocol) {
   switch (protocol) {
     case Protocol::MSI:
       return std::make_unique<MsiCoherenceProtocolValidator>();

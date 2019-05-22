@@ -29,21 +29,22 @@
 #define __SRC_SNOOPFILTER_HPP__
 
 #include "coherence.hpp"
+#ifdef ENABLE_JSON
+#  include <nlohmann/json.hpp>
+#  include <memory>
+#endif
 
 namespace ccm {
 
-struct SnoopFilterOptions : ActorOptions {
-  SnoopFilterOptions(std::size_t id, Protocol protocol,
-                     CacheOptions cache_options, Platform& platform)
-      : ActorOptions(id, platform),
-        protocol_(protocol),
-        cache_options_(cache_options) {}
-  Protocol protocol() const { return protocol_; }
-  CacheOptions cache_options() const { return cache_options_; }
+struct SnoopFilterOptions : CoherentAgentOptions {
+#ifdef ENABLE_JSON
+  static SnoopFilterOptions from_json(const Platform & platform,
+                                      nlohmann::json & j);
+#endif
 
- private:
-  Protocol protocol_;
-  CacheOptions cache_options_;
+  SnoopFilterOptions(std::size_t id, const Platform & platform,
+                     CacheOptions cache_options)
+      : CoherentAgentOptions(id, platform, cache_options) {}
 };
 
 struct SnoopFilterCommandInvoker : CoherentActor {
@@ -117,6 +118,13 @@ struct SnoopFilter : SnoopFilterCommandInvoker {
   QueueManager qmgr_;
   const SnoopFilterOptions opts_;
 };
+#ifdef ENABLE_JSON
+
+struct SnoopFilterBuilder {
+  static std::unique_ptr<SnoopFilter> construct(
+      const Platform & platform, nlohmann::json j);
+};
+#endif
 
 }  // namespace ccm
 

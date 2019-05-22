@@ -32,11 +32,18 @@
 #include <memory>
 #include <set>
 #include "common.hpp"
+#ifdef ENABLE_JSON
+#  include <nlohmann/json.hpp>
+#endif
 #include "types.hpp"
+#include "protocol.hpp"
 
 namespace ccm {
 
 struct AddressRegion {
+#ifdef ENABLE_JSON
+  static std::shared_ptr<AddressRegion> from_json(nlohmann::json j);
+#endif
   virtual bool is_valid(addr_t addr) const = 0;
 };
 
@@ -45,18 +52,27 @@ struct DefaultAddressRegion : AddressRegion {
 };
 
 struct ContiguousAddressRegion : AddressRegion {
+#ifdef ENABLE_JSON
+  static std::shared_ptr<AddressRegion> from_json(nlohmann::json j);
+#endif
   ContiguousAddressRegion(addr_t lo, addr_t hi) : lo_(lo), hi_(hi) {}
-
   bool is_valid(addr_t addr) const override {
     return (addr >= lo_) && (addr < hi_);
   }
-
  private:
   addr_t lo_, hi_;
 };
 
 class Platform {
  public:
+#ifdef ENABLE_JSON
+  static Platform from_json(nlohmann::json j);
+#endif
+  Platform() : protocol_(Protocol::INVALID) {}
+  Platform(Protocol::type protocol) : protocol_(protocol) {}
+  
+  Protocol::type protocol() const { return protocol_; }
+  
   void add_agent(id_t id);
   void add_snoop_filter(id_t id, std::shared_ptr<AddressRegion>&& ar);
   void add_memory(id_t id);
@@ -70,6 +86,7 @@ class Platform {
  private:
   std::set<id_t> agent_ids_;
   std::map<id_t, std::shared_ptr<AddressRegion> > snoop_filters_;
+  Protocol::type protocol_;
   id_t memory_id_;
 };
 

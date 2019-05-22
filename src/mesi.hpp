@@ -91,7 +91,7 @@ class MesiAgentProtocol : public AgentProtocol {
   virtual ~MesiAgentProtocol();
 
   //
-  Protocol protocol() const override { return Protocol::MESI; }
+  Protocol::type protocol() const override { return Protocol::MESI; }
 
   //
   void init(CacheLine& l) const override;
@@ -116,7 +116,7 @@ class MesiSnoopFilterProtocol : public SnoopFilterProtocol {
   virtual ~MesiSnoopFilterProtocol();
 
   //
-  Protocol protocol() const override { return Protocol::MESI; }
+  Protocol::type protocol() const override { return Protocol::MESI; }
 
   //
   void init(DirectoryEntry& l) const override;

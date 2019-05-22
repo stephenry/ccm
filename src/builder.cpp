@@ -26,7 +26,30 @@
 //========================================================================== //
 
 #include "builder.hpp"
+#include "platform.hpp"
+#include "protocol.hpp"
+#include "agent.hpp"
+#include "snoopfilter.hpp"
 
 namespace ccm {
+
+void Builder::drc(nlohmann::json & h) {
+  // TODO: validate correctness of json format.
+}
+
+std::unique_ptr<Sim> Builder::construct(nlohmann::json & j) {
+  Builder::drc(j);
+  
+  std::unique_ptr<Sim> sim = std::make_unique<Sim>();
+
+  sim->platform_ = Platform::from_json(j);
+  for (nlohmann::json & j_agent : j["agents"])
+    sim->add_actor(AgentBuilder::construct(sim->platform(), j_agent));
+  for (nlohmann::json & j_snoop : j["snoopfilters"])
+    sim->add_actor(SnoopFilterBuilder::construct(sim->platform(), j_snoop));
+
+  return std::move(sim);
+}
+
 
 } // namespace ccm

@@ -90,7 +90,7 @@ class MsiAgentProtocol : public AgentProtocol {
   virtual ~MsiAgentProtocol();
 
   //
-  Protocol protocol() const override { return Protocol::MSI; }
+  Protocol::type protocol() const override { return Protocol::MSI; }
 
   //
   void init(CacheLine& l) const override;
@@ -115,7 +115,7 @@ class MsiSnoopFilterProtocol : public SnoopFilterProtocol {
   virtual ~MsiSnoopFilterProtocol();
 
   //
-  Protocol protocol() const override { return Protocol::MSI; }
+  Protocol::type protocol() const override { return Protocol::MSI; }
 
   //
   void init(DirectoryEntry& l) const override;

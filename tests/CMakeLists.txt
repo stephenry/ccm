@@ -34,8 +34,8 @@ endmacro ()
 
 macro (create_test fn)
   add_executable(${fn} ${fn}.cpp)
-  target_link_libraries(${fn} ccm gtest_main gtest pthread testcommon)
   target_include_directories(${fn} PUBLIC ${CMAKE_SOURCE_DIR}/src)
+  target_link_libraries(${fn} ccm gtest_main gtest pthread testcommon)
   add_test(NAME ${fn} COMMAND ${fn})
 endmacro ()
 

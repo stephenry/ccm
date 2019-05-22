@@ -34,6 +34,9 @@
 #include <optional>
 #include "types.hpp"
 #include "options.hpp"
+#ifdef ENABLE_JSON
+#  include <nlohmann/json.hpp>
+#endif
 
 namespace ccm {
 
@@ -45,15 +48,22 @@ using result_t = uint8_t;
 using state_t = uint8_t;
 using command_t = uint8_t;
 
-enum class Protocol { MSI,
+struct Protocol {
+  using type = uint8_t;
+  
+  enum : type { MSI,
 #ifdef ENABLE_MESI
-                      MESI,
+                MESI,
 #endif
 #ifdef ENABLE_MOSI
-                      MOSI,
+                MOSI,
 #endif
-                      INVALID };
-const char* to_string(Protocol p);
+                INVALID };
+  static const char* to_string(Protocol::type p);
+#ifdef ENABLE_JSON
+  static Protocol::type from_json(nlohmann::json j);
+#endif
+};
 
 // clang-format off
 #define AGENT_COMMANDS(__func)                  \
@@ -214,7 +224,7 @@ class ProtocolBase {
   ProtocolBase() {}
   virtual ~ProtocolBase() {}
 
-  virtual Protocol protocol() const = 0;
+  virtual Protocol::type protocol() const = 0;
 };
 
 class CacheLine {
@@ -262,7 +272,7 @@ class AgentProtocol : public ProtocolBase {
 };
 
 std::unique_ptr<AgentProtocol> agent_protocol_factory(
-    Protocol protocol, const Platform & platform);
+    Protocol::type protocol, const Platform & platform);
 
 class DirectoryEntry {
   friend std::string to_string(const DirectoryEntry& d);
@@ -306,7 +316,7 @@ class SnoopFilterProtocol : public ProtocolBase {
 };
 
 std::unique_ptr<SnoopFilterProtocol> snoop_filter_protocol_factory(
-    Protocol protocol);
+    Protocol::type protocol);
 
 struct CacheVisitor {
   virtual ~CacheVisitor() {}
@@ -345,7 +355,7 @@ class CoherenceProtocolValidator {
 };
 
 std::unique_ptr<CoherenceProtocolValidator>
-coherence_protocol_validator_factory(Protocol protocol);
+coherence_protocol_validator_factory(Protocol::type protocol);
 
 }  // namespace ccm
 

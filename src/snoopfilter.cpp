@@ -28,6 +28,14 @@
 #include "snoopfilter.hpp"
 
 namespace ccm {
+#ifdef ENABLE_JSON
+
+SnoopFilterOptions SnoopFilterOptions::from_json(
+    const Platform & platform, nlohmann::json & j) {
+  const id_t id = j["id"];
+  return SnoopFilterOptions(id, platform, CacheOptions::from_json(j["cache_options"]));
+}
+#endif
 
 SnoopFilterCommandInvoker::SnoopFilterCommandInvoker(
     const SnoopFilterOptions& opts)
@@ -393,5 +401,12 @@ void SnoopFilter::handle_msg(Context& context, Cursor& cursor,
 
   execute(context, cursor, actions, msg, directory_entry);
 }
+#ifdef ENABLE_JSON
+
+std::unique_ptr<SnoopFilter> SnoopFilterBuilder::construct(
+    const Platform & platform, nlohmann::json j) {
+  return std::make_unique<SnoopFilter>(SnoopFilterOptions::from_json(platform, j));
+}
+#endif
 
 }  // namespace ccm

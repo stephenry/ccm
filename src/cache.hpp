@@ -33,6 +33,10 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include "options.hpp"
+#ifdef ENABLE_JSON
+#  include <nlohmann/json.hpp>
+#endif
 #include "common.hpp"
 #include "platform.hpp"
 #include "utility.hpp"
@@ -62,8 +66,11 @@ const char* to_string(EvictionPolicy p);
 enum class CacheType { FullyAssociative };
 
 struct CacheOptions {
-  CacheType type() const { return type_; }
+#ifdef ENABLE_JSON
+  static CacheOptions from_json(nlohmann::json j);
+#endif
 
+  CacheType type() const { return type_; }
   void set_type(CacheType type) { type_ = type; }
 
   uint32_t sets_n{1 << 10};
