@@ -112,7 +112,7 @@ struct Agent : CoherentAgentCommandInvoker {
   void apply(TimeStamped<Message*> ts) override;
   void eval(Context& ctxt) override;
 
-  // private:
+ private:
   void fetch_transactions(std::size_t n = 10);
 
   void handle_msg(Context& ctxt, Cursor& cursor, TimeStamped<Message*> ts);
