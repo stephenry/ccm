@@ -36,6 +36,11 @@
 namespace ccm {
 
 void Builder::drc(nlohmann::json & j) {
+  if (!j["loglevel"])
+    j["loglevel"] = "error";
+  if (!j["name"])
+    j["name"] = "top";
+  
   drc_agents(j);
   drc_snoop_filters(j);
 }
