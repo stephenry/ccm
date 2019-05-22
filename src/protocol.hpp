@@ -39,6 +39,7 @@ namespace ccm {
 
 class Message;
 class Transaction;
+class Platform;
 
 using result_t = uint8_t;
 using state_t = uint8_t;
@@ -63,6 +64,8 @@ const char* to_string(Protocol p);
   __func(EmitGetM)                              \
   __func(EmitPutS)                              \
   __func(EmitPutM)                              \
+  __func(EmitPutE)                              \
+  __func(EmitPutO)                              \
   __func(EmitDataToReq)                         \
   __func(EmitDataToDir)                         \
   __func(EmitInvAck)
@@ -258,7 +261,8 @@ class AgentProtocol : public ProtocolBase {
                                        const CacheLine& cache_line) const = 0;
 };
 
-std::unique_ptr<AgentProtocol> agent_protocol_factory(Protocol protocol);
+std::unique_ptr<AgentProtocol> agent_protocol_factory(
+    Protocol protocol, const Platform & platform);
 
 class DirectoryEntry {
   friend std::string to_string(const DirectoryEntry& d);

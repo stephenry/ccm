@@ -42,6 +42,25 @@ class AgentMessageAdmissionControl : public MessageAdmissionControl {
     const CoherenceActions actions =
         agent_->cc_model_->get_actions(msg, cache_line);
 
+    // TODO: The simulator computes the set of permissible messages to
+    // issue to the agent without regard of the time of their
+    // arrival. Consequently, there may be some minor reordering,
+    // which is entirely consistent with a real system. Unfortunately,
+    // the protocol as defined in the spec. do not account for such
+    // reordering and instead mark such state transitions are
+    // impermissible. To account for this, whenever a transition is
+    // marked in error, the message is disallowed in this round.
+    //
+    // An Agent in the IS_D state awaits Data from the snoop filter
+    // but instead receives a FwdGet{S,M} from the snoop filter
+    // (placed into a separate message queue) because another agent
+    // has simultaneously requested the line in the S- or M- states.
+    // The IS_D <- FwdGet{S,M} transition is not defined in the
+    // blocking MESI protocol.
+    //
+    if (actions.error())
+      return false;
+
     switch (actions.result()) {
       case MessageResult::Stall:
         return false;
@@ -107,7 +126,7 @@ class AgentTransactionAdmissionControl : public TransactionAdmissionControl {
 CoherentAgentCommandInvoker::CoherentAgentCommandInvoker(
     const CoherentAgentOptions& opts)
     : CoherentActor(opts), msgd_(opts) {
-  cc_model_ = agent_protocol_factory(opts.protocol());
+  cc_model_ = agent_protocol_factory(opts.protocol(), opts.platform());
   cache_ = cache_factory<CacheLine>(opts.cache_options());
 }
 
@@ -147,6 +166,12 @@ void CoherentAgentCommandInvoker::execute(Context& context,
         break;
       case CoherentAgentCommand::EmitPutS:
         execute_emit_puts(context, cursor, t);
+        break;
+      case CoherentAgentCommand::EmitPutE:
+        execute_emit_pute(context, cursor, t);
+        break;
+      case CoherentAgentCommand::EmitPutO:
+        execute_emit_puto(context, cursor, t);
         break;
       case CoherentAgentCommand::EmitDataToDir:
         execute_emit_data_to_dir(context, cursor, t);
@@ -246,6 +271,38 @@ void CoherentAgentCommandInvoker::execute_emit_puts(Context& context,
 
   Message *msg = b.msg();
   log_debug("Sending PutS to home directory: ", to_string(*msg));
+  context.emit_message(TimeStamped{cursor.time(), msg});
+}
+
+void CoherentAgentCommandInvoker::execute_emit_pute(Context& context,
+                                                    const Cursor& cursor,
+                                                    const Transaction* t) {
+  const Platform platform = opts_.platform();
+  MessageBuilder b = msgd_.builder();
+
+  b.set_src_id(id());
+  b.set_type(MessageType::PutE);
+  b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
+  b.set_transaction(t);
+
+  Message *msg = b.msg();
+  log_debug("Sending PutE to home directory: ", to_string(*msg));
+  context.emit_message(TimeStamped{cursor.time(), msg});
+}
+
+void CoherentAgentCommandInvoker::execute_emit_puto(Context& context,
+                                                    const Cursor& cursor,
+                                                    const Transaction* t) {
+  const Platform platform = opts_.platform();
+  MessageBuilder b = msgd_.builder();
+
+  b.set_src_id(id());
+  b.set_type(MessageType::PutO);
+  b.set_dst_id(platform.get_snoop_filter_id(t->addr()));
+  b.set_transaction(t);
+
+  Message *msg = b.msg();
+  log_debug("Sending PutO to home directory: ", to_string(*msg));
   context.emit_message(TimeStamped{cursor.time(), msg});
 }
 

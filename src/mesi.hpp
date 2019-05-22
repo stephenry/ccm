@@ -87,7 +87,7 @@ struct MesiDirectoryLineState {
 
 class MesiAgentProtocol : public AgentProtocol {
  public:
-  MesiAgentProtocol(const CoherentAgentOptions& opts);
+  MesiAgentProtocol(const Platform & platform);
   virtual ~MesiAgentProtocol();
 
   //
@@ -112,7 +112,7 @@ class MesiAgentProtocol : public AgentProtocol {
 
 class MesiSnoopFilterProtocol : public SnoopFilterProtocol {
  public:
-  MesiSnoopFilterProtocol(const ActorOptions& opts);
+  MesiSnoopFilterProtocol();
   virtual ~MesiSnoopFilterProtocol();
 
   //

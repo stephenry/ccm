@@ -90,7 +90,7 @@ struct MosiDirectoryLineState {
 
 class MosiAgentProtocol : public AgentProtocol {
  public:
-  MosiAgentProtocol(const CoherentAgentOptions& opts);
+  MosiAgentProtocol(const Platform & platform);
   virtual ~MosiAgentProtocol();
 
   //
@@ -115,7 +115,7 @@ class MosiAgentProtocol : public AgentProtocol {
 
 class MosiSnoopFilterProtocol : public SnoopFilterProtocol {
  public:
-  MosiSnoopFilterProtocol(const ActorOptions& opts);
+  MosiSnoopFilterProtocol();
   virtual ~MosiSnoopFilterProtocol();
 
   //

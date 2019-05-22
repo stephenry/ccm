@@ -77,6 +77,10 @@ struct CoherentAgentCommandInvoker : CoherentActor {
                          const Transaction* t);
   void execute_emit_puts(Context& context, const Cursor& cursor,
                          const Transaction* t);
+  void execute_emit_pute(Context& context, const Cursor& cursor,
+                         const Transaction* t);
+  void execute_emit_puto(Context& context, const Cursor& cursor,
+                         const Transaction* t);
   void execute_emit_data_to_dir(Context& context, const Cursor& cursor,
                                 const Transaction * t);
   void execute_emit_data_to_req(Context& context, const Cursor& cursor,

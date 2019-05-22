@@ -62,7 +62,7 @@ const char* MesiDirectoryLineState::to_string(state_t state) {
 }
 
 struct MesiAgentProtocol::MesiAgentProtocolImpl {
-  MesiAgentProtocolImpl(const CoherentAgentOptions& opts) : opts_(opts) {}
+  MesiAgentProtocolImpl(const Platform & platform) : platform_(platform) {}
 
   void init(CacheLine& l) const { l.set_state(MesiAgentLineState::I); }
 
@@ -98,6 +98,10 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
 
       case TransactionType::Store:
         handle__Store(t, cache_line, actions);
+        break;
+
+      case TransactionType::Replacement:
+        handle_replacement(t, cache_line, actions);
         break;
 
       default:
@@ -225,6 +229,49 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
     }
   }
 
+  void handle_replacement(const Transaction* t, const CacheLine& cache_line,
+                    CoherenceActions& a) const {
+    switch (cache_line.state()) {
+      case MesiAgentLineState::IS_D:
+      case MesiAgentLineState::IM_AD:
+      case MesiAgentLineState::IM_A:
+      case MesiAgentLineState::SM_AD:
+      case MesiAgentLineState::SM_A:
+      case MesiAgentLineState::MI_A:
+      case MesiAgentLineState::EI_A:
+      case MesiAgentLineState::SI_A:
+      case MesiAgentLineState::II_A:
+        a.set_result(TransactionResult::Blocked);
+        break;
+        
+      case MesiAgentLineState::S:
+        a.append_command(CoherentAgentCommand::EmitPutS);
+        a.append_command(CoherentAgentCommand::UpdateState);
+        a.set_next_state(MesiAgentLineState::SI_A);
+        a.set_result(TransactionResult::Consumed);
+        break;
+        
+      case MesiAgentLineState::M:
+        a.append_command(CoherentAgentCommand::EmitPutM);
+        a.append_command(CoherentAgentCommand::EmitDataToDir);
+        a.append_command(CoherentAgentCommand::UpdateState);
+        a.set_next_state(MesiAgentLineState::MI_A);
+        a.set_result(TransactionResult::Consumed);
+        break;
+        
+      case MesiAgentLineState::E:
+        a.append_command(CoherentAgentCommand::EmitPutE);
+        a.append_command(CoherentAgentCommand::UpdateState);
+        a.set_next_state(MesiAgentLineState::EI_A);
+        a.set_result(TransactionResult::Consumed);
+        break;
+
+      default:
+        a.set_error(true);
+        break;
+    }
+  }
+
   void handle__FwdGetS(const Message* m, const CacheLine& cache_line,
                        CoherenceActions& a) const {
     switch (cache_line.state()) {
@@ -294,12 +341,8 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
   void handle__Inv(const Message* m, const CacheLine& cache_line,
                    CoherenceActions& a) const {
     if (m->is_ack()) {
-      const bool is_last_ack = (cache_line.ack_count() == 1);
-
-      a.append_command(CoherentAgentCommand::SetAckCount);
-      a.set_ack_count(cache_line.ack_count() - 1);
-
-      if (is_last_ack) {
+      a.append_command(CoherentAgentCommand::IncAckCount);
+      if (cache_line.is_last_inv_ack()) {
         switch (cache_line.state()) {
           case MesiAgentLineState::IM_A:
           case MesiAgentLineState::SM_A:
@@ -368,13 +411,9 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
 
   void handle__Data(const Message* m, const CacheLine& cache_line,
                     CoherenceActions& a) const {
-    const Platform platform = opts_.platform();
-    const bool is_from_dir = platform.is_valid_snoop_filter_id(m->src_id());
-
+    const bool is_from_dir = platform_.is_valid_snoop_filter_id(m->src_id());
     const bool is_exclusive_data_from_dir = is_from_dir && m->is_exclusive();
-
     const bool is_data_from_dir_ack_zero = is_from_dir && (m->ack_count() == 0);
-
     const bool is_data_from_dir_ack_non_zero =
         is_from_dir && (m->ack_count() != 0);
 
@@ -417,6 +456,8 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
       }
 
     } else if (is_data_from_dir_ack_non_zero) {
+      a.append_command(CoherentAgentCommand::SetAckExpectCount);
+      a.set_ack_count(m->ack_count());
       switch (cache_line.state()) {
         case MesiAgentLineState::IM_AD:
           a.append_command(CoherentAgentCommand::UpdateState);
@@ -437,12 +478,11 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
     }
   }
 
-  const CoherentAgentOptions opts_;
+  const Platform platform_;
 };
 
-MesiAgentProtocol::MesiAgentProtocol(const CoherentAgentOptions& opts)
-    : AgentProtocol(opts) {
-  impl_ = std::make_unique<MesiAgentProtocolImpl>(opts);
+MesiAgentProtocol::MesiAgentProtocol(const Platform & platform) {
+  impl_ = std::make_unique<MesiAgentProtocolImpl>(platform);
 }
 
 MesiAgentProtocol::~MesiAgentProtocol() {}
@@ -468,7 +508,7 @@ CoherenceActions MesiAgentProtocol::get_actions(
 }
 
 struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
-  MesiSnoopFilterProtocolImpl(const ActorOptions& opts) : opts_(opts) {}
+  MesiSnoopFilterProtocolImpl() {}
 
   void init(DirectoryEntry& l) const { l.set_state(MesiDirectoryLineState::I); }
 
@@ -763,13 +803,10 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
         break;
     }
   }
-
-  const ActorOptions opts_;
 };
 
-MesiSnoopFilterProtocol::MesiSnoopFilterProtocol(const ActorOptions& opts)
-    : SnoopFilterProtocol(opts) {
-  impl_ = std::make_unique<MesiSnoopFilterProtocolImpl>(opts);
+MesiSnoopFilterProtocol::MesiSnoopFilterProtocol() {
+  impl_ = std::make_unique<MesiSnoopFilterProtocolImpl>();
 }
 
 MesiSnoopFilterProtocol::~MesiSnoopFilterProtocol() {}

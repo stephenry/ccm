@@ -39,6 +39,7 @@
 namespace ccm {
 
 const char *MsiAgentLineState::to_string(state_t s) {
+  // clang-format off
   switch (s) {
 #define __declare_to_string(__e) \
   case MsiAgentLineState::__e:   \
@@ -48,6 +49,7 @@ const char *MsiAgentLineState::to_string(state_t s) {
     default:
       return "<Invalid Line State>";
   }
+  // clang-format on
 }
 
 bool MsiAgentLineState::is_stable(state_t s) {
@@ -62,7 +64,7 @@ bool MsiAgentLineState::is_stable(state_t s) {
 }
 
 struct MsiAgentProtocol::MsiAgentProtocolImpl {
-  MsiAgentProtocolImpl() {}
+  MsiAgentProtocolImpl(const Platform & platform) : platform_(platform) {}
 
   void init(CacheLine &l) const {
     l.set_state(static_cast<CacheLine::state_type>(MsiAgentLineState::I));
@@ -81,15 +83,15 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
     CoherenceActions actions;
     switch (t->type()) {
       case TransactionType::Load:
-        handle__Load(t, cache_line, actions);
+        handle_load(t, cache_line, actions);
         break;
 
       case TransactionType::Store:
-        handle__Store(t, cache_line, actions);
+        handle_store(t, cache_line, actions);
         break;
 
       case TransactionType::Replacement:
-        handle__Replacement(t, cache_line, actions);
+        handle_replacement(t, cache_line, actions);
         break;
         
       case TransactionType::Invalid:
@@ -103,24 +105,24 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
     CoherenceActions actions;
     switch (m->type()) {
       case MessageType::FwdGetS:
-        handle__FwdGetS(m, cache_line, actions);
+        handle_fwd_gets(m, cache_line, actions);
         break;
 
       case MessageType::FwdGetM:
-        handle__FwdGetM(m, cache_line, actions);
+        handle_fwd_getm(m, cache_line, actions);
         break;
 
       case MessageType::Inv:
-        handle__Inv(m, cache_line, actions);
+        handle_inv(m, cache_line, actions);
         break;
 
       case MessageType::PutS:
       case MessageType::PutM:
-        handle__PutAck(m, cache_line, actions);
+        handle_put_ack(m, cache_line, actions);
         break;
 
       case MessageType::Data:
-        handle__Data(m, cache_line, actions);
+        handle_data(m, cache_line, actions);
         break;
 
       default:
@@ -131,7 +133,7 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
 
   bool message_requires_eviction(const Message *m) { return false; }
 
-  void handle__Load(const Transaction *t, const CacheLine &cache_line,
+  void handle_load(const Transaction *t, const CacheLine &cache_line,
                     CoherenceActions &a) const {
     switch (cache_line.state()) {
       case MsiAgentLineState::I:
@@ -162,7 +164,7 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
     }
   }
 
-  void handle__Store(const Transaction *t, const CacheLine &cache_line,
+  void handle_store(const Transaction *t, const CacheLine &cache_line,
                      CoherenceActions &a) const {
     switch (cache_line.state()) {
       case MsiAgentLineState::I:
@@ -199,7 +201,7 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
     }
   }
 
-  void handle__Replacement(const Transaction *t, const CacheLine &cache_line,
+  void handle_replacement(const Transaction *t, const CacheLine &cache_line,
                            CoherenceActions &a) const {
     switch (cache_line.state()) {
       case MsiAgentLineState::S:
@@ -235,7 +237,7 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
     }
   }
 
-  void handle__FwdGetS(const Message *m, const CacheLine &cache_line,
+  void handle_fwd_gets(const Message *m, const CacheLine &cache_line,
                        CoherenceActions &a) const {
     switch (cache_line.state()) {
       case MsiAgentLineState::IM_AD:
@@ -266,7 +268,7 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
     }
   }
 
-  void handle__FwdGetM(const Message *m, const CacheLine &cache_line,
+  void handle_fwd_getm(const Message *m, const CacheLine &cache_line,
                        CoherenceActions &a) const {
     switch (cache_line.state()) {
       case MsiAgentLineState::IM_AD:
@@ -295,7 +297,7 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
     }
   }
 
-  void handle__Inv(const Message *m, const CacheLine &cache_line,
+  void handle_inv(const Message *m, const CacheLine &cache_line,
                    CoherenceActions &a) const {
     if (m->is_ack()) {
       const bool is_last_ack = cache_line.is_last_inv_ack();
@@ -352,7 +354,7 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
     }
   }
 
-  void handle__PutAck(const Message *m, const CacheLine &cache_line,
+  void handle_put_ack(const Message *m, const CacheLine &cache_line,
                       CoherenceActions &a) const {
     switch (cache_line.state()) {
       case MsiAgentLineState::MI_A:
@@ -368,7 +370,7 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
     }
   }
 
-  void handle__Data(const Message *m, const CacheLine &cache_line,
+  void handle_data(const Message *m, const CacheLine &cache_line,
                     CoherenceActions &a) const {
     // The snoop filter advertises that this Data is unique and that
     // the agent need not block awaiting invalidation acknowledgements
@@ -431,10 +433,12 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
       }
     }
   }
+
+  const Platform platform_;
 };
 
-MsiAgentProtocol::MsiAgentProtocol() {
-  impl_ = std::make_unique<MsiAgentProtocolImpl>();
+MsiAgentProtocol::MsiAgentProtocol(const Platform & platform) {
+  impl_ = std::make_unique<MsiAgentProtocolImpl>(platform);
 }
 
 MsiAgentProtocol::~MsiAgentProtocol(){};
@@ -492,23 +496,23 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
     CoherenceActions actions;
     switch (m->type()) {
       case MessageType::GetS:
-        handle__GetS(m, dir_entry, actions);
+        handle_gets(m, dir_entry, actions);
         break;
 
       case MessageType::GetM:
-        handle__GetM(m, dir_entry, actions);
+        handle_getm(m, dir_entry, actions);
         break;
 
       case MessageType::PutS:
-        handle__PutS(m, dir_entry, actions);
+        handle_puts(m, dir_entry, actions);
         break;
 
       case MessageType::PutM:
-        handle__PutM(m, dir_entry, actions);
+        handle_putm(m, dir_entry, actions);
         break;
 
       case MessageType::Data:
-        handle__Data(m, dir_entry, actions);
+        handle_data(m, dir_entry, actions);
         break;
 
       default:
@@ -518,20 +522,20 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
   }
 
  private:
-  void handle__GetS(const Message *m, const DirectoryEntry &dir_entry,
+  void handle_gets(const Message *m, const DirectoryEntry &dir_entry,
                     CoherenceActions &a) const {
     switch (dir_entry.state()) {
       case MsiDirectoryLineState::I:
-        a.append_command(SnoopFilterCommand::SendDataToReq);
         a.set_ack_count(0);
+        a.append_command(SnoopFilterCommand::SendDataToReq);
         a.append_command(SnoopFilterCommand::AddReqToSharers);
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::S);
         break;
 
       case MsiDirectoryLineState::S:
+        a.set_ack_count(0);
         a.append_command(SnoopFilterCommand::SendDataToReq);
-        a.set_ack_count(0);  // TODO
         a.append_command(SnoopFilterCommand::AddReqToSharers);
         break;
 
@@ -544,8 +548,7 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
         break;
 
       case MsiDirectoryLineState::S_D:
-        // TODO
-        //        a.set_stall();
+        a.set_result(MessageResult::Stall);
         break;
 
       default:
@@ -553,7 +556,7 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle__GetM(const Message *m, const DirectoryEntry &dir_entry,
+  void handle_getm(const Message *m, const DirectoryEntry &dir_entry,
                     CoherenceActions &a) const {
     switch (dir_entry.state()) {
       case MsiDirectoryLineState::I:
@@ -578,7 +581,7 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
         break;
 
       case MsiDirectoryLineState::S_D:
-        //        a.set_stall();
+        a.set_result(MessageResult::Stall);
         break;
 
       default:
@@ -586,7 +589,7 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle__PutS(const Message *m, const DirectoryEntry &dir_entry,
+  void handle_puts(const Message *m, const DirectoryEntry &dir_entry,
                     CoherenceActions &a) const {
     const bool is_last = false;  // TODO
     switch (dir_entry.state()) {
@@ -618,7 +621,7 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle__PutM(const Message *m, const DirectoryEntry &dir_entry,
+  void handle_putm(const Message *m, const DirectoryEntry &dir_entry,
                     CoherenceActions &a) const {
     const bool is_data_from_owner = false;  // TODO
     switch (dir_entry.state()) {
@@ -657,7 +660,7 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle__Data(const Message *m, const DirectoryEntry &dir_entry,
+  void handle_data(const Message *m, const DirectoryEntry &dir_entry,
                     CoherenceActions &a) const {
     switch (dir_entry.state()) {
       case MsiDirectoryLineState::S_D:

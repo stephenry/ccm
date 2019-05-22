@@ -41,12 +41,12 @@ const char* to_string(Protocol p) {
     case Protocol::MSI:
       return "MSI";
       break;
-#ifdef MESI
+#ifdef ENABLE_MESI
     case Protocol::MESI:
       return "MESI";
       break;
 #endif
-#ifdef MOSI
+#ifdef ENABLE_MOSI
     case Protocol::MOSI:
       return "MOSI";
       break;
@@ -158,19 +158,19 @@ bool CacheLine::is_last_inv_ack() const {
 AgentProtocol::AgentProtocol() {}
 
 std::unique_ptr<AgentProtocol> agent_protocol_factory(
-    Protocol protocol) {
+    Protocol protocol, const Platform & platform) {
   switch (protocol) {
     case Protocol::MSI:
-      return std::make_unique<MsiAgentProtocol>();
+      return std::make_unique<MsiAgentProtocol>(platform);
       break;
-#ifdef MESI
+#ifdef ENABLE_MESI
     case Protocol::MESI:
-      return std::make_unique<MesiCoherentAgentModel>();
+      return std::make_unique<MesiAgentProtocol>(platform);
       break;
 #endif
-#ifdef MOSI
+#ifdef ENABLE_MOSI
     case Protocol::MOSI:
-      return std::make_unique<MosiCoherentAgentModel>();
+      return std::make_unique<MosiAgentProtocol>(platform);
       break;
 #endif
     default:
@@ -204,12 +204,12 @@ std::unique_ptr<SnoopFilterProtocol> snoop_filter_protocol_factory(
     case Protocol::MSI:
       return std::make_unique<MsiSnoopFilterProtocol>();
       break;
-#ifdef MESI
+#ifdef ENABLE_MESI
     case Protocol::MESI:
       return std::make_unique<MesiSnoopFilterProtocol>();
       break;
 #endif
-#ifdef MOSI
+#ifdef ENABLE_MOSI
     case Protocol::MOSI:
       return std::make_unique<MosiSnoopFilterProtocol>();
       break;
@@ -269,14 +269,14 @@ coherence_protocol_validator_factory(Protocol protocol) {
     case Protocol::MSI:
       return std::make_unique<MsiCoherenceProtocolValidator>();
       break;
-#ifdef MESI
+#ifdef ENABLE_MESI
     case Protocol::MESI:
-      return std::make_unique<MesiProtocolValidator>();
+      return std::make_unique<MesiCoherenceProtocolValidator>();
       break;
 #endif
-#ifdef MOSI
+#ifdef ENABLE_MOSI
     case Protocol::MOSI:
-      return std::make_unique<MosiProtocolValidator>();
+      return std::make_unique<MosiCoherenceProtocolValidator>();
       break;
 #endif
   }

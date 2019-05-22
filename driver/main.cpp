@@ -96,7 +96,7 @@ struct Driver {
   static void parse_command_line(Options & opts,
                                  const std::vector<const char *> & args) {
     std::size_t i = 1;
-    auto next = [&]() -> std::string {
+    auto shift = [&]() -> std::string {
       if (++i < args.size())
         return args[i];
       else
@@ -109,9 +109,9 @@ struct Driver {
         if (sstr == "-h" || sstr == "--help") {
           help();
         } else if (sstr == "-p" || sstr == "--protocol") {
-          opts.protocol = string_to_protocol(next());
+          opts.protocol = string_to_protocol(shift());
         } else if (sstr == "-a" || sstr == "--agents") {
-          opts.agents = std::stoull(next());
+          opts.agents = std::stoull(shift());
         } else {
           help();
         }

@@ -86,7 +86,7 @@ struct MsiDirectoryLineState {
 
 class MsiAgentProtocol : public AgentProtocol {
  public:
-  MsiAgentProtocol();
+  MsiAgentProtocol(const Platform & platform);
   virtual ~MsiAgentProtocol();
 
   //
