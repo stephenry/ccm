@@ -26,6 +26,7 @@
 //========================================================================== //
 
 #include "protocol.hpp"
+#include "interconnect.hpp"
 #include "msi.hpp"
 #ifdef ENABLE_MESI
 #  include "mesi.hpp"

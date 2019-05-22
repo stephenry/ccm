@@ -30,8 +30,10 @@
 
 #include <map>
 #include <vector>
+#include "types.hpp"
 #include "utility.hpp"
 #include "platform.hpp"
+#include "log.hpp"
 
 namespace ccm {
 
@@ -39,8 +41,7 @@ class Message;
 class Transaction;
 class CoherentActor;
 class CoherenceProtocolValidator;
-
-using Time = unsigned long long;
+class InterconnectModel;
 
 std::string to_string(const Time &t);
 
@@ -229,23 +230,26 @@ class RunOptions {
 struct Sim {
   friend class Builder;
   
-  Sim() : time_(0) {}
+  Sim();
+  ~Sim();
 
   const Platform & platform() const { return platform_; }
 
   void add_actor(std::unique_ptr<CoherentActor> && actor);
+  void add_interconnect(std::unique_ptr<InterconnectModel> && inter);
 
   void run(const RunOptions &run_options = RunOptions{});
 
  private:
   void set_time(Time time) { time_ = time; }
   Time time() const { return time_; }
-
   bool has_active_actors() const;
 
   Platform platform_;
   Time time_;
   std::map<std::size_t, std::unique_ptr<CoherentActor> > actors_;
+  std::unique_ptr<InterconnectModel> interconnect_;
+  Logger logger_;
 };
 
 }  // namespace ccm

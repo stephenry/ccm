@@ -37,7 +37,6 @@
 namespace ccm {
 
 class Message;
-class Epoch;
 class Context;
 class Cursor;
 class MessageBuilder;
@@ -59,7 +58,7 @@ struct ActorOptions {
 
 struct CoherentActor : Loggable {
   CoherentActor(const ActorOptions &opts) : opts_(opts), time_(0) {}
-  virtual ~CoherentActor() {}
+  virtual ~CoherentActor();
 
   Time time() const override { return time_; }
   id_t id() const { return opts_.id(); }

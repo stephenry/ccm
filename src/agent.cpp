@@ -29,12 +29,17 @@
 #include <queue>
 #include "common.hpp"
 #include "protocol.hpp"
+#include "log.hpp"
 
 namespace ccm {
 #ifdef ENABLE_JSON
-AgentOptions AgentOptions::from_json(const Platform & platform, nlohmann::json j) {
+
+AgentOptions AgentOptions::from_json(
+    const Platform & platform, LoggerScope * l, nlohmann::json j) {
   const id_t id = j["id"];
-  return AgentOptions(id, platform, CacheOptions::from_json(j["cache_options"]));
+  AgentOptions opts{id, platform, CacheOptions::from_json(j["cache_options"])};
+  opts.set_logger_scope(l->child_scope(j["name"]));
+  return opts;
 }
 #endif
 
@@ -547,8 +552,8 @@ bool Agent::is_active() const { return !qmgr_.empty(); }
 
 #ifdef ENABLE_JSON
 std::unique_ptr<Agent> AgentBuilder::construct(
-    const Platform & platform, nlohmann::json j) {
-  return std::make_unique<Agent>(AgentOptions::from_json(platform, j));
+    const Platform & platform, LoggerScope * l, nlohmann::json j) {
+  return std::make_unique<Agent>(AgentOptions::from_json(platform, l, j));
 }
 #endif
 }  // namespace ccm

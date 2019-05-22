@@ -26,6 +26,7 @@
 //========================================================================== //
 
 #include "message.hpp"
+#include "interconnect.hpp"
 #include <sstream>
 
 namespace ccm {

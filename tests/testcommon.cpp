@@ -41,6 +41,7 @@ BasicPlatform::BasicPlatform(Sim& sim, Protocol::type protocol, std::size_t agen
   for (std::size_t i = 0; i < agents_n; i++) construct_agent(i);
   construct_snoop_filter(4);
   construct_memory(platform_.memory_id());
+  construct_interconnect();
 
   validator_ = coherence_protocol_validator_factory(protocol);
 }
@@ -94,6 +95,10 @@ void BasicPlatform::construct_memory(id_t id) {
   std::unique_ptr<Memory> mem = std::make_unique<Memory>(opts);
   memories_.push_back(mem.get());
   sim_.add_actor(std::move(mem));
+}
+
+void BasicPlatform::construct_interconnect() {
+  sim_.add_interconnect(std::make_unique<FixedLatencyInterconnectModel>(10));
 }
 
 }  // namespace ccm::test

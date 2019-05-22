@@ -26,11 +26,23 @@
 //========================================================================== //
 
 #include "log.hpp"
-#include "actor.hpp"
 
 namespace ccm {
 
-const char* to_string(LogLevel ll) {
+LogLevel::type LogLevel::from_string(const std::string & s) {
+  if (s == "debug")
+    return LogLevel::debug;
+  if (s == "info")
+    return LogLevel::info;
+  if (s == "warning")
+    return LogLevel::warning;
+  if (s == "error")
+    return LogLevel::error;
+
+  return LogLevel::fatal;
+}
+
+const char* LogLevel::to_string(LogLevel::type ll) {
   switch (ll) {
 // clang-format off
 #define __declare_to_string(__level) \
@@ -47,12 +59,11 @@ const char* to_string(LogLevel ll) {
 
 const char LoggerScope::SEP = '.';
 
-Logger::Logger() {}
-
+Logger::Logger(LogLevel::type llevel) : llevel_(llevel) {}
 Logger::~Logger() { os_.flush(); }
 
-LoggerScope* Logger::top() {
-  if (!top_) top_ = std::unique_ptr<LoggerScope>(new LoggerScope("t", this));
+LoggerScope* Logger::top(const std::string & top) {
+  if (!top_) top_ = std::unique_ptr<LoggerScope>(new LoggerScope(top, this));
 
   return top_.get();
 }
@@ -70,12 +81,12 @@ LoggerScope* LoggerScope::child_scope(const std::string& leaf) {
   return scopes_[leaf].get();
 }
 
-void Logger::log(const LogLevel ll, const std::string& s) {
+void Logger::log(const LogLevel::type ll, const std::string& s) {
   os_ << s << "\n";
   if (force_flush_) os_.flush();
 }
 
-void Logger::log(const LogLevel ll, const char* s) {
+void Logger::log(const LogLevel::type ll, const char* s) {
   os_ << s << "\n";
   if (force_flush_) os_.flush();
 }

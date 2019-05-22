@@ -48,6 +48,7 @@ struct BasicPlatform {
   void construct_snoop_filter(std::size_t id);
   void construct_agent(std::size_t id);
   void construct_memory(std::size_t id);
+  void construct_interconnect();
 
   Logger logger_;
   LoggerScope *top_;

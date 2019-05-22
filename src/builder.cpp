@@ -26,15 +26,40 @@
 //========================================================================== //
 
 #include "builder.hpp"
+#include <sstream>
 #include "platform.hpp"
 #include "protocol.hpp"
 #include "agent.hpp"
 #include "snoopfilter.hpp"
+#include "interconnect.hpp"
 
 namespace ccm {
 
-void Builder::drc(nlohmann::json & h) {
-  // TODO: validate correctness of json format.
+void Builder::drc(nlohmann::json & j) {
+  drc_agents(j);
+  drc_snoop_filters(j);
+}
+
+void Builder::drc_agents(nlohmann::json & j) {
+  std::size_t idx{0};
+  for (nlohmann::json & j_agent : j["agents"]) {
+    if (!j_agent["name"]) {
+      std::stringstream ss;
+      ss << "UnknownAgent" << idx++;
+      j_agent["name"] = ss.str();
+    }
+  }
+}
+
+void Builder::drc_snoop_filters(nlohmann::json & j) {
+  std::size_t idx{0};
+  for (nlohmann::json & j_snoop : j["snoopfilters"]) {
+    if (!j_snoop["name"]) {
+      std::stringstream ss;
+      ss << "UnknownSnoopFilter" << idx++;
+      j_snoop["name"] = ss.str();
+    }
+  }
 }
 
 std::unique_ptr<Sim> Builder::construct(nlohmann::json & j) {
@@ -42,11 +67,20 @@ std::unique_ptr<Sim> Builder::construct(nlohmann::json & j) {
   
   std::unique_ptr<Sim> sim = std::make_unique<Sim>();
 
+  // Setup logger
+  sim->logger_.set_llevel(LogLevel::from_string(j["loglevel"]));
+  LoggerScope * l = sim->logger_.top(j["name"]);
+  
   sim->platform_ = Platform::from_json(j);
+  // Agents
   for (nlohmann::json & j_agent : j["agents"])
-    sim->add_actor(AgentBuilder::construct(sim->platform(), j_agent));
+    sim->add_actor(AgentBuilder::construct(sim->platform(), l, j_agent));
+  // Snoopfilters
   for (nlohmann::json & j_snoop : j["snoopfilters"])
-    sim->add_actor(SnoopFilterBuilder::construct(sim->platform(), j_snoop));
+    sim->add_actor(SnoopFilterBuilder::construct(sim->platform(), l, j_snoop));
+
+  // Interconnect
+  sim->add_interconnect(InterconnectModel::from_json(j["interconnect"]));
 
   return std::move(sim);
 }

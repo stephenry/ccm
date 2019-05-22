@@ -31,9 +31,11 @@ namespace ccm {
 #ifdef ENABLE_JSON
 
 SnoopFilterOptions SnoopFilterOptions::from_json(
-    const Platform & platform, nlohmann::json & j) {
+    const Platform & platform, LoggerScope *l, nlohmann::json & j) {
   const id_t id = j["id"];
-  return SnoopFilterOptions(id, platform, CacheOptions::from_json(j["cache_options"]));
+  SnoopFilterOptions opts{id, platform, CacheOptions::from_json(j["cache_options"])};
+  opts.set_logger_scope(l->child_scope(j["name"]));
+  return opts;
 }
 #endif
 
@@ -404,8 +406,9 @@ void SnoopFilter::handle_msg(Context& context, Cursor& cursor,
 #ifdef ENABLE_JSON
 
 std::unique_ptr<SnoopFilter> SnoopFilterBuilder::construct(
-    const Platform & platform, nlohmann::json j) {
-  return std::make_unique<SnoopFilter>(SnoopFilterOptions::from_json(platform, j));
+    const Platform & platform, LoggerScope * l, nlohmann::json j) {
+  return std::make_unique<SnoopFilter>(
+      SnoopFilterOptions::from_json(platform, l, j));
 }
 #endif
 

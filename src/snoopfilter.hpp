@@ -36,10 +36,13 @@
 
 namespace ccm {
 
+class LoggerScope;
+
 struct SnoopFilterOptions : CoherentAgentOptions {
 #ifdef ENABLE_JSON
-  static SnoopFilterOptions from_json(const Platform & platform,
-                                      nlohmann::json & j);
+  static SnoopFilterOptions from_json(
+      const Platform & platform, LoggerScope * l, nlohmann::json & j);
+                                      
 #endif
 
   SnoopFilterOptions(std::size_t id, const Platform & platform,
@@ -122,7 +125,7 @@ struct SnoopFilter : SnoopFilterCommandInvoker {
 
 struct SnoopFilterBuilder {
   static std::unique_ptr<SnoopFilter> construct(
-      const Platform & platform, nlohmann::json j);
+      const Platform & platform, LoggerScope * l, nlohmann::json j);
 };
 #endif
 

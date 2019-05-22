@@ -1,13 +1,15 @@
 {
     "protocol" : "msi",
+    "name" : "top",
     "agents" : [
-        { "id" : 0, "cache_options" : [] },
-        { "id" : 1, "cache_options" : [] },
-        { "id" : 2, "cache_options" : [] },
-        { "id" : 3, "cache_options" : [] },
+        { "id" : 0, "name" : "agent0", "cache_options" : [] },
+        { "id" : 1, "name" : "agent1", "cache_options" : [] },
+        { "id" : 2, "name" : "agent2", "cache_options" : [] },
+        { "id" : 3, "name" : "agent3", "cache_options" : [] },
     ],
     "snoopfilters" : [
-        { "id": 4,
+        { "id" : 4,
+          "name" : "snoopfilter",
           "cache_options" : [],
           "aperture" : { "type" : "contiguous",
                          "lo" : 0,
@@ -19,5 +21,6 @@
         "options" : {
             "latency" : 10
         }
-    }
+    },
+    "loglevel" : "debug"
 }

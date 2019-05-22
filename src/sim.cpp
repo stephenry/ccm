@@ -218,13 +218,19 @@ bool RunOptions::has_completed(Time current) const {
   return ret;
 }
 
+Sim::Sim() : time_(0) {}
+Sim::~Sim() {}
+
 void Sim::add_actor(std::unique_ptr<CoherentActor> && actor) {
   actors_.insert(std::make_pair(actor->id(), std::move(actor)));
 }
 
-void Sim::run(const RunOptions &run_options) {
-  FixedLatencyInterconnectModel interconnect_model{10};
+void Sim::add_interconnect(
+    std::unique_ptr<InterconnectModel> && interconnect) {
+  interconnect_ = std::move(interconnect);
+}
 
+void Sim::run(const RunOptions &run_options) {
   Epoch current_epoch{0, 20, 10};
   do {
     if (run_options.has_completed(current_epoch.start())) break;
@@ -234,7 +240,7 @@ void Sim::run(const RunOptions &run_options) {
       it->second->eval(ctxt);
 
     for (TimeStamped<Message *> ts : ctxt.msgs_) {
-      interconnect_model.apply(ts);
+      interconnect_->apply(ts);
 
       const Message *msg = ts.t();
       actors_[msg->dst_id()]->apply(ts);

@@ -34,6 +34,7 @@ namespace ccm {
 
 using addr_t = std::size_t;
 using id_t = std::size_t;
+using Time = std::size_t;
 
 } // namespace ccm
 

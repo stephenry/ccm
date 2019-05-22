@@ -30,6 +30,11 @@
 
 #include "sim.hpp"
 #include "utility.hpp"
+#include "options.hpp"
+#ifdef ENABLE_JSON
+#  include <nlohmann/json.hpp>
+#  include <memory>
+#endif
 
 namespace ccm {
 
@@ -37,8 +42,11 @@ class Frontier;
 class Message;
 
 struct InterconnectModel {
+#ifdef ENABLE_JSON
+  static std::unique_ptr<InterconnectModel> from_json(nlohmann::json & j);
+#endif
   InterconnectModel() {}
-  virtual ~InterconnectModel() {}
+  virtual ~InterconnectModel();
 
   void apply(TimeStamped<Message *> &ts);
 
@@ -48,7 +56,11 @@ struct InterconnectModel {
 };
 
 struct FixedLatencyInterconnectModel : InterconnectModel {
+#ifdef ENABLE_JSON
+  static std::unique_ptr<InterconnectModel> from_json(nlohmann::json & j);
+#endif
   FixedLatencyInterconnectModel(std::size_t latency) : latency_(latency) {}
+  virtual ~FixedLatencyInterconnectModel();
 
  private:
   std::size_t cost(std::size_t src_id, std::size_t dst_id) override {

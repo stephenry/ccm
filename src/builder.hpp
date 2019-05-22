@@ -37,6 +37,8 @@ struct Builder {
   static std::unique_ptr<Sim> construct(nlohmann::json & j);
  private:
   static void drc(nlohmann::json & j);
+  static void drc_agents(nlohmann::json & j);
+  static void drc_snoop_filters(nlohmann::json & j);
 };
 
 } // namespace ccm

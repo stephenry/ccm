@@ -28,7 +28,6 @@
 #ifndef __SRC_AGENT_HPP__
 #define __SRC_AGENT_HPP__
 
-#include <deque>
 #include "coherence.hpp"
 #include "message.hpp"
 #include "sim.hpp"
@@ -40,13 +39,15 @@
 
 namespace ccm {
 
+class LoggerScope;
 struct TransactionSource;
 
 struct AgentOptions : CoherentAgentOptions {
   AgentOptions(std::size_t id, Platform platform, CacheOptions cache_options)
       : CoherentAgentOptions(id, platform, cache_options) {}
 #ifdef ENABLE_JSON
-  static AgentOptions from_json(const Platform & platform, nlohmann::json j);
+  static AgentOptions from_json(
+      const Platform & platform, LoggerScope *l, nlohmann::json j);
 #endif
 };
 
@@ -129,7 +130,7 @@ struct Agent : CoherentAgentCommandInvoker {
 
 struct AgentBuilder {
   static std::unique_ptr<Agent> construct(
-      const Platform & platform, nlohmann::json j);
+      const Platform & platform, LoggerScope * l, nlohmann::json j);
 };
 #endif
 

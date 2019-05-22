@@ -27,8 +27,11 @@
 
 #include "actor.hpp"
 #include "message.hpp"
+#include "interconnect.hpp"
 
 namespace ccm {
+
+CoherentActor::~CoherentActor() {}
 
 void CoherentActor::emit_message(Context& context, Cursor& cursor,
                                  MessageBuilder& b) {

@@ -33,7 +33,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
-#include "sim.hpp"
+#include "types.hpp"
 
 namespace ccm {
 
@@ -47,14 +47,18 @@ namespace ccm {
 // clang-format on
 
 // clang-format off
-enum class LogLevel {
+struct LogLevel {
+  using type = uint8_t;
+  
+  enum : type {
 #define __declare_level(__level) __level,
   LOGLEVELS(__declare_level)
 #undef __declare_level
+  };
+  static type from_string(const std::string & s);
+  static const char* to_string(type ll);
 };
 // clang-format on
-
-const char* to_string(LogLevel ll);
 
 class LoggerScope;
 
@@ -62,19 +66,21 @@ class Logger {
   friend class LoggerScope;
 
  public:
-  Logger();
+  explicit Logger(LogLevel::type llevel = LogLevel::debug);
   ~Logger();
 
-  LoggerScope* top();
+  LoggerScope* top(const std::string & top = "t");
+  void set_llevel(LogLevel::type llevel) { llevel_ = llevel; }
   void set_force_flush(bool force_flush = true) { force_flush_ = force_flush; }
 
  private:
-  void log(const LogLevel ll, const std::string& s);
-  void log(const LogLevel ll, const char* s);
+  void log(const LogLevel::type ll, const std::string& s);
+  void log(const LogLevel::type ll, const char* s);
 
   std::ostream& os_{std::cout};
   std::unique_ptr<LoggerScope> top_{nullptr};
   bool force_flush_{false};
+  LogLevel::type llevel_{LogLevel::debug};
 };
 
 class LoggerScope {
@@ -92,11 +98,12 @@ class LoggerScope {
   LoggerScope* child_scope(const std::string& leaf);
 
  private:
-  void log(const LogLevel ll, const std::string& s) { logger_->log(ll, s); }
+  void log(const LogLevel::type ll, const std::string& s) { logger_->log(ll, s); }
 
   std::string path_;
   Logger* logger_{nullptr};
   std::unordered_map<std::string, std::unique_ptr<LoggerScope>> scopes_;
+  LogLevel::type llevel_{LogLevel::debug};
 };
 
 class Loggable {
@@ -128,7 +135,7 @@ class Loggable {
   }
 
   template <typename... ARGS>
-  void log(LogLevel ll, ARGS&&... args) {
+  void log(LogLevel::type ll, ARGS&&... args) {
     if (scope_) {
       std::stringstream ss;
       prefix(ss);

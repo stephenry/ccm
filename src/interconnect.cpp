@@ -30,12 +30,36 @@
 #include "sim.hpp"
 
 namespace ccm {
+#ifdef ENABLE_JSON
 
-void InterconnectModel::apply(TimeStamped<Message *> &ts) { update_time(ts); }
+std::unique_ptr<InterconnectModel>
+InterconnectModel::from_json(nlohmann::json & j) {
+  if (j["type"] == "fixedlatency")
+    return FixedLatencyInterconnectModel::from_json(j["options"]);
+  return nullptr;
+}
+#endif
+#ifdef ENABLE_JSON
+
+std::unique_ptr<InterconnectModel>
+FixedLatencyInterconnectModel::from_json(nlohmann::json & j) {
+  const std::size_t latency = j["latency"];
+  return std::unique_ptr<InterconnectModel>(
+      new FixedLatencyInterconnectModel{latency});
+}
+#endif
+
+InterconnectModel::~InterconnectModel() {}
+
+void InterconnectModel::apply(TimeStamped<Message *> &ts) {
+  update_time(ts);
+}
 
 void InterconnectModel::update_time(TimeStamped<Message *> &ts) {
   const Message *m = ts.t();
   ts.set_time(ts.time() + cost(m->src_id(), m->dst_id()));
 }
+
+FixedLatencyInterconnectModel::~FixedLatencyInterconnectModel() {}
 
 }  // namespace ccm
