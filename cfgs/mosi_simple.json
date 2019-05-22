@@ -1,0 +1,23 @@
+{
+    "protocol" : "mosi",
+    "agents" : [
+        { "id" : 0, "cache_options" : [] },
+        { "id" : 1, "cache_options" : [] },
+        { "id" : 2, "cache_options" : [] },
+        { "id" : 3, "cache_options" : [] },
+    ],
+    "snoopfilters" : [
+        { "id": 4,
+          "cache_options" : [],
+          "aperture" : { "type" : "contiguous",
+                         "lo" : 0,
+                         "hi" : 10000 }
+        }
+    ],
+    "interconnect" : {
+        "type" : "fixedlatency",
+        "options" : {
+            "latency" : 10
+        }
+    }
+}
