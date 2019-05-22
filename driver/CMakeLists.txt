@@ -27,8 +27,6 @@
 
 add_executable(ccmd main.cpp)
 
-## TODO: there is a better way of doing this (exposing dependencies
-## to do the driver. Figure this out.)
-
 target_link_libraries(ccmd PUBLIC ccm)
+target_link_libraries(ccmd PRIVATE nlohmann_json::nlohmann_json)
 target_include_directories(ccmd PUBLIC ${CMAKE_SOURCE_DIR}/src)

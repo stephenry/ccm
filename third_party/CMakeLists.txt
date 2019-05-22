@@ -26,3 +26,7 @@
 ##========================================================================== //
 
 add_subdirectory(googletest)
+if (ENABLE_JSON)
+  set(JSON_BuildTests OFF CACHE INTERNAL "")
+  add_subdirectory(nlohmann_json)
+endif ()

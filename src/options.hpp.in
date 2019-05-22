@@ -29,7 +29,7 @@
 #define __OPTIONS_HPP__
 
 #cmakedefine ENABLE_MOSI 
-
-#cmakedefine ENABLE_MESI 
+#cmakedefine ENABLE_MESI
+#cmakedefine ENABLE_JSON
 
 #endif

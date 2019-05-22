@@ -29,8 +29,6 @@ set(SRCS
   ccm.cpp
   platform.cpp
   actor.cpp
-#  coherence.cpp
-  actor.cpp
   utility.cpp
   interconnect.cpp
   message.cpp
@@ -56,3 +54,7 @@ endif ()
 configure_file(options.hpp.in options.hpp)
 add_library(ccm STATIC ${SRCS})
 target_include_directories(ccm PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+if (ENABLE_JSON)
+  list (APPEND SRCS builder.cpp)
+  target_link_libraries(ccm PUBLIC nlohmann_json::nlohmann_json)
+endif ()

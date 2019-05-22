@@ -29,6 +29,9 @@
 #define __SRC_AGENT_HPP__
 
 #include <deque>
+#ifdef ENABLE_JSON
+#  include <nlohmann/json.hpp>
+#endif
 #include "coherence.hpp"
 #include "message.hpp"
 #include "sim.hpp"

@@ -1,0 +1,19 @@
+{
+    "protocol" : "MSI",
+    "agents" : [
+        { "id" : 0 },
+        { "id" : 1 },
+        { "id" : 2 },
+        { "id" : 3 }
+    ],
+    "snoopfilters" : [
+        { "default" : { "id" : 4 } }
+    ],
+    "interconnect" : {
+        "type" : "FixedLatency",
+        "options" : {
+            "latency" : 10
+        }
+    }
+
+}

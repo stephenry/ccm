@@ -29,6 +29,7 @@
 #include <iostream>
 #include <map>
 #include <sstream>
+#include <nlohmann/json.hpp>
 
 const char * VERSION{"0.0.1"};
 
@@ -51,94 +52,12 @@ ccm::Protocol string_to_protocol(const std::string & s) {
   return it->second;
 }
 
-struct Options {
-  ccm::Protocol protocol{ccm::Protocol::MSI};
-  std::size_t agents{4};
-  std::size_t run{1000};
-};
-
-std::string to_string(const Options & options) {
-  std::stringstream ss;
-  ss << "Protocol: " << ccm::to_string(options.protocol) << ", "
-     << "Agents: " << options.agents
-    ;
-  return ss.str();
-};
-
-template<typename OutIt>
-void split(const std::string & str, OutIt it, const char sep = ',') {
-  if (str.empty())
-    return ;
-
-  std::string::size_type i{0}, j{0};
-  do {
-    j = str.find(sep, i);
-    *it = (j == std::string::npos) ? str.substr(i) : str.substr(i, (j - i));
-    i = (j + 1);
-  } while (j != std::string::npos);
-}
-
-struct Platform {
-  void sim() {}
-};
-
-struct Builder {
-
-  Builder(const Options & opts) {}
-
-  Platform build() const { return Platform{}; }
-
-private:
-  const Options * opts_;
-};
-
-struct Driver {
-  static void parse_command_line(Options & opts,
-                                 const std::vector<const char *> & args) {
-    std::size_t i = 1;
-    auto shift = [&]() -> std::string {
-      if (++i < args.size())
-        return args[i];
-      else
-        throw std::out_of_range("Malformed argument list.");
-    };
-
-    try {
-      while (i < args.size()) {
-        const std::string sstr{args[i]};
-        if (sstr == "-h" || sstr == "--help") {
-          help();
-        } else if (sstr == "-p" || sstr == "--protocol") {
-          opts.protocol = string_to_protocol(shift());
-        } else if (sstr == "-a" || sstr == "--agents") {
-          opts.agents = std::stoull(shift());
-        } else {
-          help();
-        }
-        ++i;
-      }
-    } catch (std::exception & ex) {
-      std::cerr << "Invalid command line: " << ex.what() << "\n";
-      help();
-    }
-  }
-
-private:
-  static void help() {
-    std::cerr << "CCM simulator driver version: " << VERSION << "\n";
-    std::exit(1);
-  }
-};
-
 int main(int argc, char **argv) {
-  const std::vector<const char *> args{argv, argv + argc};
-  
-  Options opts;
-  Driver::parse_command_line(opts, args);
-  std::cout << "Options: " << to_string(opts) << "\n";
-  Builder builder{opts};
-  Platform p = builder.build();
-  p.sim();
+  nlohmann::json j;
 
+  j << std::cin;
+  j >> std::cout;
+
+  
   return 0;
 }

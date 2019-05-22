@@ -25,31 +25,16 @@
 // POSSIBILITY OF SUCH DAMAGE.
 //========================================================================== //
 
-#ifndef __SRC_CCM_HPP__
-#define __SRC_CCM_HPP__
+#ifndef __BUILDER_HPP__
+#define __BUILDER_HPP__
 
-#include "options.hpp"
-#include "actor.hpp"
-#include "agent.hpp"
-#include "cache.hpp"
-#include "coherence.hpp"
-#include "interconnect.hpp"
-#include "log.hpp"
-#include "memory.hpp"
-#include "platform.hpp"
-#include "random.hpp"
-#include "sim.hpp"
-#include "snoopfilter.hpp"
-#include "utility.hpp"
-#include "msi.hpp"
-#ifdef ENABLE_MESI
-#  include "mesi.hpp"
-#endif
-#ifdef ENABLE_MOSI
-#  include "mosi.hpp"
-#endif
-#ifdef ENABLE_JSON
-#  include "builder.hpp"
-#endif
+#include <nlohmann/json.hpp>
+
+namespace ccm {
+
+class Builder {
+};
+
+} // namespace ccm
 
 #endif
