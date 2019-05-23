@@ -148,13 +148,13 @@ class Agent : public CoherentAgentCommandInvoker {
   void fetch_transactions(std::size_t n = 10);
 
   std::size_t handle_message(
-      Context & context, Cursor & cursor, CommandArbitrator & arb);
+      Context & context, const Cursor & cursor, CommandArbitrator & arb);
   std::size_t handle_transaction(
-      Context & context, Cursor & cursor, CommandArbitrator & arb);
+      Context & context, const Cursor & cursor, CommandArbitrator & arb);
 
-  CoherenceActions get_actions(Context& ctxt, Cursor& cursor, const Transaction *t);
-  CoherenceActions get_actions(Context& ctxt, Cursor& cursor, const Message *msg);
-  void enqueue_replacement(Cursor & cursor, const Transaction * t);
+  CoherenceActions get_actions(Context& ctxt, const Cursor& cursor, const Transaction *t);
+  CoherenceActions get_actions(Context& ctxt, const Cursor& cursor, const Message *msg);
+  void enqueue_replacement(const Cursor & cursor, const Transaction * t);
 
   TransactionQueueManager tq_;
   MessageQueueManager mq_;

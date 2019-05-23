@@ -150,10 +150,14 @@ void MessageQueueManager::recompute_front() {
   if (!is_active()) return;
   
   MinHeap<std::pair<Time, MessageClass::type> > mh;
-  for (auto & q : qs_) {
-    const MessageClass::type cls = q.first;
+  for (auto & p : qs_) {
+    const MessageClass::type cls = p.first;
+    const MinHeap<TSMessage> msgq = p.second;
+
+    if (msgq.empty()) continue;
+
     if (disregard_set_.count(cls) == 0) {
-      const TSMessage & tsm = q.second.top();
+      const TSMessage & tsm = msgq.top();
       mh.push(std::make_tuple(tsm.time(), cls));
     }
   }

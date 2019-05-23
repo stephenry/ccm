@@ -391,6 +391,7 @@ void Agent::CommandArbitrator::disable_message_class(MessageClass::type cls) {
 void Agent::CommandArbitrator::arbitrate() {
   MinHeap<std::pair<CommandType, Time> > mh;
   if (mq_.is_active()) {
+    mq_.recompute_front();
     const MessageQueueManager::TSMessage tsm{mq_.front()};
     mh.push(std::make_pair(CommandType::Message, tsm.time()));
   }
@@ -434,14 +435,12 @@ void Agent::eval(Context& context) {
   CommandArbitrator arb{tq_, mq_};
   do {
     arb.arbitrate();
-
-    std::size_t cost{0};
     switch (arb.command_type()) {
       case CommandType::Message:
-        cost += handle_message(context, cursor, arb);
+        cursor.advance(handle_message(context, cursor, arb));
         break;
       case CommandType::Transaction:
-        cost += handle_transaction(context, cursor, arb);
+        cursor.advance(handle_transaction(context, cursor, arb));
         break;
       case CommandType::Invalid:
         halt = true;
@@ -449,17 +448,13 @@ void Agent::eval(Context& context) {
       default:
         break;
     }
-    // On completion of an operation, whether successful or not,
-    // time must advance to reflect its cost.
-    //
-    cursor.advance(cost);
   } while (!halt && epoch.in_interval(cursor.time()));
 
   set_time(cursor.time());
 }
 
 std::size_t Agent::handle_message(Context & context,
-                                  Cursor & cursor,
+                                  const Cursor & cursor,
                                   CommandArbitrator & arb) {
   const TimeStamped<Message*> tsm{mq_.front()};
   const CoherenceActions actions{get_actions(context, cursor, tsm.t())};
@@ -469,13 +464,12 @@ std::size_t Agent::handle_message(Context & context,
   switch (actions.result()) {
     case MessageResult::Commit:
       execute(context, mcur, actions, msg);
-      msg->release();
       mq_.pop_front();
-
       // TODO: refactor
       if (actions.transaction_done())
         trns_->event(TransactionEvent::End,
                      TimeStamped{mcur.time(), msg->transaction()});
+      msg->release();
       break;
     case MessageResult::Stall:
       arb.disable_message_class(MessageType::to_class(msg->type()));
@@ -485,7 +479,7 @@ std::size_t Agent::handle_message(Context & context,
 }
 
 std::size_t Agent::handle_transaction(Context & context,
-                                      Cursor & cursor,
+                                      const Cursor & cursor,
                                       CommandArbitrator & arb) {
   const TimeStamped<Transaction *> tst{tq_.front()};
   const Transaction * t = tst.t();
@@ -534,6 +528,7 @@ std::size_t Agent::handle_transaction(Context & context,
     if (do_commit) {
       Cursor tcur{cursor};
       execute(context, tcur, actions, t);
+      tq_.pop_front();
     } else {
       arb.disable_transactions();
     }
@@ -541,7 +536,7 @@ std::size_t Agent::handle_transaction(Context & context,
   return actions.cost();
 }
 
-void Agent::enqueue_replacement(Cursor & cursor, const Transaction * t) {
+void Agent::enqueue_replacement(const Cursor & cursor, const Transaction * t) {
   Transaction * trpl = tfac_.construct();
   trpl->set_type(TransactionType::replacement);
   trpl->set_addr(t->addr());
@@ -557,7 +552,8 @@ void Agent::fetch_transactions(std::size_t n) {
   }
 }
 
-CoherenceActions Agent::get_actions(Context& context, Cursor& cursor, const Message *msg) {
+CoherenceActions Agent::get_actions(
+    Context& context, const Cursor& cursor, const Message *msg) {
   const Transaction * t = msg->transaction();
   CCM_AGENT_ASSERT(cache_->is_hit(t->addr()));
   CacheLine& cache_line = cache_->lookup(t->addr());
@@ -566,7 +562,8 @@ CoherenceActions Agent::get_actions(Context& context, Cursor& cursor, const Mess
   return actions;
 }
 
-CoherenceActions Agent::get_actions(Context& context, Cursor& cursor, const Transaction * t) {
+CoherenceActions Agent::get_actions(
+    Context& context, const Cursor& cursor, const Transaction * t) {
   CoherenceActions actions;
   if (t->type() != TransactionType::replacement)
     actions.set_requires_eviction(cache_->requires_eviction(t->addr()));
