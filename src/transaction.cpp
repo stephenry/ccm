@@ -118,7 +118,6 @@ ProgrammaticTransactionSource::from_json(nlohmann::json & j) {
       TransactionType::from_string(t["cmd"])};
     const Time time{t["time"]};
     const uint64_t addr{t["addr"]};
-
     src->add_transaction(cmd, time, addr);
   }
   return std::move(src);
@@ -165,6 +164,33 @@ void ProgrammaticTransactionSource::event(TransactionEvent event,
         in_flight_.erase(it);
       }
     } break;
+  }
+}
+
+TransactionQueueManager::TransactionQueueManager() {}
+
+bool TransactionQueueManager::is_active() const {
+  return !q_.empty();
+}
+
+void TransactionQueueManager::push_back(const TSTransaction & t) {
+  q_.push(t);
+}
+
+TransactionQueueManager::TSTransaction
+TransactionQueueManager::front() const {
+  return q_replacement_.value_or(q_.top());
+}
+
+void TransactionQueueManager::set_replacement(const TSTransaction & t) {
+  q_replacement_ = t;
+}
+
+void TransactionQueueManager::pop_front() {
+  if (q_replacement_) {
+    q_replacement_.reset();
+  } else {
+    q_.pop();
   }
 }
 

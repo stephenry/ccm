@@ -380,13 +380,35 @@ void CoherentAgentCommandInvoker::execute_set_ack_expect_count(const Message * m
   log_debug("Update expected invalidation count: ", cache_line.inv_ack_expect());
 }
 
+Agent::CommandArbitrator::~CommandArbitrator() {
+  mq_.clr_disregard_class();
+}
+
+void Agent::CommandArbitrator::disable_message_class(MessageClass::type cls) {
+  mq_.add_disregard_class(cls);
+}
+
+void Agent::CommandArbitrator::arbitrate() {
+  MinHeap<std::pair<CommandType, Time> > mh;
+  if (mq_.is_active()) {
+    const MessageQueueManager::TSMessage tsm{mq_.front()};
+    mh.push(std::make_pair(CommandType::Message, tsm.time()));
+  }
+  if (consider_transactions_ && tq_.is_active()) {
+    const TransactionQueueManager::TSTransaction tst{tq_.front()};
+    mh.push(std::make_pair(CommandType::Transaction, tst.time()));
+  }
+  if (mh.empty()) { command_type_ = CommandType::Invalid; return; }
+
+  const std::pair<CommandType, Time> top = mh.top();
+  command_type_ = top.first;
+  frontier_ = top.second;
+}
+
 Agent::Agent(const AgentOptions& opts)
     : CoherentAgentCommandInvoker(opts), opts_(opts) {
   set_time(0);
   set_logger_scope(opts.logger_scope());
-
-  qmgr_.set_ac(std::make_unique<AgentMessageAdmissionControl>(this));
-  qmgr_.set_ac(std::make_unique<AgentTransactionAdmissionControl>(this));
 }
 
 void Agent::eval(Context& context) {
@@ -405,92 +427,25 @@ void Agent::eval(Context& context) {
   //
   cursor.set_time(std::max(time(), cursor.time()));
 
-  if (!qmgr_.pending_transactions()) fetch_transactions(10);
+  if (!tq_.is_active()) fetch_transactions(10);
 
+
+  bool halt{false};
+  CommandArbitrator arb{tq_, mq_};
   do {
-    const QueueEntry next = qmgr_.next();
-    if (next.type() == QueueEntryType::Invalid) break;
+    arb.arbitrate();
 
-    if (!epoch.in_interval(next.time())) break;
-
-    cursor.set_time(std::max(time(), next.time()));
-    set_time(cursor.time());
-
-    CoherenceActions actions;
     std::size_t cost{0};
-    switch (next.type()) {
-      case QueueEntryType::Message: {
-        const TimeStamped<Message*> ts{next.as_msg()};
-        actions = get_actions(context, cursor, ts);
-        if (actions.result() == MessageResult::Commit) {
-          Cursor mcur{cursor};
-          Message * msg = ts.t();
-          execute(context, mcur, actions, msg);
-          if (actions.transaction_done())
-            trns_->event(TransactionEvent::End,
-                         TimeStamped{mcur.time(), msg->transaction()});
-          msg->release();
-          next.consume();
-        }
-        cost += actions.cost();
-      } break;
-
-      case QueueEntryType::Transaction: {
-        actions = get_actions(context, cursor, next.as_trn());
-        CCM_AGENT_ASSERT(!actions.error());
-        const Transaction * trn = next.as_trn().t();
-        if (actions.requires_eviction()) {
-          // In this simple model, a transaction issue fails whenever
-          // the transaction would require a eviction of a previously
-          // installed line in the cache. To handle this case, the
-          // current transaction is aborted, time is advanced (to
-          // account for the lookup overhead, a new 'replacement'
-          // transaction is inserted on the head of the transaction
-          // queue and the transaction replayed.
-          //
-          log_debug("Transaction causes eviction at: ", trn->addr());
-
-          // Create new replacement transaction to the current address
-          // and place at the head of the queue manager.
-          //
-          Transaction * trpl = tfac_.construct();
-          trpl->set_type(TransactionType::replacement);
-          trpl->set_addr(trn->addr());
-          qmgr_.push(TimeStamped{cursor.time(), trpl});
-        } else {
-          // TODO: this should really be associated with the transaction
-          // itself, not the transaction source.
-          if ((trn->type() == TransactionType::load) ||
-              (trn->type() == TransactionType::store)) {
-            trns_->event(TransactionEvent::Start, TimeStamped{cursor.time(), trn});
-          }
-          std::size_t misses_n{0}; // TODO: move to statistics
-          std::size_t hits_n{0};
-          bool do_commit{true};
-          switch (actions.result()) {
-            case TransactionResult::Blocked:
-              // The transaction may not advance because there are
-              // pending operations on the line.
-              //
-              do_commit = false;
-              break;
-
-            case TransactionResult::Miss:
-              ++misses_n;
-              break;
-            case TransactionResult::Hit:
-              ++hits_n;
-              break;
-          }
-          if (do_commit) {
-            Cursor tcur{cursor};
-            execute(context, tcur, actions, trn);
-            next.consume();
-          }
-        }
-        cost += actions.cost();
-      } break;
-
+    switch (arb.command_type()) {
+      case CommandType::Message:
+        cost += handle_message(context, cursor, arb);
+        break;
+      case CommandType::Transaction:
+        cost += handle_transaction(context, cursor, arb);
+        break;
+      case CommandType::Invalid:
+        halt = true;
+        break;
       default:
         break;
     }
@@ -498,9 +453,99 @@ void Agent::eval(Context& context) {
     // time must advance to reflect its cost.
     //
     cursor.advance(cost);
-  } while (epoch.in_interval(cursor.time()));
+  } while (!halt && epoch.in_interval(cursor.time()));
 
   set_time(cursor.time());
+}
+
+std::size_t Agent::handle_message(Context & context,
+                                  Cursor & cursor,
+                                  CommandArbitrator & arb) {
+  const TimeStamped<Message*> tsm{mq_.front()};
+  const CoherenceActions actions{get_actions(context, cursor, tsm.t())};
+
+  const Message * msg = tsm.t();
+  Cursor mcur{cursor};
+  switch (actions.result()) {
+    case MessageResult::Commit:
+      execute(context, mcur, actions, msg);
+      msg->release();
+      mq_.pop_front();
+
+      // TODO: refactor
+      if (actions.transaction_done())
+        trns_->event(TransactionEvent::End,
+                     TimeStamped{mcur.time(), msg->transaction()});
+      break;
+    case MessageResult::Stall:
+      arb.disable_message_class(MessageType::to_class(msg->type()));
+      break;
+  }
+  return actions.cost();
+}
+
+std::size_t Agent::handle_transaction(Context & context,
+                                      Cursor & cursor,
+                                      CommandArbitrator & arb) {
+  const TimeStamped<Transaction *> tst{tq_.front()};
+  const Transaction * t = tst.t();
+  
+  const CoherenceActions actions{get_actions(context, cursor, t)};
+  if (actions.requires_eviction()) {
+    // In this simple model, a transaction issue fails whenever
+    // the transaction would require a eviction of a previously
+    // installed line in the cache. To handle this case, the
+    // current transaction is aborted, time is advanced (to
+    // account for the lookup overhead, a new 'replacement'
+    // transaction is inserted on the head of the transaction
+    // queue and the transaction replayed.
+    //
+    log_debug("Transaction caused EVICTION: ", to_string(*t));
+
+    // Create new replacement transaction to the current address
+    // and place at the head of the queue manager.
+    //
+    enqueue_replacement(cursor, t);
+  } else {
+    // TODO: this should really be associated with the transaction
+    // itself, not the transaction source.
+    if ((t->type() == TransactionType::load) ||
+        (t->type() == TransactionType::store))
+      trns_->event(TransactionEvent::Start, TimeStamped{cursor.time(), t});
+    
+    bool do_commit{true};
+    switch (actions.result()) {
+      case TransactionResult::Blocked:
+        // The transaction may not advance because there are pending
+        // operations on the line.
+        //
+        do_commit = false;
+        break;
+
+      case TransactionResult::Miss:
+        log_debug("Transaction MISS: ", to_string(*t));
+        ++stats_.misses_n;
+        break;
+      case TransactionResult::Hit:
+        log_debug("Transaction HIT: ", to_string(*t));
+        ++stats_.hits_n;
+        break;
+    }
+    if (do_commit) {
+      Cursor tcur{cursor};
+      execute(context, tcur, actions, t);
+    } else {
+      arb.disable_transactions();
+    }
+  }
+  return actions.cost();
+}
+
+void Agent::enqueue_replacement(Cursor & cursor, const Transaction * t) {
+  Transaction * trpl = tfac_.construct();
+  trpl->set_type(TransactionType::replacement);
+  trpl->set_addr(t->addr());
+  tq_.set_replacement(TimeStamped{cursor.time(), trpl});
 }
 
 void Agent::fetch_transactions(std::size_t n) {
@@ -508,13 +553,11 @@ void Agent::fetch_transactions(std::size_t n) {
   for (int i = 0; i < n; i++) {
     if (!trns_->get_transaction(ts)) break;
 
-    qmgr_.push(ts);
+    tq_.push_back(ts);
   }
 }
 
-CoherenceActions Agent::get_actions(Context& context, Cursor& cursor,
-                                    TimeStamped<Message*> ts) {
-  const Message * msg = ts.t();
+CoherenceActions Agent::get_actions(Context& context, Cursor& cursor, const Message *msg) {
   const Transaction * t = msg->transaction();
   CCM_AGENT_ASSERT(cache_->is_hit(t->addr()));
   CacheLine& cache_line = cache_->lookup(t->addr());
@@ -523,10 +566,8 @@ CoherenceActions Agent::get_actions(Context& context, Cursor& cursor,
   return actions;
 }
 
-CoherenceActions Agent::get_actions(Context& context, Cursor& cursor,
-                                    TimeStamped<Transaction*> ts) {
+CoherenceActions Agent::get_actions(Context& context, Cursor& cursor, const Transaction * t) {
   CoherenceActions actions;
-  const Transaction* t = ts.t();
   if (t->type() != TransactionType::replacement)
     actions.set_requires_eviction(cache_->requires_eviction(t->addr()));
 
@@ -540,17 +581,25 @@ CoherenceActions Agent::get_actions(Context& context, Cursor& cursor,
     actions = cc_model_->get_actions(t, cache_line);
     actions.set_cost(CoherenceActions::compute_cost(actions));
   } else {
+    actions.set_requires_eviction(false);
 #define CACHE_LOOKUP_PENALTY 1
     actions.set_cost(CACHE_LOOKUP_PENALTY);
   }
   return actions;
 }
 
-void Agent::apply(TimeStamped<Message*> ts) { qmgr_.push(ts); }
+void Agent::apply(TimeStamped<Message*> ts) { mq_.push_back(ts); }
 
-bool Agent::is_active() const { return !qmgr_.empty(); }
-
+bool Agent::is_active() const {
+  // Agent is active whenever there are pending messages in the
+  // associated message queue manager, or when there are either
+  // transactions in the transaction manager, or transaction that are
+  // yet to be issued.
+  //
+  return (tq_.is_active() || mq_.is_active() || trns_->is_active());
+}
 #ifdef ENABLE_JSON
+
 std::unique_ptr<Agent> AgentBuilder::construct(
     const Platform & platform, LoggerScope * l, nlohmann::json j) {
   std::unique_ptr<Agent> agent =

@@ -217,7 +217,6 @@ class RunOptions {
 
  public:
   RunOptions() : terminate_(Terminate::OnExhaustion) {}
-
   RunOptions(Time time) : terminate_(Terminate::AfterTime), final_(time) {}
 
   Terminate terminate() const { return terminate_; }

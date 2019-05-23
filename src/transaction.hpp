@@ -125,6 +125,7 @@ struct TransactionSource : Loggable {
 
   //
   Time time() const override { return 0; }
+  virtual bool is_active() const { return false; }
 
   //
   virtual bool get_transaction(TimeStamped<Transaction *> &ts) = 0;
@@ -149,6 +150,7 @@ struct ProgrammaticTransactionSource : TransactionSource {
 
   ProgrammaticTransactionSource() {}
 
+  bool is_active() const override { return !pending_.empty(); }
   void add_transaction(TransactionType::type type, Time time, uint64_t addr);
   virtual bool get_transaction(TimeStamped<Transaction *> &ts) override;
   virtual void event(TransactionEvent event,
@@ -157,6 +159,24 @@ struct ProgrammaticTransactionSource : TransactionSource {
   Pool<Transaction> pool_;
   std::deque<TimeStamped<Transaction *> > pending_;
   std::list<Transaction *> in_flight_;
+};
+
+class TransactionQueueManager {
+ public:
+  using TSTransaction = TimeStamped<Transaction *>;
+  
+  explicit TransactionQueueManager();
+
+  bool is_active() const;
+
+  void push_back(const TSTransaction & t);
+  void set_replacement(const TSTransaction & t);
+  TSTransaction front() const;
+  void pop_front();
+  
+ private:
+  MinHeap<TSTransaction> q_;
+  std::optional<TSTransaction> q_replacement_;
 };
 
 }  // namespace ccm

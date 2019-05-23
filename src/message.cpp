@@ -27,16 +27,15 @@
 
 #include "message.hpp"
 #include "interconnect.hpp"
-#include <sstream>
+#include <tuple>
 
 namespace ccm {
 
-const char* MessageType::to_string(base_type e) {
+const char* MessageType::to_string(type e) {
   switch (e) {
-#define __to_str(__name, __cost) \
-  case __name:                   \
-    return #__name;              \
-    break;
+#define __to_str(__name, __class, __cost)       \
+    case __name: return #__name;                \
+      break;
     MESSAGE_TYPES(__to_str)
 #undef __to_str
     default:
@@ -44,12 +43,11 @@ const char* MessageType::to_string(base_type e) {
   }
 }
 
-int MessageType::to_cost(base_type b) {
+int MessageType::to_cost(type b) {
   switch (b) {
-#define __to_str(__name, __cost) \
-  case __name:                   \
-    return __cost;               \
-    break;
+#define __to_str(__name, _class, __cost)        \
+    case __name: return __cost;                 \
+      break;
     MESSAGE_TYPES(__to_str)
 #undef __to_str
     default:
@@ -57,19 +55,18 @@ int MessageType::to_cost(base_type b) {
   }
 }
 
-MessageClass Message::cls() const {
-  if (is_ack()) return MessageClass::Response;
-
-  MessageClass cls;
-  switch (type()) {
-    case MessageType::Data:
-      cls = MessageClass::Data;
-      break;
-    default:
-      cls = MessageClass::Request;
-      break;
+MessageClass::type MessageType::to_class(MessageType::type t) {
+  switch (t) {
+#define __to_class(__type, __class, __cost)             \
+    case __type: return MessageClass::__class; break;
+    MESSAGE_TYPES(__to_class);
+#undef __to_class
+    default: return MessageClass::Invalid;
   }
-  return cls;
+}
+
+MessageClass::type Message::cls() const {
+  return MessageClass::Invalid;
 }
 
 void Message::set_invalid() {
@@ -112,5 +109,70 @@ MessageDirector::MessageDirector(const ActorOptions& opts) : opts_(opts) {
 MessageBuilder MessageDirector::builder() {
   return MessageBuilder{pool_.alloc(), src_id_};
 }
+
+MessageQueueManager::MessageQueueManager(std::size_t n) {
+#define __construct_queue(__cls)                                \
+  qs_.insert(std::make_pair(MessageClass::__cls, MinHeap<TSMessage>{}));
+  MESSAGE_CLASSES(__construct_queue)
+#undef __construct_queue
+}
+
+//
+bool MessageQueueManager::is_active() const {
+  // is_active() iff there are outstanding messages present in any of
+  // the locally managed queues.
+  //
+  for (auto & [cls, mh] : qs_)
+    if (mh.size() != 0)
+      return true;
+
+  return false;
+}
+
+void MessageQueueManager::push_back(const TSMessage & ts) {
+  const Message * msg = ts.t();
+  const MessageClass::type cls = msg->is_ack() ?
+                                 MessageClass::Response :
+                                 MessageType::to_class(msg->type());
+
+  qs_[cls].push(ts);
+}
+
+void MessageQueueManager::add_disregard_class(MessageClass::type cls) {
+  disregard_set_.insert(cls);
+}
+
+void MessageQueueManager::clr_disregard_class() {
+  disregard_set_.clear();
+}
+
+void MessageQueueManager::recompute_front() {
+  if (!is_active()) return;
+  
+  MinHeap<std::pair<Time, MessageClass::type> > mh;
+  for (auto & q : qs_) {
+    const MessageClass::type cls = q.first;
+    if (disregard_set_.count(cls) == 0) {
+      const TSMessage & tsm = q.second.top();
+      mh.push(std::make_tuple(tsm.time(), cls));
+    }
+  }
+  CCM_ASSERT(mh.size() != 0);
+  front_class_ = mh.top().second;
+}
+
+MessageQueueManager::TSMessage MessageQueueManager::front() const {
+  auto it = qs_.find(front_class_);
+  if (it != qs_.end())
+    return it->second.top();
+
+  return TSMessage{};
+}
+
+void MessageQueueManager::pop_front() {
+  if (front_class_ != MessageClass::Invalid)
+    qs_[front_class_].pop();
+}
+
 
 }  // namespace ccm

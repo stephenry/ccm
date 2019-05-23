@@ -150,12 +150,12 @@ bool QueueEntry::compare_lt(const QueueEntry & lhs, const QueueEntry & rhs) {
   return (lhs.time() < rhs.time());
 }
                        
-QueueManager::QueueManager() { messages_.resize(CLASS_COUNT); }
+QueueManager::QueueManager() { messages_.resize(MessageClass::CLASS_COUNT); }
 
 bool QueueManager::empty() const {
   if (!transactions_.empty()) return false;
 
-  for (std::size_t i = 0; i < CLASS_COUNT; i++)
+  for (std::size_t i = 0; i < MessageClass::CLASS_COUNT; i++)
     if (!messages_[i].empty()) return false;
 
   return true;
@@ -178,7 +178,7 @@ QueueEntry QueueManager::next() {
       pq.push(QueueEntry{std::addressof(transactions_)});
   }
 
-  for (std::size_t i = 0; i < CLASS_COUNT; i++) {
+  for (std::size_t i = 0; i < MessageClass::CLASS_COUNT; i++) {
     if (!messages_[i].empty()) {
       const Message *msg = messages_[i].top().t();
       if (!mac_ || mac_->can_be_issued(msg))

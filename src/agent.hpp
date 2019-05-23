@@ -99,7 +99,37 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   MessageDirector msgd_;
 };
 
-struct Agent : CoherentAgentCommandInvoker {
+class Agent : public CoherentAgentCommandInvoker {
+  friend class AgentMessageAdmissionControl;
+  friend class AgentTransactionAdmissionControl;
+  
+  enum class CommandType { Message, Transaction, Invalid };
+
+  struct CommandArbitrator {
+    CommandArbitrator(const TransactionQueueManager & tq,
+                      MessageQueueManager & mq)
+        : tq_(tq), mq_(mq) {}
+    ~CommandArbitrator();
+
+    Time frontier() const { return frontier_; }
+    CommandType command_type() const { return command_type_; }
+
+    void arbitrate();
+    void disable_message_class(MessageClass::type cls);
+    void disable_transactions() { consider_transactions_ = false; }
+   private:
+    bool consider_transactions_{true};
+    Time frontier_{0};
+    CommandType command_type_{CommandType::Invalid};
+    const TransactionQueueManager & tq_;
+    MessageQueueManager & mq_;
+  };
+
+  struct Statistics {
+    std::size_t hits_n{0}, misses_n{0};
+  };
+  
+ public:
   Agent(const AgentOptions& opts);
 
   bool is_active() const override;
@@ -117,16 +147,21 @@ struct Agent : CoherentAgentCommandInvoker {
  private:
   void fetch_transactions(std::size_t n = 10);
 
-  void handle_msg(Context& ctxt, Cursor& cursor, TimeStamped<Message*> ts);
+  std::size_t handle_message(
+      Context & context, Cursor & cursor, CommandArbitrator & arb);
+  std::size_t handle_transaction(
+      Context & context, Cursor & cursor, CommandArbitrator & arb);
 
-  CoherenceActions get_actions(Context& ctxt, Cursor& cursor, TimeStamped<Transaction*> ts);
-  CoherenceActions get_actions(Context& ctxt, Cursor& cursor, TimeStamped<Message*> ts);
-  void enqueue_replacement(Time time, uint64_t addr);
+  CoherenceActions get_actions(Context& ctxt, Cursor& cursor, const Transaction *t);
+  CoherenceActions get_actions(Context& ctxt, Cursor& cursor, const Message *msg);
+  void enqueue_replacement(Cursor & cursor, const Transaction * t);
 
-  QueueManager qmgr_;
+  TransactionQueueManager tq_;
+  MessageQueueManager mq_;
   std::unique_ptr<TransactionSource> trns_;
   TransactionFactory tfac_;
   const AgentOptions opts_;
+  Statistics stats_;
 };
 #ifdef ENABLE_JSON
 

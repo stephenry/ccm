@@ -363,6 +363,10 @@ void SnoopFilter::eval(Context& context) {
   const Epoch epoch = context.epoch();
   Cursor cursor = epoch.cursor();
 
+  if (!epoch.in_interval(time())) return;
+
+  cursor.set_time(std::max(time(), cursor.time()));
+
   do {
     const QueueEntry next = qmgr_.next();
     if (next.type() == QueueEntryType::Invalid) break;
@@ -380,7 +384,8 @@ void SnoopFilter::eval(Context& context) {
       default:;  // TODO: unexpected
     }
     next.consume();
-  } while (epoch.in_interval(cursor.time()));
+
+  } while (true);
 
   set_time(cursor.time());
 }

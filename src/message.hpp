@@ -29,6 +29,7 @@
 #define __SRC_MESSAGE_HPP__
 
 #include <string>
+#include <map>
 #include "actor.hpp"
 #include "utility.hpp"
 
@@ -36,51 +37,56 @@ namespace ccm {
 
 struct Transaction;
 
-// clang-format off
+struct MessageClass {
+  using type = uint8_t;
+  // clang-format off
 #define MESSAGE_CLASSES(__func)                 \
   __func(Request)                               \
   __func(Response)                              \
-  __func(Data)
-// clang-format on
-
-enum MessageClass {
-// clang-format off
-#define __declare_class(__class)                \
-  __class,
-  MESSAGE_CLASSES(__declare_class)
-#undef __declare_class
-  CLASS_COUNT
+  __func(Snoop)                                 \
+  __func(Data)                                  \
+  __func(Invalid)
   // clang-format on
+  
+  enum : type {
+    // clang-format off
+#define __declare_class(__class) __class,
+    MESSAGE_CLASSES(__declare_class)
+#undef __declare_class
+    CLASS_COUNT
+    // clang-format on
+  };
+  static const char * to_string(type);
 };
 
 // clang-format off
 #define MESSAGE_TYPES(__func)                   \
-  __func(GetS, 4)                               \
-  __func(GetM, 4)                               \
-  __func(PutS, 4)                               \
-  __func(PutM, 4)                               \
-  __func(PutE, 4)                               \
-  __func(PutO, 4)                               \
-  __func(FwdGetS, 4)                            \
-  __func(FwdGetM, 4)                            \
-  __func(Inv, 4)                                \
-  __func(InvAck, 4)                             \
-  __func(AckCount, 4)                           \
-  __func(Data, 16)
+  __func(GetS, Request, 4)                      \
+  __func(GetM, Request, 4)                      \
+  __func(PutS, Request, 4)                      \
+  __func(PutM, Request, 4)                      \
+  __func(PutE, Request, 4)                      \
+  __func(PutO, Request, 4)                      \
+  __func(FwdGetS, Snoop, 4)                     \
+  __func(FwdGetM, Snoop, 4)                     \
+  __func(Inv, Request, 4)                       \
+  __func(AckCount, Request, 4)                  \
+  __func(Data, Data, 16)
 // clang-format on
 
 struct MessageType {
-  using base_type = std::uint8_t;
+  using type = std::uint8_t;
 
-  enum : base_type {
-#define __declare_enum(__name, __cost) __name,
+  enum : type {
+#define __declare_enum(__name, __class, __cost) __name,
     MESSAGE_TYPES(__declare_enum)
 #undef __declare_enum
         Invalid
   };
 
-  static const char *to_string(base_type b);
-  static int to_cost(base_type b);
+  static const char *to_string(type b);
+  static int to_cost(type b);
+  static MessageClass::type to_class(type m);
 };
 
 struct Message : ccm::Poolable {
@@ -90,7 +96,7 @@ struct Message : ccm::Poolable {
 
 // clang-format off
 #define MESSAGE_FIELDS(__func)                                  \
-  __func(type, MessageType::base_type, MessageType::Invalid)    \
+  __func(type, MessageType::type, MessageType::Invalid)         \
   __func(src_id, id_t, 1000)                                    \
   __func(dst_id, id_t, 1000)                                    \
   __func(fwd_id, id_t, 1000)                                    \
@@ -102,7 +108,8 @@ struct Message : ccm::Poolable {
   __func(was_owner, bool, false)
   // clang-format on
 
-  MessageClass cls() const;
+  // TODO, deprecate
+  MessageClass::type cls() const;
 #define __declare_getter(__name, __type, __default) \
   __type __name() const { return __name##_; }
   MESSAGE_FIELDS(__declare_getter)
@@ -160,6 +167,29 @@ class MessageDirector {
   std::size_t src_id_;
   ccm::Pool<Message> pool_;
   const ActorOptions opts_;
+};
+
+class MessageQueueManager {
+ public:
+  using TSMessage = TimeStamped<Message *>;
+  
+  explicit MessageQueueManager(std::size_t n = 3);
+
+  //
+  bool is_active() const;
+
+  //
+  void push_back(const TSMessage & ts);
+  void add_disregard_class(MessageClass::type cls);
+  void clr_disregard_class();
+  void recompute_front();
+  TSMessage front() const;
+  void pop_front();
+  
+ private:
+  MessageClass::type front_class_{MessageClass::Invalid};
+  std::set<MessageClass::type> disregard_set_;
+  std::map<MessageClass::type, MinHeap<TSMessage> > qs_;
 };
 
 }  // namespace ccm

@@ -111,9 +111,6 @@ std::size_t CoherentAgentCommand::to_cost(command_t command) {
     case CoherentAgentCommand::EmitDataToDir:
       cost += MessageType::to_cost(MessageType::Data);
       break;
-    case CoherentAgentCommand::EmitInvAck:
-      cost += MessageType::to_cost(MessageType::InvAck);
-      break;
   }
   return cost;
 };
