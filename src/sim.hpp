@@ -205,8 +205,9 @@ struct Context {
 
   Epoch epoch() const { return epoch_; }
   void emit_message(TimeStamped<Message *> msg);
+  const std::vector<TimeStamped<Message *>> & msgs() const { return msgs_; }
 
-  // private:
+ private:
   std::vector<TimeStamped<Message *> > msgs_;
   Epoch epoch_;
 };

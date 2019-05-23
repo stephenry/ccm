@@ -239,7 +239,7 @@ void Sim::run(const RunOptions &run_options) {
     for (auto it = actors_.begin(); it != actors_.end(); ++it)
       it->second->eval(ctxt);
 
-    for (TimeStamped<Message *> ts : ctxt.msgs_) {
+    for (TimeStamped<Message *> ts : ctxt.msgs()) {
       interconnect_->apply(ts);
 
       const Message *msg = ts.t();
