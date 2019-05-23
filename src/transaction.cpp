@@ -27,22 +27,36 @@
 
 #include "transaction.hpp"
 #include <algorithm>
+#include <unordered_map>
+#include <exception>
 #include "utility.hpp"
 
 namespace ccm {
 
-const char *to_string(TransactionType t) {
-  switch (t) {
-    case TransactionType::Load:
-      return "Load";
-      break;
-    case TransactionType::Store:
-      return "Store";
-      break;
-    default:
-      return "Unknown";
-      break;
-  }
+const std::string TransactionType::to_string(TransactionType::type t) {
+  static const std::unordered_map<TransactionType::type, std::string> m{
+#define __declare_mapping(__cmd) { __cmd, #__cmd },
+    TRANSACTION_TYPES(__declare_mapping)
+#undef __declare_mapping
+  };
+  auto it = m.find(t);
+  if (it != m.end())
+    return it->second;
+
+  throw std::invalid_argument("Unknown TransactionType");
+}
+
+TransactionType::type TransactionType::from_string(const std::string & s) {
+  static const std::unordered_map<std::string, TransactionType::type> m{
+#define __declare_mapping(__cmd) { #__cmd, __cmd },
+    TRANSACTION_TYPES(__declare_mapping)
+#undef __declare_mapping
+  };
+  auto it = m.find(s);
+  if (it != m.end())
+    return it->second;
+
+  throw std::invalid_argument("Unknown TransactionType");
 }
 
 std::string to_string(const Transaction &t) {
@@ -68,16 +82,50 @@ const char *to_string(TransactionEvent event) {
       break;
   }
 }
+#ifdef ENABLE_JSON
+
+std::unique_ptr<TransactionSource>
+TransactionSource::from_json(nlohmann::json & j) {
+  if (j["type"] == "null")
+    return NullTransactionSource::from_json(j);
+  if (j["type"] == "programmatic")
+    return ProgrammaticTransactionSource::from_json(j["options"]);
+  return nullptr;
+}
+#endif
 
 Transaction * TransactionFactory::construct() {
   return pool_.alloc();
 }
+#ifdef ENABLE_JSON
+std::unique_ptr<TransactionSource>
+NullTransactionSource::from_json(nlohmann::json & j) {
+  return std::make_unique<NullTransactionSource>();
+}
+
+#endif
 
 bool NullTransactionSource::get_transaction(TimeStamped<Transaction *> &ts) {
   return false;
 }
+#ifdef ENABLE_JSON
 
-void ProgrammaticTransactionSource::add_transaction(TransactionType type,
+std::unique_ptr<TransactionSource>
+ProgrammaticTransactionSource::from_json(nlohmann::json & j) {
+  auto src = std::make_unique<ProgrammaticTransactionSource>();
+  for (nlohmann::json & t : j["stimulus"]) {
+    const TransactionType::type cmd{
+      TransactionType::from_string(t["cmd"])};
+    const Time time{t["time"]};
+    const uint64_t addr{t["addr"]};
+
+    src->add_transaction(cmd, time, addr);
+  }
+  return std::move(src);
+}
+#endif
+
+void ProgrammaticTransactionSource::add_transaction(TransactionType::type type,
                                                     Time time, uint64_t addr) {
   Transaction *t = pool_.alloc();
   t->set_type(type);

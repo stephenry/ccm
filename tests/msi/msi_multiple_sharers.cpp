@@ -44,7 +44,7 @@ TEST(MSI, MultipleSharers) {
   for (std::size_t i = 0; i < p.agents(); i++) {
     const std::size_t time = (i + 1) * 1000;
 
-    p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
+    p.ts(i)->add_transaction(ccm::TransactionType::load, time, addr);
   }
 
   s.run();

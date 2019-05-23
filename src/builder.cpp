@@ -33,12 +33,20 @@
 #include "snoopfilter.hpp"
 #include "interconnect.hpp"
 
+namespace {
+
+bool has_key(nlohmann::json & j, const std::string & s) {
+  return (j.find(s) != j.end());
+}
+
+} // namespace
+
 namespace ccm {
 
 void Builder::drc(nlohmann::json & j) {
-  if (!j["loglevel"])
+  if (!has_key(j, "loglevel"))
     j["loglevel"] = "error";
-  if (!j["name"])
+  if (!has_key(j, "name"))
     j["name"] = "top";
   
   drc_agents(j);
@@ -48,7 +56,7 @@ void Builder::drc(nlohmann::json & j) {
 void Builder::drc_agents(nlohmann::json & j) {
   std::size_t idx{0};
   for (nlohmann::json & j_agent : j["agents"]) {
-    if (!j_agent["name"]) {
+    if (!has_key(j, "name")) {
       std::stringstream ss;
       ss << "UnknownAgent" << idx++;
       j_agent["name"] = ss.str();
@@ -59,12 +67,20 @@ void Builder::drc_agents(nlohmann::json & j) {
 void Builder::drc_snoop_filters(nlohmann::json & j) {
   std::size_t idx{0};
   for (nlohmann::json & j_snoop : j["snoopfilters"]) {
-    if (!j_snoop["name"]) {
+    if (!has_key(j, "name")) {
       std::stringstream ss;
       ss << "UnknownSnoopFilter" << idx++;
       j_snoop["name"] = ss.str();
     }
   }
+}
+
+void Builder::setup_sim(Sim * sim, nlohmann::json & j) {
+  sim->logger_.set_llevel(LogLevel::from_string(j["loglevel"]));
+
+  sim->platform_ = Platform::from_json(j);
+  sim->epoch_period_ = j["sim"]["epoch_period"];
+  sim->epoch_step_ = j["sim"]["epoch_step"];
 }
 
 std::unique_ptr<Sim> Builder::construct(nlohmann::json & j) {
@@ -73,10 +89,10 @@ std::unique_ptr<Sim> Builder::construct(nlohmann::json & j) {
   std::unique_ptr<Sim> sim = std::make_unique<Sim>();
 
   // Setup logger
-  sim->logger_.set_llevel(LogLevel::from_string(j["loglevel"]));
+  setup_sim(sim.get(), j);
+
   LoggerScope * l = sim->logger_.top(j["name"]);
-  
-  sim->platform_ = Platform::from_json(j);
+
   // Agents
   for (nlohmann::json & j_agent : j["agents"])
     sim->add_actor(AgentBuilder::construct(sim->platform(), l, j_agent));

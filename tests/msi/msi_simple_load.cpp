@@ -51,7 +51,7 @@ TEST(MSI, SimpleLoad) {
     const ccm::id_t id = ragent();
 
     addrs_id[id].insert(addr);
-    p.ts(id)->add_transaction(ccm::TransactionType::Load, t, addr);
+    p.ts(id)->add_transaction(ccm::TransactionType::load, t, addr);
   }
 
   s.run();

@@ -35,12 +35,29 @@
 #include "sim.hpp"
 #include "utility.hpp"
 #include "actor.hpp"
+#include "options.hpp"
+#ifndef ENABLE_JSON
+#  include <nlohmann/json.hpp>
+#  include <memory>
+#endif
 
 namespace ccm {
 
-enum class TransactionType { Load, Store, Replacement, Invalid };
-
-const char *to_string(TransactionType t);
+struct TransactionType {
+#define TRANSACTION_TYPES(__func)               \
+  __func(load)                                  \
+  __func(store)                                 \
+  __func(replacement)                           \
+  __func(invalid)
+  using type = uint8_t;
+  enum : type {
+#define __declare_type(__type) __type,
+    TRANSACTION_TYPES(__declare_type)
+#undef __declare_type
+  };
+  static const std::string to_string(type t);
+  static type from_string(const std::string & s);
+};
 
 #define TRANSACTION_EVENT(__func) __func(Start) __func(End)
 
@@ -53,9 +70,9 @@ enum class TransactionEvent {
 const char *to_string(TransactionEvent event);
 
 // clang-format off
-#define TRANSACTION_FIELDS(__func)                        \
-  __func(TransactionType, type, TransactionType::Invalid) \
-  __func(uint64_t, addr, 0)                               \
+#define TRANSACTION_FIELDS(__func)                                      \
+  __func(TransactionType::type, type, TransactionType::invalid)         \
+  __func(uint64_t, addr, 0)                                             \
   __func(std::size_t, tid, 0)
 // clang-format on
 
@@ -89,6 +106,7 @@ struct Transaction : ccm::Poolable {
 
 std::string to_string(const Transaction &t);
 
+// TODO: Deprecate
 class TransactionFactory : Loggable {
  public:
   Time time() const override { return 0; }
@@ -98,6 +116,11 @@ class TransactionFactory : Loggable {
 };
 
 struct TransactionSource : Loggable {
+#ifdef ENABLE_JSON
+  static std::unique_ptr<TransactionSource> from_json(nlohmann::json & j);
+#endif
+
+  TransactionSource() {}
   virtual ~TransactionSource() {}
 
   //
@@ -105,35 +128,31 @@ struct TransactionSource : Loggable {
 
   //
   virtual bool get_transaction(TimeStamped<Transaction *> &ts) = 0;
-
-  //
   virtual void event(TransactionEvent event,
                      TimeStamped<const Transaction *> ts) = 0;
 };
 
 struct NullTransactionSource : TransactionSource {
-  //
-  virtual bool get_transaction(TimeStamped<Transaction *> &ts) override;
+#ifdef ENABLE_JSON
+  static std::unique_ptr<TransactionSource> from_json(nlohmann::json & j);
+#endif
 
-  //
+  virtual bool get_transaction(TimeStamped<Transaction *> &ts) override;
   virtual void event(TransactionEvent event,
                      TimeStamped<const Transaction *> ts) override {}
 };
 
 struct ProgrammaticTransactionSource : TransactionSource {
-  //
+#ifdef ENABLE_JSON
+  static std::unique_ptr<TransactionSource> from_json(nlohmann::json & j);
+#endif
+
   ProgrammaticTransactionSource() {}
 
-  //
-  void add_transaction(TransactionType type, Time time, uint64_t addr);
-
-  //
+  void add_transaction(TransactionType::type type, Time time, uint64_t addr);
   virtual bool get_transaction(TimeStamped<Transaction *> &ts) override;
-
-  //
   virtual void event(TransactionEvent event,
                      TimeStamped<const Transaction *> ts) override;
-
  private:
   Pool<Transaction> pool_;
   std::deque<TimeStamped<Transaction *> > pending_;

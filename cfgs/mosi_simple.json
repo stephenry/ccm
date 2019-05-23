@@ -1,13 +1,47 @@
 {
     "protocol" : "mosi",
+    "name" : "top",
     "agents" : [
-        { "id" : 0, "cache_options" : [] },
-        { "id" : 1, "cache_options" : [] },
-        { "id" : 2, "cache_options" : [] },
-        { "id" : 3, "cache_options" : [] },
+        { "id" : 0,
+          "name" : "agent0",
+          "cache_options" : [],
+          "transaction_source" : {
+              "type" : "programmatic",
+              "options" : {
+                  "stimulus" : [
+                      { "cmd" : "load", "time" : 1000, "addr" : 1000 },
+                      { "cmd" : "load", "time" : 2000, "addr" : 2000 },
+                      { "cmd" : "load", "time" : 3000, "addr" : 3000 },
+                      { "cmd" : "load", "time" : 4000, "addr" : 4000 }
+                  ]
+              }
+          }
+        },
+        { "id" : 1,
+          "name" : "agent1",
+          "cache_options" : [],
+          "transaction_source" : {
+              "type" : "null"
+          }
+        },
+        { "id" : 2,
+          "name" : "agent2",
+          "cache_options" : [],
+          "transaction_source" : {
+              "type" : "null"
+          }
+        },
+        { "id" : 3,
+          "name" : "agent3",
+          "cache_options" : [],
+          "transaction_source" : {
+              "type" : "null"
+          }
+        }
     ],
     "snoopfilters" : [
-        { "id": 4,
+        { "id" : 4,
+          "name" : "snoopfilter",
           "cache_options" : [],
           "aperture" : { "type" : "contiguous",
                          "lo" : 0,
@@ -19,5 +53,10 @@
         "options" : {
             "latency" : 10
         }
+    },
+    "loglevel" : "debug",
+    "sim" : {
+        "epoch_period" : 100,
+        "epoch_step" : 10
     }
 }

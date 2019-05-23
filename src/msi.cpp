@@ -82,19 +82,17 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
                                const CacheLine &cache_line) const {
     CoherenceActions actions;
     switch (t->type()) {
-      case TransactionType::Load:
+      case TransactionType::load:
         handle_load(t, cache_line, actions);
         break;
-
-      case TransactionType::Store:
+      case TransactionType::store:
         handle_store(t, cache_line, actions);
         break;
-
-      case TransactionType::Replacement:
+      case TransactionType::replacement:
         handle_replacement(t, cache_line, actions);
         break;
-        
-      case TransactionType::Invalid:
+      default:
+        actions.set_error(true);
         break;
     }
     return actions;

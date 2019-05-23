@@ -39,7 +39,7 @@ TEST(MESI, SimpleStore) {
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Store, 100, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::store, 100, addr);
 
   s.run();
 

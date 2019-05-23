@@ -39,6 +39,7 @@ struct Builder {
   static void drc(nlohmann::json & j);
   static void drc_agents(nlohmann::json & j);
   static void drc_snoop_filters(nlohmann::json & j);
+  static void setup_sim(Sim * sim, nlohmann::json & j);
 };
 
 } // namespace ccm

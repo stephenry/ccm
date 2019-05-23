@@ -46,9 +46,13 @@ BasicPlatform::BasicPlatform(Sim& sim, Protocol::type protocol, std::size_t agen
   validator_ = coherence_protocol_validator_factory(protocol);
 }
 
-BasicPlatform::~BasicPlatform() {
-  for (TransactionSource* ts : ts_) delete ts;
+BasicPlatform::~BasicPlatform() {}
+
+ProgrammaticTransactionSource *BasicPlatform::ts(std::size_t id) const {
+  return static_cast<ProgrammaticTransactionSource *>(
+      agents_[id]->transaction_source());
 }
+
 
 bool BasicPlatform::validate() const {
   if (!validator_) return false;
@@ -82,12 +86,13 @@ void BasicPlatform::construct_agent(std::size_t id) {
   actors_.push_back(agent.get());
   agents_.push_back(agent.get());
   sim_.add_actor(std::move(agent));
-  ts_.push_back(new ProgrammaticTransactionSource());
+
+  auto ts = std::make_unique<ProgrammaticTransactionSource>();
 
   ss << "Src";
-  ts_.back()->set_logger_scope(top_->child_scope(ss.str()));
+  ts->set_logger_scope(top_->child_scope(ss.str()));
 
-  agents_.back()->set_transaction_source(ts_.back());
+  agents_.back()->set_transaction_source(std::move(ts));
 }
 
 void BasicPlatform::construct_memory(id_t id) {

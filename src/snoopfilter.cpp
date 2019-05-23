@@ -149,7 +149,6 @@ void SnoopFilterCommandInvoker::execute_update_state(Context& context,
                                                      state_t state_next) {
   log_debug("Update state; current: ", cc_model_->to_string(state_next),
             " previous: ", cc_model_->to_string(d.state()));
-
   d.set_state(state_next);
 }
 
@@ -158,7 +157,6 @@ void SnoopFilterCommandInvoker::execute_set_owner_to_req(const Message* msg,
                                                          Cursor& cursor,
                                                          DirectoryEntry& d) {
   log_debug("Set Owner To Requester: Owner = ", msg->src_id());
-
   d.set_owner(msg->src_id());
 }
 

@@ -92,18 +92,15 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
                                const CacheLine& cache_line) const {
     CoherenceActions actions;
     switch (t->type()) {
-      case TransactionType::Load:
+      case TransactionType::load:
         handle__Load(t, cache_line, actions);
         break;
-
-      case TransactionType::Store:
+      case TransactionType::store:
         handle__Store(t, cache_line, actions);
         break;
-
-      case TransactionType::Replacement:
+      case TransactionType::replacement:
         handle_replacement(t, cache_line, actions);
         break;
-
       default:
         actions.set_error(true);
         break;

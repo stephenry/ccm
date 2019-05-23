@@ -251,6 +251,8 @@ struct Sim {
   std::map<std::size_t, std::unique_ptr<CoherentActor> > actors_;
   std::unique_ptr<InterconnectModel> interconnect_;
   Logger logger_;
+  std::size_t epoch_period_{100};
+  std::size_t epoch_step_{10};
 };
 
 }  // namespace ccm

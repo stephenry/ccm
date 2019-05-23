@@ -40,7 +40,7 @@ TEST(MESI, SimpleLoad) {
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MESI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Load, 10, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::load, 10, addr);
 
   s.run();
 

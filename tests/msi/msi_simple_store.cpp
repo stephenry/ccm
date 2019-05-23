@@ -59,7 +59,7 @@ TEST(MSI, SimpleStore) {
 
     addrs.insert(addr);
     addrs_id[id].insert(addr);
-    p.ts(id)->add_transaction(ccm::TransactionType::Store, t, addr);
+    p.ts(id)->add_transaction(ccm::TransactionType::store, t, addr);
   }
 
   s.run();

@@ -138,12 +138,12 @@ bool QueueEntry::compare_lt(const QueueEntry & lhs, const QueueEntry & rhs) {
   if (lhs.time() == rhs.time()) {
     if (lhs.type() == QueueEntryType::Transaction) {
       const Transaction * t = lhs.as_trn().t();
-      if (t->type() == TransactionType::Replacement)
+      if (t->type() == TransactionType::replacement)
         return true;
     }
     if (rhs.type() == QueueEntryType::Transaction) {
       const Transaction * t = rhs.as_trn().t();
-      if (t->type() == TransactionType::Replacement)
+      if (t->type() == TransactionType::replacement)
         return true;
     }
   }
@@ -231,7 +231,7 @@ void Sim::add_interconnect(
 }
 
 void Sim::run(const RunOptions &run_options) {
-  Epoch current_epoch{0, 20, 10};
+  Epoch current_epoch{0, epoch_period_, epoch_step_};
   do {
     if (run_options.has_completed(current_epoch.start())) break;
 

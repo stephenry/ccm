@@ -69,6 +69,7 @@ struct CoherentActor : Loggable {
   virtual void visit_cache(CacheVisitor *cache_visitor) const = 0;
 
   void set_time(Time time) { time_ = time; }
+  // TODO: deprecate
   void emit_message(Context &context, Cursor &cursor, MessageBuilder &b);
 
  protected:

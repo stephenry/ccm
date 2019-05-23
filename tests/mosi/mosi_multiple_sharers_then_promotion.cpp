@@ -46,9 +46,9 @@ TEST(MOSI, MultipleSharersThenPromotion) {
   for (std::size_t i = 0; i < p.agents(); i++) {
     const std::size_t time = (i + 1) * 1000;
 
-    p.ts(i)->add_transaction(ccm::TransactionType::Load, time, addr);
+    p.ts(i)->add_transaction(ccm::TransactionType::load, time, addr);
   }
-  p.ts(0)->add_transaction(ccm::TransactionType::Store, 10000, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::store, 10000, addr);
 
   s.run();
 

@@ -454,14 +454,14 @@ void Agent::eval(Context& context) {
           // and place at the head of the queue manager.
           //
           Transaction * trpl = tfac_.construct();
-          trpl->set_type(TransactionType::Replacement);
+          trpl->set_type(TransactionType::replacement);
           trpl->set_addr(trn->addr());
           qmgr_.push(TimeStamped{cursor.time(), trpl});
         } else {
           // TODO: this should really be associated with the transaction
           // itself, not the transaction source.
-          if ((trn->type() == TransactionType::Load) ||
-              (trn->type() == TransactionType::Store)) {
+          if ((trn->type() == TransactionType::load) ||
+              (trn->type() == TransactionType::store)) {
             trns_->event(TransactionEvent::Start, TimeStamped{cursor.time(), trn});
           }
           std::size_t misses_n{0}; // TODO: move to statistics
@@ -527,7 +527,7 @@ CoherenceActions Agent::get_actions(Context& context, Cursor& cursor,
                                     TimeStamped<Transaction*> ts) {
   CoherenceActions actions;
   const Transaction* t = ts.t();
-  if (t->type() != TransactionType::Replacement)
+  if (t->type() != TransactionType::replacement)
     actions.set_requires_eviction(cache_->requires_eviction(t->addr()));
 
   if (!actions.requires_eviction()) {
@@ -553,7 +553,11 @@ bool Agent::is_active() const { return !qmgr_.empty(); }
 #ifdef ENABLE_JSON
 std::unique_ptr<Agent> AgentBuilder::construct(
     const Platform & platform, LoggerScope * l, nlohmann::json j) {
-  return std::make_unique<Agent>(AgentOptions::from_json(platform, l, j));
+  std::unique_ptr<Agent> agent =
+      std::make_unique<Agent>(AgentOptions::from_json(platform, l, j));
+  agent->set_transaction_source(
+      TransactionSource::from_json(j["transaction_source"]));
+  return std::move(agent);
 }
 #endif
 }  // namespace ccm

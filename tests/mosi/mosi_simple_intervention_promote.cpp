@@ -42,12 +42,12 @@ TEST(MOSI, SimpleInterventionFromM) {
   ccm::test::BasicPlatform p{s, ccm::Protocol::MOSI, 4};
 
   
-  p.ts(0)->add_transaction(ccm::TransactionType::Store, 100, addr);
-  p.ts(1)->add_transaction(ccm::TransactionType::Load, 200, addr);
-  p.ts(2)->add_transaction(ccm::TransactionType::Load, 300, addr);
-  p.ts(3)->add_transaction(ccm::TransactionType::Load, 400, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::store, 100, addr);
+  p.ts(1)->add_transaction(ccm::TransactionType::load, 200, addr);
+  p.ts(2)->add_transaction(ccm::TransactionType::load, 300, addr);
+  p.ts(3)->add_transaction(ccm::TransactionType::load, 400, addr);
 
-  p.ts(3)->add_transaction(ccm::TransactionType::Store, 500, addr);
+  p.ts(3)->add_transaction(ccm::TransactionType::store, 500, addr);
   
   s.run();
 

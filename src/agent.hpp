@@ -106,8 +106,10 @@ struct Agent : CoherentAgentCommandInvoker {
   Protocol::type protocol() const { return opts_.protocol(); }
   CacheOptions cache_options() const { return opts_.cache_options(); }
 
-  void set_transaction_source(TransactionSource* trns) { trns_ = trns; }
-  TransactionSource* transaction_source() const { return trns_; }
+  void set_transaction_source(std::unique_ptr<TransactionSource> && trns) {
+    trns_ = std::move(trns);
+  }
+  TransactionSource* transaction_source() const { return trns_.get(); }
 
   void apply(TimeStamped<Message*> ts) override;
   void eval(Context& ctxt) override;
@@ -122,7 +124,7 @@ struct Agent : CoherentAgentCommandInvoker {
   void enqueue_replacement(Time time, uint64_t addr);
 
   QueueManager qmgr_;
-  TransactionSource* trns_;
+  std::unique_ptr<TransactionSource> trns_;
   TransactionFactory tfac_;
   const AgentOptions opts_;
 };

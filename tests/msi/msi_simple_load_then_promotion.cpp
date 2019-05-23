@@ -42,8 +42,8 @@ TEST(MSI, SimpleLoadPromotion) {
   ccm::Sim s;
   ccm::test::BasicPlatform p{s, ccm::Protocol::MSI, 4};
 
-  p.ts(0)->add_transaction(ccm::TransactionType::Load, 100, addr);
-  p.ts(0)->add_transaction(ccm::TransactionType::Store, 200, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::load, 100, addr);
+  p.ts(0)->add_transaction(ccm::TransactionType::store, 200, addr);
 
   s.run();
 
