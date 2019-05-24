@@ -58,7 +58,8 @@ TEST(MSI, SimpleLoad) {
 
   for (ccm::id_t id = 0; id < addrs_id.size(); id++) {
     for (const ccm::addr_t addr : addrs_id[id]) {
-      const ccm::CacheLine cache_line = p.agent(id)->cache_line(addr);
+      ccm::AgentTestHarness agent{p.agent(id)};
+      const ccm::CacheLine & cache_line = agent.cache_line(addr);
       EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::S);
 
       const ccm::DirectoryEntry directory_entry =

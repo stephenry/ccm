@@ -96,6 +96,8 @@ struct CoherentAgentCommandInvoker : CoherentActor {
 };
 
 class Agent : public CoherentAgentCommandInvoker {
+  friend class AgentTestHarness;
+  
   enum class CommandType { Message, Transaction, Invalid };
 
   struct CommandArbitrator {
@@ -164,6 +166,16 @@ struct AgentBuilder {
       const Platform & platform, LoggerScope * l, nlohmann::json j);
 };
 #endif
+
+class AgentTestHarness {
+ public:
+  AgentTestHarness(Agent & agent);
+
+  CacheLine & cache_line(addr_t addr);
+  
+ private:
+  Agent & agent_;
+};
 
 }  // namespace ccm
 

@@ -50,7 +50,8 @@ TEST(MOSI, MultipleSharers) {
   s.run();
 
   for (std::size_t i = 0; i < p.agents(); i++) {
-    const ccm::CacheLine cache_line = p.agent(i)->cache_line(addr);
+    ccm::AgentTestHarness agent{p.agent(i)};
+    const ccm::CacheLine & cache_line = agent.cache_line(addr);
 
     EXPECT_EQ(cache_line.state(), ccm::MosiAgentLineState::S);
   }

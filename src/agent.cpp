@@ -506,4 +506,13 @@ std::unique_ptr<Agent> AgentBuilder::construct(
   return std::move(agent);
 }
 #endif
+
+AgentTestHarness::AgentTestHarness(Agent & agent) : agent_(agent) {}
+
+CacheLine & AgentTestHarness::cache_line(addr_t addr) {
+  GenericCache<CacheLine> * cache{agent_.cache_.get()};
+  return cache->lookup(addr);
+}
+
+
 }  // namespace ccm

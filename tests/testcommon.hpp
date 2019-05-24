@@ -39,7 +39,7 @@ struct BasicPlatform {
   std::size_t agents() const { return agents_.size(); }
   ProgrammaticTransactionSource *ts(std::size_t id) const;
   Protocol::type protocol() const { return protocol_; }
-  Agent *agent(std::size_t id) { return agents_[id]; }
+  Agent & agent(std::size_t id) { return *agents_[id]; }
   SnoopFilter *snoop_filter() { return snoop_filter_; }
 
   bool validate() const;

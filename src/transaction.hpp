@@ -124,7 +124,7 @@ class TransactionFactory : Loggable {
   Pool<Transaction> pool_;
 };
 
-class TransactionSource : Loggable {
+class TransactionSource : public Loggable {
  public:
 #ifdef ENABLE_JSON
   static std::unique_ptr<TransactionSource> from_json(nlohmann::json & j);
@@ -157,7 +157,7 @@ class ProgrammaticTransactionSource final : public TransactionSource {
   ProgrammaticTransactionSource() {}
 
   bool is_active() const override { return !pending_.empty(); }
-  void add_transaction(TransactionType::type type, Time time, uint64_t addr, std::size_t tid);
+  void add_transaction(TransactionType::type type, Time time, uint64_t addr, std::size_t tid = 0);
   virtual bool get_transaction(TimeStamped<Transaction *> &ts) override;
   virtual void event(const Transaction * t,
                      TransactionEvent event, const Time & time) override;

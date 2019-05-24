@@ -44,7 +44,7 @@ struct Memory : CoherentActor {
 
  private:
   void handle_msg(Context &context, Cursor &cursor, TimeStamped<Message *> ts);
-  QueueManager qmgr_;
+  //  QueueManager qmgr_;
 };
 
 }  // namespace ccm

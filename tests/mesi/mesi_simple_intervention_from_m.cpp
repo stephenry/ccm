@@ -42,10 +42,13 @@ TEST(MESI, SimpleInterventionFromM) {
 
   s.run();
 
-  const ccm::CacheLine cache_line_0 = p.agent(0)->cache_line(addr);
+  
+  ccm::AgentTestHarness agent_0{p.agent(0)};
+  const ccm::CacheLine cache_line_0 = agent_0.cache_line(addr);
   EXPECT_EQ(cache_line_0.state(), ccm::MesiAgentLineState::I);
 
-  const ccm::CacheLine cache_line_1 = p.agent(1)->cache_line(addr);
+  ccm::AgentTestHarness agent_1{p.agent(1)};
+  const ccm::CacheLine cache_line_1 = agent_1.cache_line(addr);
   EXPECT_EQ(cache_line_1.state(), ccm::MesiAgentLineState::M);
 
   const ccm::DirectoryEntry directory_entry =

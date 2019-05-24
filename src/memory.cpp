@@ -32,29 +32,29 @@ namespace ccm {
 
 Memory::Memory(const ActorOptions &opts) : CoherentActor(opts) {}
 
-void Memory::apply(TimeStamped<Message *> ts) { qmgr_.push(ts); }
+void Memory::apply(TimeStamped<Message *> ts) { }
 
 void Memory::eval(Context &context) {
   const Epoch epoch = context.epoch();
   Cursor cursor = epoch.cursor();
 
-  do {
-    const QueueEntry next = qmgr_.next();
-    if (next.type() == QueueEntryType::Invalid) break;
+  // do {
+  //   const QueueEntry next; // = qmgr_.next();
+  //   if (next.type() == QueueEntryType::Invalid) break;
 
-    if (!epoch.in_interval(next.time())) break;
+  //   if (!epoch.in_interval(next.time())) break;
 
-    cursor.set_time(std::max(time(), next.time()));
-    set_time(cursor.time());
+  //   cursor.set_time(std::max(time(), next.time()));
+  //   set_time(cursor.time());
 
-    switch (next.type()) {
-      case QueueEntryType::Message:
-        handle_msg(context, cursor, next.as_msg());
-        break;
-      default:;  // TODO: unexpected
-    }
-    next.consume();
-  } while (epoch.in_interval(cursor.time()));
+  //   switch (next.type()) {
+  //     case QueueEntryType::Message:
+  //       handle_msg(context, cursor, next.as_msg());
+  //       break;
+  //     default:;  // TODO: unexpected
+  //   }
+  //   next.consume();
+  // } while (epoch.in_interval(cursor.time()));
 
   set_time(cursor.time());
 }
@@ -68,6 +68,6 @@ void Memory::handle_msg(Context &context, Cursor &cursor,
   msg->release();
 }
 
-bool Memory::is_active() const { return !qmgr_.empty(); }
+bool Memory::is_active() const { return false; }
 
 }  // namespace ccm

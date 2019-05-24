@@ -44,7 +44,8 @@ TEST(MESI, SimpleLoad) {
 
   s.run();
 
-  const ccm::CacheLine cache_line = p.agent(0)->cache_line(addr);
+  ccm::AgentTestHarness agent{p.agent(0)};
+  const ccm::CacheLine cache_line = agent.cache_line(addr);
   EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::E);
 
   const ccm::DirectoryEntry directory_entry =
