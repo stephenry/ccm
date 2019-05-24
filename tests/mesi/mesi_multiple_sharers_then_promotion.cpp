@@ -53,7 +53,7 @@ TEST(MESI, MultipleSharersThenPromotion) {
   s.run();
 
   for (std::size_t i = 0; i < p.agents(); i++) {
-    ccm::AgentTestHarness agent{p.agent(i)};
+    ccm::AgentTestProxy agent{p.agent(i)};
     const ccm::CacheLine & cache_line = agent.cache_line(addr);
 
     if (i == 0)

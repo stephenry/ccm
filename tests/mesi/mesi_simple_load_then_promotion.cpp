@@ -47,7 +47,7 @@ TEST(MESI, SimpleLoadPromotion) {
 
   s.run();
 
-  ccm::AgentTestHarness agent{p.agent(0)};
+  ccm::AgentTestProxy agent{p.agent(0)};
   const ccm::CacheLine cache_line = agent.cache_line(addr);
   EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::M);
 

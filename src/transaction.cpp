@@ -131,6 +131,11 @@ ProgrammaticTransactionSource::from_json(nlohmann::json & j) {
 #endif
 
 void ProgrammaticTransactionSource::add_transaction(
+    TransactionType::type type, Time time, uint64_t addr) {
+  add_transaction(type, time, addr, tid_++);
+}
+
+void ProgrammaticTransactionSource::add_transaction(
     TransactionType::type type, Time time, uint64_t addr, std::size_t tid) {
   Transaction *t = pool_.alloc();
 

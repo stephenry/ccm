@@ -96,7 +96,7 @@ struct CoherentAgentCommandInvoker : CoherentActor {
 };
 
 class Agent : public CoherentAgentCommandInvoker {
-  friend class AgentTestHarness;
+  friend class AgentTestProxy;
   
   enum class CommandType { Message, Transaction, Invalid };
 
@@ -167,12 +167,11 @@ struct AgentBuilder {
 };
 #endif
 
-class AgentTestHarness {
+class AgentTestProxy {
  public:
-  AgentTestHarness(Agent & agent);
+  AgentTestProxy(Agent & agent);
 
   CacheLine & cache_line(addr_t addr);
-  
  private:
   Agent & agent_;
 };

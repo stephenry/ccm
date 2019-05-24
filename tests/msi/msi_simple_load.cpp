@@ -58,7 +58,7 @@ TEST(MSI, SimpleLoad) {
 
   for (ccm::id_t id = 0; id < addrs_id.size(); id++) {
     for (const ccm::addr_t addr : addrs_id[id]) {
-      ccm::AgentTestHarness agent{p.agent(id)};
+      ccm::AgentTestProxy agent{p.agent(id)};
       const ccm::CacheLine & cache_line = agent.cache_line(addr);
       EXPECT_EQ(cache_line.state(), ccm::MsiAgentLineState::S);
 

@@ -157,11 +157,13 @@ class ProgrammaticTransactionSource final : public TransactionSource {
   ProgrammaticTransactionSource() {}
 
   bool is_active() const override { return !pending_.empty(); }
-  void add_transaction(TransactionType::type type, Time time, uint64_t addr, std::size_t tid = 0);
+  void add_transaction(TransactionType::type type, Time time, uint64_t addr);
+  void add_transaction(TransactionType::type type, Time time, uint64_t addr, std::size_t tid);
   virtual bool get_transaction(TimeStamped<Transaction *> &ts) override;
   virtual void event(const Transaction * t,
                      TransactionEvent event, const Time & time) override;
  private:
+  std::size_t tid_{0};
   Pool<Transaction> pool_;
   std::deque<TimeStamped<Transaction *> > pending_;
 };
