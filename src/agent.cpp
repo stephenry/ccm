@@ -53,17 +53,6 @@ CoherentAgentCommandInvoker::CoherentAgentCommandInvoker(
   cache_ = cache_factory<CacheLine>(opts.cache_options());
 }
 
-CacheLine CoherentAgentCommandInvoker::cache_line(std::size_t addr) const {
-  // TODO: deprecate
-  CacheLine cl;
-  if (cache_->is_hit(addr)) {
-    cl = cache_->lookup(addr);
-  } else {
-    cc_model_->init(cl);
-  }
-  return cl;
-}
-
 void CoherentAgentCommandInvoker::visit_cache(
     CacheVisitor* cache_visitor) const {
   cache_visitor->set_id(id());
@@ -351,13 +340,20 @@ void Agent::eval(Context& context) {
     if (!arb.is_valid() || !epoch.in_interval(arb.frontier())) break;
     
     switch (arb.command_type()) {
-      case CommandType::Message:
-        switch (handle_message(context, cursor, arb)) {
-          case MessageResult::Commit:
+      case CommandType::Message: {
+        const TimeStamped<Message*> tsm{mq_.front()};
+        Message * msg = tsm.t();
+        
+        switch (handle_message(context, cursor, msg)) {
           case MessageResult::Stall:
+            arb.disable_message_class(MessageType::to_class(msg->type()));
+            break;
+          case MessageResult::Commit:
+            mq_.pop_front();
+            msg->release();
             break;
         }
-        break;
+      } break;
       case CommandType::Transaction: {
         switch (handle_transaction(context, cursor, arb)) {
           case TransactionResult::Miss:
@@ -380,24 +376,16 @@ void Agent::eval(Context& context) {
 }
 
 result_t Agent::handle_message(Context & context, Cursor & cursor,
-                           CommandArbitrator & arb) {
-  const TimeStamped<Message*> tsm{mq_.front()};
-  const CoherenceActions actions{get_actions(context, cursor, tsm.t())};
+                               const Message * msg) {
+  const CoherenceActions actions{get_actions(context, cursor, msg)};
+  if (actions.result() == MessageResult::Commit) {
+    execute(context, cursor, actions, msg);
+    if (actions.transaction_done()) {
+      const Transaction * t = msg->transaction();
 
-  const Message * msg = tsm.t();
-  switch (actions.result()) {
-    case MessageResult::Commit: {
-      execute(context, cursor, actions, msg);
-      mq_.pop_front();
-      // TODO: refactor
-      if (actions.transaction_done())
-        trns_->event(TransactionEvent::End,
-                     TimeStamped{cursor.time(), msg->transaction()});
-      msg->release();
-    } break;
-    case MessageResult::Stall:
-      arb.disable_message_class(MessageType::to_class(msg->type()));
-      break;
+      log_debug(cursor.time(), "Transaction TID=", t->tid(), " END");
+      t->event(TransactionEvent::End, cursor.time());
+    }
   }
   return actions.result();
 }
@@ -406,6 +394,11 @@ result_t Agent::handle_transaction(Context & context, Cursor & cursor,
                                    CommandArbitrator & arb) {
   const TimeStamped<Transaction *> tst{tq_.front()};
   const Transaction * t = tst.t();
+  
+  if (t->type() != TransactionType::replacement) {
+    log_debug(cursor.time(), "Transaction TID=", t->tid(), " START");
+    t->event(TransactionEvent::Start, cursor.time());
+  }
   
   const CoherenceActions actions{get_actions(context, cursor, t)};
   if (actions.requires_eviction()) {
@@ -424,16 +417,14 @@ result_t Agent::handle_transaction(Context & context, Cursor & cursor,
     //
     enqueue_replacement(cursor, t);
   } else {
-    // TODO: this should really be associated with the transaction
-    // itself, not the transaction source.
-    if ((t->type() == TransactionType::load) ||
-        (t->type() == TransactionType::store))
-      trns_->event(TransactionEvent::Start, TimeStamped{cursor.time(), t});
-    
     const bool do_commit = (actions.result() != TransactionResult::Blocked);
     if (do_commit) {
       execute(context, cursor, actions, t);
       tq_.pop_front();
+      if (actions.transaction_done()) {
+        log_debug(cursor.time(), "Transaction TID=", t->tid(), " END");
+        t->event(TransactionEvent::End, cursor.time());
+      }
     } else {
       arb.disable_transactions();
     }

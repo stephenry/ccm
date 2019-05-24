@@ -29,7 +29,6 @@
 #define __SRC_TRANSACTION_HPP__
 
 #include <deque>
-#include <list>
 #include <string>
 #include "log.hpp"
 #include "sim.hpp"
@@ -42,6 +41,8 @@
 #endif
 
 namespace ccm {
+
+class TransactionSource;
 
 struct TransactionType {
 #define TRANSACTION_TYPES(__func)               \
@@ -59,12 +60,16 @@ struct TransactionType {
   static type from_string(const std::string & s);
 };
 
-#define TRANSACTION_EVENT(__func) __func(Start) __func(End)
-
 enum class TransactionEvent {
+  // clang-format off
+#define TRANSACTION_EVENT(__func)               \
+  __func(Start)                                 \
+  __func(End)
+
 #define __declare_event(__name) __name,
   TRANSACTION_EVENT(__declare_event)
 #undef __declare_event
+  // clang-format on
 };
 
 const char *to_string(TransactionEvent event);
@@ -77,6 +82,8 @@ const char *to_string(TransactionEvent event);
 // clang-format on
 
 struct Transaction : ccm::Poolable {
+  friend class TransactionSource;
+  
   Transaction() {}
 
 #define __declare_getter_setter(__type, __name, __default) \
@@ -90,6 +97,8 @@ struct Transaction : ccm::Poolable {
   //
   void reset() { set_invalid(); }
 
+  void event(TransactionEvent event, const Time & time) const;
+
  private:
   void set_invalid() {
 #define __declare_defaults(__type, __name, __default) __name##_ = __default;
@@ -102,6 +111,7 @@ struct Transaction : ccm::Poolable {
 
   TRANSACTION_FIELDS(__declare_fields)
 #undef __declare_fields
+  TransactionSource *owner_{nullptr};
 };
 
 std::string to_string(const Transaction &t);
@@ -114,34 +124,32 @@ class TransactionFactory : Loggable {
   Pool<Transaction> pool_;
 };
 
-struct TransactionSource : Loggable {
+class TransactionSource : Loggable {
+ public:
 #ifdef ENABLE_JSON
   static std::unique_ptr<TransactionSource> from_json(nlohmann::json & j);
 #endif
-
   TransactionSource() {}
   virtual ~TransactionSource() {}
 
-  //
   virtual bool is_active() const { return false; }
-
-  //
   virtual bool get_transaction(TimeStamped<Transaction *> &ts) = 0;
-  virtual void event(TransactionEvent event,
-                     TimeStamped<const Transaction *> ts) = 0;
+  virtual void event(const Transaction * t, TransactionEvent event, const Time & time) {};
+                     
+ protected:
+  virtual void initialize_transaction(Transaction * t);
 };
 
-struct NullTransactionSource : TransactionSource {
+class NullTransactionSource final : public TransactionSource {
+ public:
 #ifdef ENABLE_JSON
   static std::unique_ptr<TransactionSource> from_json(nlohmann::json & j);
 #endif
-
-  virtual bool get_transaction(TimeStamped<Transaction *> &ts) override;
-  virtual void event(TransactionEvent event,
-                     TimeStamped<const Transaction *> ts) override {}
+  bool get_transaction(TimeStamped<Transaction *> &ts) override { return false; };
 };
 
-struct ProgrammaticTransactionSource : TransactionSource {
+class ProgrammaticTransactionSource final : public TransactionSource {
+ public:
 #ifdef ENABLE_JSON
   static std::unique_ptr<TransactionSource> from_json(nlohmann::json & j);
 #endif
@@ -149,14 +157,13 @@ struct ProgrammaticTransactionSource : TransactionSource {
   ProgrammaticTransactionSource() {}
 
   bool is_active() const override { return !pending_.empty(); }
-  void add_transaction(TransactionType::type type, Time time, uint64_t addr);
+  void add_transaction(TransactionType::type type, Time time, uint64_t addr, std::size_t tid);
   virtual bool get_transaction(TimeStamped<Transaction *> &ts) override;
-  virtual void event(TransactionEvent event,
-                     TimeStamped<const Transaction *> ts) override;
+  virtual void event(const Transaction * t,
+                     TransactionEvent event, const Time & time) override;
  private:
   Pool<Transaction> pool_;
   std::deque<TimeStamped<Transaction *> > pending_;
-  std::list<Transaction *> in_flight_;
 };
 
 class TransactionQueueManager {

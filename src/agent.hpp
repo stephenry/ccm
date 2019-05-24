@@ -56,8 +56,6 @@ struct CoherentAgentCommandInvoker : CoherentActor {
 
   CoherentAgentCommandInvoker(const CoherentAgentOptions& opts);
 
-  CacheLine cache_line(std::size_t addr) const;
-
   void visit_cache(CacheVisitor* cache_visitor) const override;
   void execute(Context& context, Cursor& cursor,
                const CoherenceActions& actions,
@@ -144,7 +142,7 @@ class Agent : public CoherentAgentCommandInvoker {
   void fetch_transactions(std::size_t n = 10);
 
   result_t handle_message(
-      Context & context, Cursor & cursor, CommandArbitrator & arb);
+      Context & context, Cursor & cursor, const Message * msg);
   result_t handle_transaction(
       Context & context, Cursor & cursor, CommandArbitrator & arb);
 

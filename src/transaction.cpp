@@ -82,6 +82,11 @@ const char *to_string(TransactionEvent event) {
       break;
   }
 }
+
+void Transaction::event(TransactionEvent event, const Time & time) const {
+  owner_->event(this, event, time);
+}
+
 #ifdef ENABLE_JSON
 
 std::unique_ptr<TransactionSource>
@@ -105,30 +110,35 @@ NullTransactionSource::from_json(nlohmann::json & j) {
 
 #endif
 
-bool NullTransactionSource::get_transaction(TimeStamped<Transaction *> &ts) {
-  return false;
+void TransactionSource::initialize_transaction(Transaction * t) {
+  t->owner_ = this;
 }
 #ifdef ENABLE_JSON
 
 std::unique_ptr<TransactionSource>
 ProgrammaticTransactionSource::from_json(nlohmann::json & j) {
   auto src = std::make_unique<ProgrammaticTransactionSource>();
+  std::size_t tid{0};
   for (nlohmann::json & t : j["stimulus"]) {
     const TransactionType::type cmd{
       TransactionType::from_string(t["cmd"])};
     const Time time{t["time"]};
     const uint64_t addr{t["addr"]};
-    src->add_transaction(cmd, time, addr);
+    src->add_transaction(cmd, time, addr, tid++);
   }
   return std::move(src);
 }
 #endif
 
-void ProgrammaticTransactionSource::add_transaction(TransactionType::type type,
-                                                    Time time, uint64_t addr) {
+void ProgrammaticTransactionSource::add_transaction(
+    TransactionType::type type, Time time, uint64_t addr, std::size_t tid) {
   Transaction *t = pool_.alloc();
+
+  TransactionSource::initialize_transaction(t);
   t->set_type(type);
   t->set_addr(addr);
+  t->set_tid(tid);
+  
   pending_.push_back(TimeStamped<Transaction *>{time, t});
 }
 
@@ -138,49 +148,34 @@ bool ProgrammaticTransactionSource::get_transaction(
 
   ts = pending_.front();
   pending_.pop_front();
-
-  Transaction *t = ts.t();
-  t->set_tid(in_flight_.size());
-  in_flight_.push_back(t);
-
   return true;
 }
 
-void ProgrammaticTransactionSource::event(TransactionEvent event,
-                                          TimeStamped<const Transaction *> ts) {
-  const Transaction *t = ts.t();
-
+void ProgrammaticTransactionSource::event(
+    const Transaction * t, TransactionEvent event, const Time & time) {
   switch (event) {
-    case TransactionEvent::Start: {
-      log_info(ts.time(), "Transaction starts: ", t->tid());
-    } break;
-
-    case TransactionEvent::End: {
-      log_info(ts.time(), "Transaction ends: ", t->tid());
-
-      auto it = std::find(in_flight_.begin(), in_flight_.end(), t);
-      if (it != in_flight_.end()) {
-        (*it)->release();
-        in_flight_.erase(it);
-      }
-    } break;
+    case TransactionEvent::Start:
+      break;
+    case TransactionEvent::End:
+      // Remove const-ness as we are returning the transaction back to
+      // the pool and because we allow the pool to reset the state of
+      // the object. This is more convenient overall as we can retain
+      // constness throughout the user code (whereas the non-costness
+      // would have to propagate).
+      //
+      const_cast<Transaction *>(t)->release();
+      break;
   }
 }
 
 TransactionQueueManager::TransactionQueueManager() {}
 
-bool TransactionQueueManager::is_active() const {
-  return !q_.empty();
-}
+bool TransactionQueueManager::is_active() const { return !q_.empty(); }
 
-void TransactionQueueManager::push_back(const TSTransaction & t) {
-  q_.push(t);
-}
+void TransactionQueueManager::push_back(const TSTransaction & t) { q_.push(t); }
 
 TransactionQueueManager::TSTransaction
-TransactionQueueManager::front() const {
-  return q_replacement_.value_or(q_.top());
-}
+TransactionQueueManager::front() const { return q_replacement_.value_or(q_.top()); }
 
 void TransactionQueueManager::set_replacement(const TSTransaction & t) {
   q_replacement_ = t;

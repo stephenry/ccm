@@ -155,6 +155,7 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
       case MsiAgentLineState::SM_A:
       case MsiAgentLineState::M:
         a.set_result(TransactionResult::Hit);
+        a.set_transaction_done(true);
         break;
 
       default:
@@ -192,6 +193,7 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
 
       case MsiAgentLineState::M:
         a.set_result(TransactionResult::Hit);
+        a.set_transaction_done(true);
         break;
 
       default:
