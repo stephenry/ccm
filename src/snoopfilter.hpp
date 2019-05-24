@@ -65,43 +65,43 @@ struct SnoopFilterCommandInvoker : CoherentActor {
   std::unique_ptr<GenericCache<DirectoryEntry> > cache_;
 
  private:
-  void execute_update_state(Context& context, Cursor& cursor, DirectoryEntry& d,
+  bool execute_update_state(Context& context, Cursor& cursor, DirectoryEntry& d,
                             state_t state_next);
-  void execute_set_owner_to_req(const Message* msg, Context& context,
+  bool execute_set_owner_to_req(const Message* msg, Context& context,
                                 Cursor& cursor, DirectoryEntry& d);
-  void execute_send_data_to_req(const Message* msg, Context& context,
+  bool execute_send_data_to_req(const Message* msg, Context& context,
                                 Cursor& cursor, DirectoryEntry& d,
                                 const CoherenceActions& act);
-  void execute_send_inv_to_sharers(const Message* msg, Context& context,
+  bool execute_send_inv_to_sharers(const Message* msg, Context& context,
                                    Cursor& cursor, DirectoryEntry& d,
                                    const CoherenceActions& actions);
-  void execute_clear_sharers(const Message* msg, Context& context,
+  bool execute_clear_sharers(const Message* msg, Context& context,
                              Cursor& cursor, DirectoryEntry& d);
-  void execute_add_req_to_sharers(const Message* msg, Context& context,
+  bool execute_add_req_to_sharers(const Message* msg, Context& context,
                                   Cursor& cursor, DirectoryEntry& d);
-  void execute_del_req_from_sharers(const Message* msg, Context& context,
+  bool execute_del_req_from_sharers(const Message* msg, Context& context,
                                     Cursor& cursor, DirectoryEntry& d);
-  void execute_del_owner(const Message* msg, Context& context, Cursor& cursor,
+  bool execute_del_owner(const Message* msg, Context& context, Cursor& cursor,
                          DirectoryEntry& d);
-  void execute_add_owner_to_sharers(const Message* msg, Context& context,
+  bool execute_add_owner_to_sharers(const Message* msg, Context& context,
                                     Cursor& cursor, DirectoryEntry& d);
-  void execute_cpy_data_to_memory(const Message* msg, Context& context,
+  bool execute_cpy_data_to_memory(const Message* msg, Context& context,
                                   Cursor& cursor, DirectoryEntry& d);
-  void execute_send_puts_ack_to_req(const Message* msg, Context& context,
+  bool execute_send_puts_ack_to_req(const Message* msg, Context& context,
                                     Cursor& cursor, DirectoryEntry& d);
-  void execute_send_putm_ack_to_req(const Message* msg, Context& context,
+  bool execute_send_putm_ack_to_req(const Message* msg, Context& context,
                                     Cursor& cursor, DirectoryEntry& d);
-  void execute_send_fwd_gets_to_owner(const Message* msg, Context& context,
+  bool execute_send_fwd_gets_to_owner(const Message* msg, Context& context,
                                       Cursor& cursor, DirectoryEntry& d,
                                       const CoherenceActions& actions);
-  void execute_send_pute_ack_to_req(const Message* msg, Context& context,
+  bool execute_send_pute_ack_to_req(const Message* msg, Context& context,
                                     Cursor& cursor);
-  void execute_send_puto_ack_to_req(const Message* msg, Context& context,
+  bool execute_send_puto_ack_to_req(const Message* msg, Context& context,
                                     Cursor& cursor);
-  void execute_send_ack_count_to_req(const Message* msg, Context& context,
+  bool execute_send_ack_count_to_req(const Message* msg, Context& context,
                                      Cursor& cursor,
                                      const CoherenceActions& actions);
-  void execute_send_fwd_getm_to_owner(const Message* msg, Context& context,
+  bool execute_send_fwd_getm_to_owner(const Message* msg, Context& context,
                                       Cursor& cursor, DirectoryEntry& d,
                                       const CoherenceActions& actions);
 
@@ -112,13 +112,13 @@ struct SnoopFilterCommandInvoker : CoherentActor {
 struct SnoopFilter : SnoopFilterCommandInvoker {
   SnoopFilter(const SnoopFilterOptions& opts);
 
-  bool is_active() const override { return !qmgr_.empty(); }
+  bool is_active() const override { return mq_.is_active(); }
   void apply(TimeStamped<Message*> ts) override;
   void eval(Context& context) override;
 
  private:
-  void handle_msg(Context& context, Cursor& cursor, TimeStamped<Message*> ts);
-  QueueManager qmgr_;
+  result_t handle_msg(Context& context, Cursor& cursor, const Message * msg);
+  MessageQueueManager mq_;
   const SnoopFilterOptions opts_;
 };
 #ifdef ENABLE_JSON

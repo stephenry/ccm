@@ -1,5 +1,5 @@
 ##========================================================================== //
-## Copyright (c) 2018, Stephen Henry
+## Copyright (c) 2019, Stephen Henry
 ## All rights reserved.
 ##
 ## Redistribution and use in source and binary forms, with or without
@@ -25,28 +25,4 @@
 ## POSSIBILITY OF SUCH DAMAGE.
 ##========================================================================== //
 
-macro (build_common_library)
-  add_library(testcommon testcommon.cpp)
-  target_include_directories(testcommon PUBLIC ${CMAKE_SOURCE_DIR}/src)
-  target_include_directories(testcommon PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-  target_link_libraries(testcommon ccm)
-endmacro ()
-
-macro (create_test fn)
-  add_executable(${fn} ${fn}.cpp)
-  target_include_directories(${fn} PUBLIC ${CMAKE_SOURCE_DIR}/src)
-  target_link_libraries(${fn} ccm gtest_main gtest pthread testcommon)
-  add_test(NAME ${fn} COMMAND ${fn})
-endmacro ()
-
-build_common_library()
-
-add_subdirectory(kernel)
-add_subdirectory(msi)
-if (ENABLE_MESI)
-  add_subdirectory(mesi)
-endif ()
-if (ENABLE_MOSI)
-  add_subdirectory(mosi)
-endif ()
-
+create_test(heap)

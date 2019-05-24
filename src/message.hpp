@@ -170,21 +170,46 @@ class MessageDirector {
 };
 
 class MessageQueueManager {
+  friend class Proxy;
+
  public:
   using TSMessage = TimeStamped<Message *>;
+
+  // Proxy class to ensure RAII on the manager disregard set.
+  class Proxy {
+   public:
+    Proxy(MessageQueueManager & mq) : mq_(mq) {}
+    ~Proxy() { mq_.clr_disregard_class(); }
+
+    //
+    bool is_active() const { return mq_.is_active(); }
+
+    //
+    void push_back(const TSMessage & ts) { mq_.push_back(ts); }
+    void recompute_front() { mq_.recompute_front(); }
+    TSMessage front() const { return mq_.front(); }
+    void pop_front() { mq_.pop_front(); }
+    void add_disregard_class(MessageClass::type cls) {
+      mq_.add_disregard_class(cls);
+    }
+   private:
+    MessageQueueManager & mq_;
+  };
+  
+ public:
   
   explicit MessageQueueManager(std::size_t n = 3);
 
   //
   bool is_active() const;
-
-  //
   void push_back(const TSMessage & ts);
-  void add_disregard_class(MessageClass::type cls);
-  void clr_disregard_class();
   void recompute_front();
   TSMessage front() const;
   void pop_front();
+
+ private:
+  void add_disregard_class(MessageClass::type cls);
+  void clr_disregard_class();
   
  private:
   MessageClass::type front_class_{MessageClass::Invalid};

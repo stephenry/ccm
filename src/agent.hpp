@@ -52,9 +52,6 @@ struct AgentOptions : CoherentAgentOptions {
 };
 
 struct CoherentAgentCommandInvoker : CoherentActor {
-  friend class AgentMessageAdmissionControl;
-  friend class AgentTransactionAdmissionControl;
-
   using ack_count_type = std::size_t;
 
   CoherentAgentCommandInvoker(const CoherentAgentOptions& opts);
@@ -79,30 +76,27 @@ struct CoherentAgentCommandInvoker : CoherentActor {
   void execute_update_state(const Transaction* t, state_t next_state);
   void execute_set_ack_expect_count(const Message * msg);
   void execute_inc_ack_count(const Transaction * t);
-  void execute_emit_gets(Context& context, const Cursor& cursor,
+  void execute_emit_gets(Context& context, Cursor& cursor,
                          const Transaction* t);
-  void execute_emit_getm(Context& context, const Cursor& cursor,
+  void execute_emit_getm(Context& context, Cursor& cursor,
                          const Transaction* t);
-  void execute_emit_puts(Context& context, const Cursor& cursor,
+  void execute_emit_puts(Context& context, Cursor& cursor,
                          const Transaction* t);
-  void execute_emit_pute(Context& context, const Cursor& cursor,
+  void execute_emit_pute(Context& context, Cursor& cursor,
                          const Transaction* t);
-  void execute_emit_puto(Context& context, const Cursor& cursor,
+  void execute_emit_puto(Context& context, Cursor& cursor,
                          const Transaction* t);
-  void execute_emit_data_to_dir(Context& context, const Cursor& cursor,
+  void execute_emit_data_to_dir(Context& context, Cursor& cursor,
                                 const Transaction * t);
-  void execute_emit_data_to_req(Context& context, const Cursor& cursor,
+  void execute_emit_data_to_req(Context& context, Cursor& cursor,
                                 const Message* msg);
-  void execute_emit_inv_ack(Context& context, const Cursor& cursor,
+  void execute_emit_inv_ack(Context& context, Cursor& cursor,
                             const Message* msg);
 
   MessageDirector msgd_;
 };
 
 class Agent : public CoherentAgentCommandInvoker {
-  friend class AgentMessageAdmissionControl;
-  friend class AgentTransactionAdmissionControl;
-  
   enum class CommandType { Message, Transaction, Invalid };
 
   struct CommandArbitrator {
@@ -111,6 +105,7 @@ class Agent : public CoherentAgentCommandInvoker {
         : tq_(tq), mq_(mq) {}
     ~CommandArbitrator();
 
+    bool is_valid() const { return command_type_ != CommandType::Invalid; }
     Time frontier() const { return frontier_; }
     CommandType command_type() const { return command_type_; }
 
@@ -122,7 +117,7 @@ class Agent : public CoherentAgentCommandInvoker {
     Time frontier_{0};
     CommandType command_type_{CommandType::Invalid};
     const TransactionQueueManager & tq_;
-    MessageQueueManager & mq_;
+    MessageQueueManager::Proxy mq_;
   };
 
   struct Statistics {
@@ -147,13 +142,13 @@ class Agent : public CoherentAgentCommandInvoker {
  private:
   void fetch_transactions(std::size_t n = 10);
 
-  std::size_t handle_message(
-      Context & context, const Cursor & cursor, CommandArbitrator & arb);
-  std::size_t handle_transaction(
-      Context & context, const Cursor & cursor, CommandArbitrator & arb);
+  result_t handle_message(
+      Context & context, Cursor & cursor, CommandArbitrator & arb);
+  result_t handle_transaction(
+      Context & context, Cursor & cursor, CommandArbitrator & arb);
 
-  CoherenceActions get_actions(Context& ctxt, const Cursor& cursor, const Transaction *t);
-  CoherenceActions get_actions(Context& ctxt, const Cursor& cursor, const Message *msg);
+  CoherenceActions get_actions(Context& ctxt, Cursor& cursor, const Transaction *t);
+  CoherenceActions get_actions(Context& ctxt, Cursor& cursor, const Message *msg);
   void enqueue_replacement(const Cursor & cursor, const Transaction * t);
 
   TransactionQueueManager tq_;

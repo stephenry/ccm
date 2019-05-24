@@ -110,12 +110,12 @@ std::string to_string(const TimeStamped<T> &ts) {
 
 template <typename T>
 bool operator<(const TimeStamped<T> &lhs, const TimeStamped<T> &rhs) {
-  return (lhs.time() < lhs.time());
+  return (lhs.time() < rhs.time());
 }
 
 template <typename T>
 bool operator>(const TimeStamped<T> &lhs, const TimeStamped<T> &rhs) {
-  return (lhs.time() > lhs.time());
+  return (lhs.time() > rhs.time());
 }
 
 enum class QueueEntryType { Message, Transaction, Invalid };

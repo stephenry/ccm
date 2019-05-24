@@ -31,6 +31,9 @@
 #include "protocol.hpp"
 #include "log.hpp"
 
+#define MESSAGE_ACTION_COST 1
+#define TRANSACTION_ACTION_COST 1
+
 namespace ccm {
 #ifdef ENABLE_JSON
 
@@ -42,97 +45,6 @@ AgentOptions AgentOptions::from_json(
   return opts;
 }
 #endif
-
-class AgentMessageAdmissionControl : public MessageAdmissionControl {
- public:
-  AgentMessageAdmissionControl(Agent* agent) : agent_(agent) {}
-
-  bool can_be_issued(const Message* msg) const override {
-    const Transaction* trn = msg->transaction();
-    CacheLine& cache_line = agent_->cache_->lookup(trn->addr());
-    const CoherenceActions actions =
-        agent_->cc_model_->get_actions(msg, cache_line);
-
-    // TODO: The simulator computes the set of permissible messages to
-    // issue to the agent without regard of the time of their
-    // arrival. Consequently, there may be some minor reordering,
-    // which is entirely consistent with a real system. Unfortunately,
-    // the protocol as defined in the spec. do not account for such
-    // reordering and instead mark such state transitions are
-    // impermissible. To account for this, whenever a transition is
-    // marked in error, the message is disallowed in this round.
-    //
-    // An Agent in the IS_D state awaits Data from the snoop filter
-    // but instead receives a FwdGet{S,M} from the snoop filter
-    // (placed into a separate message queue) because another agent
-    // has simultaneously requested the line in the S- or M- states.
-    // The IS_D <- FwdGet{S,M} transition is not defined in the
-    // blocking MESI protocol.
-    //
-    if (actions.error())
-      return false;
-
-    switch (actions.result()) {
-      case MessageResult::Stall:
-        return false;
-        break;
-      case MessageResult::Commit:
-        return true;
-        break;
-      default:
-        // TODO: Error
-        break;
-    }
-
-    return true;
-  }
-
- private:
-  Agent* agent_{nullptr};
-};
-
-class AgentTransactionAdmissionControl : public TransactionAdmissionControl {
- public:
-  AgentTransactionAdmissionControl(Agent* agent) : agent_(agent) {}
-
-  bool can_be_issued(const Transaction* trn) const override {
-    // TODO: variety of agent related issue conditions (max in flight count,
-    // credits, etc..)
-
-    // The coherence protocol cannot block if (by definition) the
-    // transaction address is not present in the agents cache.
-    //
-    if (!agent_->cache_->is_hit(trn->addr())) return true;
-
-    // If the address is present in the agents cache, explicitly
-    // derive the set of actions to be applied and verify that the
-    // protocol may advance.
-    //
-    // This is an expensive operation.
-    //
-    CacheLine& cache_line = agent_->cache_->lookup(trn->addr());
-    const CoherenceActions actions =
-        agent_->cc_model_->get_actions(trn, cache_line);
-    switch (actions.result()) {
-      case TransactionResult::Blocked:
-        return false;
-        break;
-
-      case TransactionResult::Hit:
-      case TransactionResult::Miss:
-      case TransactionResult::Consumed:
-        return true;
-        break;
-
-      default:
-        // Error
-        return false;
-    }
-  }
-
- private:
-  Agent* agent_{nullptr};
-};
 
 CoherentAgentCommandInvoker::CoherentAgentCommandInvoker(
     const CoherentAgentOptions& opts)
@@ -238,7 +150,7 @@ void CoherentAgentCommandInvoker::execute_update_state(const Transaction* t,
 }
 
 void CoherentAgentCommandInvoker::execute_emit_gets(Context& context,
-                                                    const Cursor& cursor,
+                                                    Cursor& cursor,
                                                     const Transaction* t) {
   const Platform platform = opts_.platform();
   MessageBuilder b = msgd_.builder();
@@ -254,7 +166,7 @@ void CoherentAgentCommandInvoker::execute_emit_gets(Context& context,
 }
 
 void CoherentAgentCommandInvoker::execute_emit_getm(Context& context,
-                                                    const Cursor& cursor,
+                                                    Cursor& cursor,
                                                     const Transaction* t) {
   const Platform platform = opts_.platform();
   MessageBuilder b = msgd_.builder();
@@ -270,7 +182,7 @@ void CoherentAgentCommandInvoker::execute_emit_getm(Context& context,
 }
 
 void CoherentAgentCommandInvoker::execute_emit_puts(Context& context,
-                                                    const Cursor& cursor,
+                                                    Cursor& cursor,
                                                     const Transaction* t) {
   const Platform platform = opts_.platform();
   MessageBuilder b = msgd_.builder();
@@ -286,7 +198,7 @@ void CoherentAgentCommandInvoker::execute_emit_puts(Context& context,
 }
 
 void CoherentAgentCommandInvoker::execute_emit_pute(Context& context,
-                                                    const Cursor& cursor,
+                                                    Cursor& cursor,
                                                     const Transaction* t) {
   const Platform platform = opts_.platform();
   MessageBuilder b = msgd_.builder();
@@ -302,7 +214,7 @@ void CoherentAgentCommandInvoker::execute_emit_pute(Context& context,
 }
 
 void CoherentAgentCommandInvoker::execute_emit_puto(Context& context,
-                                                    const Cursor& cursor,
+                                                    Cursor& cursor,
                                                     const Transaction* t) {
   const Platform platform = opts_.platform();
   MessageBuilder b = msgd_.builder();
@@ -318,7 +230,7 @@ void CoherentAgentCommandInvoker::execute_emit_puto(Context& context,
 }
 
 void CoherentAgentCommandInvoker::execute_emit_data_to_dir(Context& context,
-                                                           const Cursor& cursor,
+                                                           Cursor& cursor,
                                                            const Transaction* t) {
   const Platform platform = opts_.platform();
   MessageBuilder b = msgd_.builder();
@@ -334,7 +246,7 @@ void CoherentAgentCommandInvoker::execute_emit_data_to_dir(Context& context,
 }
 
 void CoherentAgentCommandInvoker::execute_emit_data_to_req(Context& context,
-                                                           const Cursor& cursor,
+                                                           Cursor& cursor,
                                                            const Message* msg) {
   const Transaction* t = msg->transaction();
   MessageBuilder b = msgd_.builder();
@@ -352,7 +264,7 @@ void CoherentAgentCommandInvoker::execute_emit_data_to_req(Context& context,
 }
 
 void CoherentAgentCommandInvoker::execute_emit_inv_ack(Context& context,
-                                                       const Cursor& cursor,
+                                                       Cursor& cursor,
                                                        const Message* msg) {
   MessageBuilder b = msgd_.builder();
   b.set_src_id(id());
@@ -380,9 +292,7 @@ void CoherentAgentCommandInvoker::execute_set_ack_expect_count(const Message * m
   log_debug("Update expected invalidation count: ", cache_line.inv_ack_expect());
 }
 
-Agent::CommandArbitrator::~CommandArbitrator() {
-  mq_.clr_disregard_class();
-}
+Agent::CommandArbitrator::~CommandArbitrator() {}
 
 void Agent::CommandArbitrator::disable_message_class(MessageClass::type cls) {
   mq_.add_disregard_class(cls);
@@ -430,57 +340,66 @@ void Agent::eval(Context& context) {
 
   if (!tq_.is_active()) fetch_transactions(10);
 
-
-  bool halt{false};
   CommandArbitrator arb{tq_, mq_};
   do {
     arb.arbitrate();
+
+    if (!arb.is_valid() || !epoch.in_interval(arb.frontier())) break;
+    
     switch (arb.command_type()) {
       case CommandType::Message:
-        cursor.advance(handle_message(context, cursor, arb));
+        switch (handle_message(context, cursor, arb)) {
+          case MessageResult::Commit:
+          case MessageResult::Stall:
+            break;
+        }
         break;
-      case CommandType::Transaction:
-        cursor.advance(handle_transaction(context, cursor, arb));
-        break;
-      case CommandType::Invalid:
-        halt = true;
-        break;
+      case CommandType::Transaction: {
+        switch (handle_transaction(context, cursor, arb)) {
+          case TransactionResult::Miss:
+            ++stats_.misses_n;
+            break;
+          case TransactionResult::Hit:
+            ++stats_.hits_n;
+            break;
+          case TransactionResult::Consumed:
+          case TransactionResult::Blocked:
+            break;
+        }
+      } break;
       default:
         break;
     }
-  } while (!halt && epoch.in_interval(cursor.time()));
+  } while (epoch.in_interval(cursor.time()));
 
-  set_time(cursor.time());
+  set_time(std::max(cursor.time(), epoch.end()));
 }
 
-std::size_t Agent::handle_message(Context & context,
-                                  const Cursor & cursor,
-                                  CommandArbitrator & arb) {
+result_t Agent::handle_message(Context & context, Cursor & cursor,
+                           CommandArbitrator & arb) {
   const TimeStamped<Message*> tsm{mq_.front()};
   const CoherenceActions actions{get_actions(context, cursor, tsm.t())};
 
   const Message * msg = tsm.t();
-  Cursor mcur{cursor};
   switch (actions.result()) {
-    case MessageResult::Commit:
-      execute(context, mcur, actions, msg);
+    case MessageResult::Commit: {
+      execute(context, cursor, actions, msg);
       mq_.pop_front();
       // TODO: refactor
       if (actions.transaction_done())
         trns_->event(TransactionEvent::End,
-                     TimeStamped{mcur.time(), msg->transaction()});
+                     TimeStamped{cursor.time(), msg->transaction()});
       msg->release();
-      break;
+    } break;
     case MessageResult::Stall:
       arb.disable_message_class(MessageType::to_class(msg->type()));
       break;
   }
-  return actions.cost();
+  return actions.result();
 }
 
-std::size_t Agent::handle_transaction(Context & context,
-                                      const Cursor & cursor,
-                                      CommandArbitrator & arb) {
+result_t Agent::handle_transaction(Context & context, Cursor & cursor,
+                                   CommandArbitrator & arb) {
   const TimeStamped<Transaction *> tst{tq_.front()};
   const Transaction * t = tst.t();
   
@@ -507,33 +426,15 @@ std::size_t Agent::handle_transaction(Context & context,
         (t->type() == TransactionType::store))
       trns_->event(TransactionEvent::Start, TimeStamped{cursor.time(), t});
     
-    bool do_commit{true};
-    switch (actions.result()) {
-      case TransactionResult::Blocked:
-        // The transaction may not advance because there are pending
-        // operations on the line.
-        //
-        do_commit = false;
-        break;
-
-      case TransactionResult::Miss:
-        log_debug("Transaction MISS: ", to_string(*t));
-        ++stats_.misses_n;
-        break;
-      case TransactionResult::Hit:
-        log_debug("Transaction HIT: ", to_string(*t));
-        ++stats_.hits_n;
-        break;
-    }
+    const bool do_commit = (actions.result() != TransactionResult::Blocked);
     if (do_commit) {
-      Cursor tcur{cursor};
-      execute(context, tcur, actions, t);
+      execute(context, cursor, actions, t);
       tq_.pop_front();
     } else {
       arb.disable_transactions();
     }
   }
-  return actions.cost();
+  return actions.result();
 }
 
 void Agent::enqueue_replacement(const Cursor & cursor, const Transaction * t) {
@@ -553,7 +454,9 @@ void Agent::fetch_transactions(std::size_t n) {
 }
 
 CoherenceActions Agent::get_actions(
-    Context& context, const Cursor& cursor, const Message *msg) {
+    Context& context, Cursor& cursor, const Message *msg) {
+  cursor.advance(MESSAGE_ACTION_COST);
+  
   const Transaction * t = msg->transaction();
   CCM_AGENT_ASSERT(cache_->is_hit(t->addr()));
   CacheLine& cache_line = cache_->lookup(t->addr());
@@ -563,7 +466,9 @@ CoherenceActions Agent::get_actions(
 }
 
 CoherenceActions Agent::get_actions(
-    Context& context, const Cursor& cursor, const Transaction * t) {
+    Context& context, Cursor& cursor, const Transaction * t) {
+  cursor.advance(TRANSACTION_ACTION_COST);
+  
   CoherenceActions actions;
   if (t->type() != TransactionType::replacement)
     actions.set_requires_eviction(cache_->requires_eviction(t->addr()));
