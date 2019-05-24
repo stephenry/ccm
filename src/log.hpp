@@ -112,16 +112,14 @@ class Loggable {
   void set_logger_scope(LoggerScope* scope) { scope_ = scope; }
 
 // clang-format off
-#define __declare_handler(__level)                       \
-  template <typename... ARGS>                            \
-  void log_##__level(ARGS&&... args) {                   \
-    log(LogLevel::__level, std::forward<ARGS>(args)...); \
+#define __declare_handler(__level)                              \
+  template <typename... ARGS>                                   \
+  void log_##__level(const Time & t, ARGS&&... args) {          \
+    log(LogLevel::__level, t, std::forward<ARGS>(args)...);     \
   }
   LOGLEVELS(__declare_handler)
 #undef __declare_handler
   // clang-format on
-
-  virtual Time time() const = 0;
 
  private:
   template <typename ARG>
@@ -135,16 +133,16 @@ class Loggable {
   }
 
   template <typename... ARGS>
-  void log(LogLevel::type ll, ARGS&&... args) {
+  void log(LogLevel::type ll, const Time & time, ARGS&&... args) {
     if (scope_) {
       std::stringstream ss;
-      prefix(ss);
+      prefix(ss, time);
       log_helper(ss, std::forward<ARGS>(args)...);
       scope_->log(ll, ss.str());
     }
   }
 
-  void prefix(std::ostream& os);
+  void prefix(std::ostream& os, const Time & time);
 
   LoggerScope* scope_{nullptr};
 };

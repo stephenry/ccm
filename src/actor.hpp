@@ -60,7 +60,7 @@ struct CoherentActor : Loggable {
   CoherentActor(const ActorOptions &opts) : opts_(opts), time_(0) {}
   virtual ~CoherentActor();
 
-  Time time() const override { return time_; }
+  Time time() const { return time_; }
   id_t id() const { return opts_.id(); }
 
   virtual void apply(TimeStamped<Message *> ts) = 0;
@@ -69,8 +69,6 @@ struct CoherentActor : Loggable {
   virtual void visit_cache(CacheVisitor *cache_visitor) const = 0;
 
   void set_time(Time time) { time_ = time; }
-  // TODO: deprecate
-  void emit_message(Context &context, Cursor &cursor, MessageBuilder &b);
 
  protected:
   const ActorOptions opts_;

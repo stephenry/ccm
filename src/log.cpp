@@ -91,8 +91,8 @@ void Logger::log(const LogLevel::type ll, const char* s) {
   if (force_flush_) os_.flush();
 }
 
-void Loggable::prefix(std::ostream& os) {
-  os << "[" << scope_->path() << "@" << time() << "]: ";
+void Loggable::prefix(std::ostream& os, const Time & time) {
+  os << "[" << scope_->path() << "@" << time << "]: ";
 }
 
 }  // namespace ccm

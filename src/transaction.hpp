@@ -109,7 +109,6 @@ std::string to_string(const Transaction &t);
 // TODO: Deprecate
 class TransactionFactory : Loggable {
  public:
-  Time time() const override { return 0; }
   Transaction * construct();
  private:
   Pool<Transaction> pool_;
@@ -124,7 +123,6 @@ struct TransactionSource : Loggable {
   virtual ~TransactionSource() {}
 
   //
-  Time time() const override { return 0; }
   virtual bool is_active() const { return false; }
 
   //

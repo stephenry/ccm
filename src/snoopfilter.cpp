@@ -66,7 +66,7 @@ void SnoopFilterCommandInvoker::execute(Context& context, Cursor& cursor,
                                         const CoherenceActions& actions,
                                         const Message* msg, DirectoryEntry& d) {
   for (command_t cmd : actions.commands()) {
-    log_debug("Execute: ", SnoopFilterCommand::to_string(cmd));
+    log_debug(cursor.time(), "Execute: ", SnoopFilterCommand::to_string(cmd));
 
     bool updated_cursor{false};
     switch (cmd) {
@@ -133,7 +133,7 @@ bool SnoopFilterCommandInvoker::execute_update_state(Context& context,
                                                      Cursor& cursor,
                                                      DirectoryEntry& d,
                                                      state_t state_next) {
-  log_debug("Update state; current: ", cc_model_->to_string(state_next),
+  log_debug(cursor.time(), "Update state; current: ", cc_model_->to_string(state_next),
             " previous: ", cc_model_->to_string(d.state()));
   d.set_state(state_next);
   return false;
@@ -143,7 +143,7 @@ bool SnoopFilterCommandInvoker::execute_set_owner_to_req(const Message* msg,
                                                          Context& context,
                                                          Cursor& cursor,
                                                          DirectoryEntry& d) {
-  log_debug("Set Owner To Requester: Owner = ", msg->src_id());
+  log_debug(cursor.time(), "Set Owner To Requester: Owner = ", msg->src_id());
   d.set_owner(msg->src_id());
   return false;
 }
@@ -161,7 +161,7 @@ bool SnoopFilterCommandInvoker::execute_send_data_to_req(
   b.set_is_exclusive(a.is_exclusive());
 
   Message *out = b.msg();
-  log_debug("Sending data to requester: ", to_string(*out));
+  log_debug(cursor.time(), "Sending data to requester: ", to_string(*out));
   context.emit_message(TimeStamped{cursor.time(), out});
 
   return false;
@@ -170,7 +170,7 @@ bool SnoopFilterCommandInvoker::execute_send_data_to_req(
 bool SnoopFilterCommandInvoker::execute_send_inv_to_sharers(
     const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d,
     const CoherenceActions& actions) {
-  log_debug("Send Invalidation(s) to sharers.");
+  log_debug(cursor.time(), "Send Invalidation(s) to sharers.");
 
   for (const std::size_t sharer : d.sharers()) {
     // Do not invalidation request to requester, only the other
@@ -187,7 +187,7 @@ bool SnoopFilterCommandInvoker::execute_send_inv_to_sharers(
     b.set_transaction(msg->transaction());
 
     Message *out = b.msg();
-    log_debug("Sending invalidation to agent: ", to_string(*out));
+    log_debug(cursor.time(), "Sending invalidation to agent: ", to_string(*out));
     context.emit_message(TimeStamped{cursor.time(), out});
 
     cursor.advance(MessageType::to_cost(MessageType::Inv));
@@ -205,7 +205,7 @@ bool SnoopFilterCommandInvoker::execute_clear_sharers(const Message* msg,
   l.add(d.sharers(), " before = ");
   d.clear_sharers();
   l.add(d.sharers(), " after = ");
-  log_debug("Clear sharers; ", l.str());
+  log_debug(cursor.time(), "Clear sharers; ", l.str());
 
   return false;
 }
@@ -220,7 +220,7 @@ bool SnoopFilterCommandInvoker::execute_add_req_to_sharers(const Message* msg,
   d.add_sharer(msg->src_id());
   l.add(d.sharers(), " after = ");
 
-  log_debug("Add requester to sharers: ", l.str());
+  log_debug(cursor.time(), "Add requester to sharers: ", l.str());
 
   return false;
 }
@@ -233,7 +233,7 @@ bool SnoopFilterCommandInvoker::execute_del_req_from_sharers(
   d.remove_sharer(msg->src_id());
   l.add(d.sharers(), " after = ");
 
-  log_debug("Remove requester from sharers; ", l.str());
+  log_debug(cursor.time(), "Remove requester from sharers; ", l.str());
 
   return false;
 }
@@ -242,7 +242,7 @@ bool SnoopFilterCommandInvoker::execute_del_owner(const Message* msg,
                                                   Context& context,
                                                   Cursor& cursor,
                                                   DirectoryEntry& d) {
-  log_debug("Delete owner.");
+  log_debug(cursor.time(), "Delete owner.");
   d.clear_owner();
 
   return false;
@@ -250,7 +250,7 @@ bool SnoopFilterCommandInvoker::execute_del_owner(const Message* msg,
 
 bool SnoopFilterCommandInvoker::execute_add_owner_to_sharers(
     const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d) {
-  log_debug("Add owner to sharers.");
+  log_debug(cursor.time(), "Add owner to sharers.");
 
   d.add_sharer(d.owner());
 
@@ -271,7 +271,7 @@ bool SnoopFilterCommandInvoker::execute_cpy_data_to_memory(const Message* msg,
   b.set_transaction(msg->transaction());
 
   Message *out = b.msg();
-  log_debug("Copy Data to Memory: ", to_string(*out));
+  log_debug(cursor.time(), "Copy Data to Memory: ", to_string(*out));
   context.emit_message(TimeStamped{cursor.time(), out});
 
   return false;
@@ -288,7 +288,7 @@ bool SnoopFilterCommandInvoker::execute_send_puts_ack_to_req(
   b.set_transaction(msg->transaction());
 
   Message *out = b.msg();
-  log_debug("Sending PutS acknowledgement to requester: ", to_string(*out));
+  log_debug(cursor.time(), "Sending PutS acknowledgement to requester: ", to_string(*out));
   context.emit_message(TimeStamped{cursor.time(), out});
 
   return false;
@@ -305,7 +305,7 @@ bool SnoopFilterCommandInvoker::execute_send_putm_ack_to_req(
   b.set_transaction(msg->transaction());
 
   Message *out = b.msg();
-  log_debug("Sending PutM acknowledgement to requester: ", to_string(*out));
+  log_debug(cursor.time(), "Sending PutM acknowledgement to requester: ", to_string(*out));
   context.emit_message(TimeStamped{cursor.time(), out});
 
   return false;
@@ -324,7 +324,7 @@ bool SnoopFilterCommandInvoker::execute_send_fwd_gets_to_owner(
   b.set_ack_count(0);
 
   Message *out = b.msg();
-  log_debug("Sending FwdGetS to owner: ", to_string(*out));
+  log_debug(cursor.time(), "Sending FwdGetS to owner: ", to_string(*out));
   context.emit_message(TimeStamped{cursor.time(), out});
 
   return false;
@@ -342,7 +342,7 @@ bool SnoopFilterCommandInvoker::execute_send_pute_ack_to_req(const Message* msg,
   b.set_transaction(msg->transaction());
 
   Message *out = b.msg();
-  log_debug("Sending PutEAck to requester: ", to_string(*out));
+  log_debug(cursor.time(), "Sending PutEAck to requester: ", to_string(*out));
   context.emit_message(TimeStamped{cursor.time(), out});
 
   return false;
@@ -360,7 +360,7 @@ bool SnoopFilterCommandInvoker::execute_send_puto_ack_to_req(const Message* msg,
   b.set_transaction(msg->transaction());
 
   Message *out = b.msg();
-  log_debug("Sending PutOAck to requester: ", to_string(*out));
+  log_debug(cursor.time(), "Sending PutOAck to requester: ", to_string(*out));
   context.emit_message(TimeStamped{cursor.time(), out});
 
   return false;
@@ -378,7 +378,7 @@ bool SnoopFilterCommandInvoker::execute_send_ack_count_to_req(
   b.set_transaction(msg->transaction());
 
   Message *out = b.msg();
-  log_debug("Sending AckCount to requester: ", to_string(*out));
+  log_debug(cursor.time(), "Sending AckCount to requester: ", to_string(*out));
   context.emit_message(TimeStamped{cursor.time(), out});
 
   return false;
@@ -397,7 +397,7 @@ bool SnoopFilterCommandInvoker::execute_send_fwd_getm_to_owner(
   b.set_transaction(msg->transaction());
 
   Message *out = b.msg();
-  log_debug("Sending FwdGetM to owner: ", to_string(*out));
+  log_debug(cursor.time(), "Sending FwdGetM to owner: ", to_string(*out));
   context.emit_message(TimeStamped{cursor.time(), out});
 
   return false;

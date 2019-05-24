@@ -73,9 +73,10 @@ struct CoherentAgentCommandInvoker : CoherentActor {
  private:
   // Common
   //
-  void execute_update_state(const Transaction* t, state_t next_state);
-  void execute_set_ack_expect_count(const Message * msg);
-  void execute_inc_ack_count(const Transaction * t);
+  void execute_update_state(Cursor & cursor, const Transaction* t,
+                            state_t next_state);
+  void execute_set_ack_expect_count(Cursor & cursor, const Message * msg);
+  void execute_inc_ack_count(Cursor & cursor, const Transaction * t);
   void execute_emit_gets(Context& context, Cursor& cursor,
                          const Transaction* t);
   void execute_emit_getm(Context& context, Cursor& cursor,

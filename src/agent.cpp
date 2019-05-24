@@ -75,11 +75,11 @@ void CoherentAgentCommandInvoker::execute(Context& context,
                                           const CoherenceActions & actions,
                                           const Transaction * t) {
   for (command_t cmd : actions.commands()) {
-    log_debug("Execute: ", CoherentAgentCommand::to_string(cmd));
+    log_debug(cursor.time(), "Execute: ", CoherentAgentCommand::to_string(cmd));
 
     switch (cmd) {
       case CoherentAgentCommand::UpdateState:
-        execute_update_state(t, actions.next_state());
+        execute_update_state(cursor, t, actions.next_state());
         break;
       case CoherentAgentCommand::EmitGetS:
         execute_emit_gets(context, cursor, t);
@@ -111,7 +111,7 @@ void CoherentAgentCommandInvoker::execute(Context& context,
                                           const CoherenceActions& actions,
                                           const Message* msg) {
   for (command_t cmd : actions.commands()) {
-    log_debug("Execute: ", CoherentAgentCommand::to_string(cmd));
+    log_debug(cursor.time(), "Execute: ", CoherentAgentCommand::to_string(cmd));
 
     const Transaction * t = msg->transaction();
     switch (cmd) {
@@ -125,13 +125,13 @@ void CoherentAgentCommandInvoker::execute(Context& context,
         execute_emit_inv_ack(context, cursor, msg);
         break;
       case CoherentAgentCommand::UpdateState:
-        execute_update_state(t, actions.next_state());
+        execute_update_state(cursor, t, actions.next_state());
         break;
       case CoherentAgentCommand::IncAckCount:
-        execute_inc_ack_count(t);
+        execute_inc_ack_count(cursor, t);
         break;
       case CoherentAgentCommand::SetAckExpectCount:
-        execute_set_ack_expect_count(msg);
+        execute_set_ack_expect_count(cursor, msg);
         break;
       default:
         break;
@@ -140,11 +140,12 @@ void CoherentAgentCommandInvoker::execute(Context& context,
   }
 }
 
-void CoherentAgentCommandInvoker::execute_update_state(const Transaction* t,
+void CoherentAgentCommandInvoker::execute_update_state(Cursor & cursor,
+                                                       const Transaction* t,
                                                        state_t next_state) {
   CacheLine & cache_line = cache_->lookup(t->addr());
   
-  log_debug("Update state; current: ", cc_model_->to_string(next_state),
+  log_debug(cursor.time(), "Update state; current: ", cc_model_->to_string(next_state),
             " previous: ", cc_model_->to_string(cache_line.state()));
   cache_line.set_state(next_state);
 }
@@ -161,7 +162,7 @@ void CoherentAgentCommandInvoker::execute_emit_gets(Context& context,
   b.set_transaction(t);
 
   Message *msg = b.msg();
-  log_debug("Sending GetS to home directory: ", to_string(*msg));
+  log_debug(cursor.time(), "Sending GetS to home directory: ", to_string(*msg));
   context.emit_message(TimeStamped{cursor.time(), msg});
 }
 
@@ -177,7 +178,7 @@ void CoherentAgentCommandInvoker::execute_emit_getm(Context& context,
   b.set_transaction(t);
 
   Message *msg = b.msg();
-  log_debug("Sending GetM to home directory: ", to_string(*msg));
+  log_debug(cursor.time(), "Sending GetM to home directory: ", to_string(*msg));
   context.emit_message(TimeStamped{cursor.time(), msg});
 }
 
@@ -193,7 +194,7 @@ void CoherentAgentCommandInvoker::execute_emit_puts(Context& context,
   b.set_transaction(t);
 
   Message *msg = b.msg();
-  log_debug("Sending PutS to home directory: ", to_string(*msg));
+  log_debug(cursor.time(), "Sending PutS to home directory: ", to_string(*msg));
   context.emit_message(TimeStamped{cursor.time(), msg});
 }
 
@@ -209,7 +210,7 @@ void CoherentAgentCommandInvoker::execute_emit_pute(Context& context,
   b.set_transaction(t);
 
   Message *msg = b.msg();
-  log_debug("Sending PutE to home directory: ", to_string(*msg));
+  log_debug(cursor.time(), "Sending PutE to home directory: ", to_string(*msg));
   context.emit_message(TimeStamped{cursor.time(), msg});
 }
 
@@ -225,7 +226,7 @@ void CoherentAgentCommandInvoker::execute_emit_puto(Context& context,
   b.set_transaction(t);
 
   Message *msg = b.msg();
-  log_debug("Sending PutO to home directory: ", to_string(*msg));
+  log_debug(cursor.time(), "Sending PutO to home directory: ", to_string(*msg));
   context.emit_message(TimeStamped{cursor.time(), msg});
 }
 
@@ -241,7 +242,7 @@ void CoherentAgentCommandInvoker::execute_emit_data_to_dir(Context& context,
   b.set_transaction(t);
 
   Message *msg = b.msg();
-  log_debug("Emit Data To Directory: ", to_string(*msg));
+  log_debug(cursor.time(), "Emit Data To Directory: ", to_string(*msg));
   context.emit_message(TimeStamped{cursor.time(), msg});
 }
 
@@ -259,7 +260,7 @@ void CoherentAgentCommandInvoker::execute_emit_data_to_req(Context& context,
   b.set_transaction(t);
 
   Message *out = b.msg();
-  log_debug("Emit Data To Requester: ", to_string(*out));
+  log_debug(cursor.time(), "Emit Data To Requester: ", to_string(*out));
   context.emit_message(TimeStamped{cursor.time(), out});
 }
 
@@ -274,22 +275,25 @@ void CoherentAgentCommandInvoker::execute_emit_inv_ack(Context& context,
   b.set_transaction(msg->transaction());
 
   Message *out = b.msg();
-  log_debug("Sending invalidation acknowledgement.", to_string(*out));
+  log_debug(cursor.time(), "Sending invalidation acknowledgement.", to_string(*out));
   context.emit_message(TimeStamped{cursor.time(), out});
 }
 
-void CoherentAgentCommandInvoker::execute_inc_ack_count(const Transaction * t) {
+void CoherentAgentCommandInvoker::execute_inc_ack_count(Cursor & cursor,
+                                                        const Transaction * t) {
   CacheLine & cache_line = cache_->lookup(t->addr());
   cache_line.set_inv_ack_count(cache_line.inv_ack_count() + 1);
-  log_debug("Update invalidation count: ", cache_line.inv_ack_count());
+  log_debug(cursor.time(), "Update invalidation count: ", cache_line.inv_ack_count());
 }
 
-void CoherentAgentCommandInvoker::execute_set_ack_expect_count(const Message * msg) {
+void CoherentAgentCommandInvoker::execute_set_ack_expect_count(
+    Cursor & cursor, const Message * msg) {
   const Transaction * t = msg->transaction();
   CacheLine & cache_line = cache_->lookup(t->addr());
   cache_line.set_inv_ack_expect_valid(true);
   cache_line.set_inv_ack_expect(msg->ack_count());
-  log_debug("Update expected invalidation count: ", cache_line.inv_ack_expect());
+  log_debug(cursor.time(), "Update expected invalidation count: ",
+            cache_line.inv_ack_expect());
 }
 
 Agent::CommandArbitrator::~CommandArbitrator() {}
@@ -413,7 +417,7 @@ result_t Agent::handle_transaction(Context & context, Cursor & cursor,
     // transaction is inserted on the head of the transaction
     // queue and the transaction replayed.
     //
-    log_debug("Transaction caused EVICTION: ", to_string(*t));
+    log_debug(cursor.time(), "Transaction caused EVICTION: ", to_string(*t));
 
     // Create new replacement transaction to the current address
     // and place at the head of the queue manager.

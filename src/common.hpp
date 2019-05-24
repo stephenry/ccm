@@ -50,7 +50,7 @@ namespace ccm {
 #define CCM_AGENT_ASSERT(__cond)                                        \
   CCM_MACRO_BEGIN                                                       \
   if (!(__cond))                                                        \
-    log_fatal(__FILE__, ":", __LINE__, " assertion failed: ", #__cond); \
+    log_fatal(time(), __FILE__, ":", __LINE__, " assertion failed: ", #__cond); \
   CCM_MACRO_END
 
 }  // namespace ccm

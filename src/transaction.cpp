@@ -152,11 +152,11 @@ void ProgrammaticTransactionSource::event(TransactionEvent event,
 
   switch (event) {
     case TransactionEvent::Start: {
-      log_info("Transaction starts: ", t->tid());
+      log_info(ts.time(), "Transaction starts: ", t->tid());
     } break;
 
     case TransactionEvent::End: {
-      log_info("Transaction ends: ", t->tid());
+      log_info(ts.time(), "Transaction ends: ", t->tid());
 
       auto it = std::find(in_flight_.begin(), in_flight_.end(), t);
       if (it != in_flight_.end()) {
