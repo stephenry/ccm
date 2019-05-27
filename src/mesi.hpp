@@ -119,14 +119,14 @@ class MesiSnoopFilterProtocol : public SnoopFilterProtocol {
   Protocol::type protocol() const override { return Protocol::MESI; }
 
   //
-  void init(DirectoryEntry& l) const override;
-  bool is_stable(const DirectoryEntry& l) const override;
-  std::string to_string(const DirectoryEntry& l) const override;
+  void init(DirectoryLine& l) const override;
+  bool is_stable(const DirectoryLine& l) const override;
+  std::string to_string(const DirectoryLine& l) const override;
   std::string to_string(state_t l) const override;
 
   //
   CoherenceActions get_actions(const Message* m,
-                               const DirectoryEntry& dir_entry) const override;
+                               const DirectoryLine& dir_entry) const override;
 
  private:
   struct MesiSnoopFilterProtocolImpl;
@@ -139,7 +139,7 @@ class MesiCoherenceProtocolValidator : public CoherenceProtocolValidator {
   MesiCoherenceProtocolValidator();
 
   bool validate_addr(addr_t addr, const std::vector<Entry<CacheLine> >& lines,
-                     const DirectoryEntry& entry) const;
+                     const DirectoryLine& entry) const;
 };
 
 }  // namespace ccm

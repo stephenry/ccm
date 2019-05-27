@@ -43,12 +43,12 @@ SnoopFilterCommandInvoker::SnoopFilterCommandInvoker(
     const SnoopFilterOptions& opts)
     : opts_(opts), msgd_(opts), CoherentActor(opts) {
   cc_model_ = snoop_filter_protocol_factory(opts.protocol());
-  cache_ = cache_factory<DirectoryEntry>(opts.cache_options());
+  cache_ = cache_factory<DirectoryLine>(opts.cache_options());
 }
 
-DirectoryEntry SnoopFilterCommandInvoker::directory_entry(
+DirectoryLine SnoopFilterCommandInvoker::directory_entry(
     std::size_t addr) const {
-  DirectoryEntry directory_entry;
+  DirectoryLine directory_entry;
   if (cache_->is_hit(addr)) {
     directory_entry = cache_->lookup(addr);
   } else {
@@ -64,7 +64,7 @@ void SnoopFilterCommandInvoker::visit_cache(CacheVisitor* cache_visitor) const {
 
 void SnoopFilterCommandInvoker::execute(Context& context, Cursor& cursor,
                                         const CoherenceActions& actions,
-                                        const Message* msg, DirectoryEntry& d) {
+                                        const Message* msg, DirectoryLine& d) {
   for (command_t cmd : actions.commands()) {
     log_debug(cursor.time(), "Execute: ", SnoopFilterCommand::to_string(cmd));
 
@@ -131,7 +131,7 @@ void SnoopFilterCommandInvoker::execute(Context& context, Cursor& cursor,
 
 bool SnoopFilterCommandInvoker::execute_update_state(Context& context,
                                                      Cursor& cursor,
-                                                     DirectoryEntry& d,
+                                                     DirectoryLine& d,
                                                      state_t state_next) {
   log_debug(cursor.time(), "Update state; current: ", cc_model_->to_string(state_next),
             " previous: ", cc_model_->to_string(d.state()));
@@ -142,14 +142,14 @@ bool SnoopFilterCommandInvoker::execute_update_state(Context& context,
 bool SnoopFilterCommandInvoker::execute_set_owner_to_req(const Message* msg,
                                                          Context& context,
                                                          Cursor& cursor,
-                                                         DirectoryEntry& d) {
+                                                         DirectoryLine& d) {
   log_debug(cursor.time(), "Set Owner To Requester: Owner = ", msg->src_id());
   d.set_owner(msg->src_id());
   return false;
 }
 
 bool SnoopFilterCommandInvoker::execute_send_data_to_req(
-    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d,
+    const Message* msg, Context& context, Cursor& cursor, DirectoryLine& d,
     const CoherenceActions& a) {
   MessageBuilder b = msgd_.builder();
 
@@ -168,7 +168,7 @@ bool SnoopFilterCommandInvoker::execute_send_data_to_req(
 }
 
 bool SnoopFilterCommandInvoker::execute_send_inv_to_sharers(
-    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d,
+    const Message* msg, Context& context, Cursor& cursor, DirectoryLine& d,
     const CoherenceActions& actions) {
   log_debug(cursor.time(), "Send Invalidation(s) to sharers.");
 
@@ -199,7 +199,7 @@ bool SnoopFilterCommandInvoker::execute_send_inv_to_sharers(
 bool SnoopFilterCommandInvoker::execute_clear_sharers(const Message* msg,
                                                       Context& context,
                                                       Cursor& cursor,
-                                                      DirectoryEntry& d) {
+                                                      DirectoryLine& d) {
   StateUpdateLogger l;
 
   l.add(d.sharers(), " before = ");
@@ -213,7 +213,7 @@ bool SnoopFilterCommandInvoker::execute_clear_sharers(const Message* msg,
 bool SnoopFilterCommandInvoker::execute_add_req_to_sharers(const Message* msg,
                                                            Context& context,
                                                            Cursor& cursor,
-                                                           DirectoryEntry& d) {
+                                                           DirectoryLine& d) {
   StateUpdateLogger l;
 
   l.add(d.sharers(), " before = ");
@@ -226,7 +226,7 @@ bool SnoopFilterCommandInvoker::execute_add_req_to_sharers(const Message* msg,
 }
 
 bool SnoopFilterCommandInvoker::execute_del_req_from_sharers(
-    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d) {
+    const Message* msg, Context& context, Cursor& cursor, DirectoryLine& d) {
   StateUpdateLogger l;
 
   l.add(d.sharers(), " before = ");
@@ -241,7 +241,7 @@ bool SnoopFilterCommandInvoker::execute_del_req_from_sharers(
 bool SnoopFilterCommandInvoker::execute_del_owner(const Message* msg,
                                                   Context& context,
                                                   Cursor& cursor,
-                                                  DirectoryEntry& d) {
+                                                  DirectoryLine& d) {
   log_debug(cursor.time(), "Delete owner.");
   d.clear_owner();
 
@@ -249,7 +249,7 @@ bool SnoopFilterCommandInvoker::execute_del_owner(const Message* msg,
 }
 
 bool SnoopFilterCommandInvoker::execute_add_owner_to_sharers(
-    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d) {
+    const Message* msg, Context& context, Cursor& cursor, DirectoryLine& d) {
   log_debug(cursor.time(), "Add owner to sharers.");
 
   d.add_sharer(d.owner());
@@ -260,7 +260,7 @@ bool SnoopFilterCommandInvoker::execute_add_owner_to_sharers(
 bool SnoopFilterCommandInvoker::execute_cpy_data_to_memory(const Message* msg,
                                                            Context& context,
                                                            Cursor& cursor,
-                                                           DirectoryEntry& d) {
+                                                           DirectoryLine& d) {
   const Platform platform = opts_.platform();
 
   MessageBuilder b = msgd_.builder();
@@ -278,7 +278,7 @@ bool SnoopFilterCommandInvoker::execute_cpy_data_to_memory(const Message* msg,
 }
 
 bool SnoopFilterCommandInvoker::execute_send_puts_ack_to_req(
-    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d) {
+    const Message* msg, Context& context, Cursor& cursor, DirectoryLine& d) {
   MessageBuilder b = msgd_.builder();
 
   b.set_src_id(id());
@@ -295,7 +295,7 @@ bool SnoopFilterCommandInvoker::execute_send_puts_ack_to_req(
 }
 
 bool SnoopFilterCommandInvoker::execute_send_putm_ack_to_req(
-    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d) {
+    const Message* msg, Context& context, Cursor& cursor, DirectoryLine& d) {
   MessageBuilder b = msgd_.builder();
 
   b.set_src_id(id());
@@ -312,7 +312,7 @@ bool SnoopFilterCommandInvoker::execute_send_putm_ack_to_req(
 }
 
 bool SnoopFilterCommandInvoker::execute_send_fwd_gets_to_owner(
-    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d,
+    const Message* msg, Context& context, Cursor& cursor, DirectoryLine& d,
     const CoherenceActions& actions) {
   MessageBuilder b = msgd_.builder();
 
@@ -385,7 +385,7 @@ bool SnoopFilterCommandInvoker::execute_send_ack_count_to_req(
 }
 
 bool SnoopFilterCommandInvoker::execute_send_fwd_getm_to_owner(
-    const Message* msg, Context& context, Cursor& cursor, DirectoryEntry& d,
+    const Message* msg, Context& context, Cursor& cursor, DirectoryLine& d,
     const CoherenceActions& actions) {
   MessageBuilder b = msgd_.builder();
 
@@ -444,12 +444,12 @@ result_t SnoopFilter::handle_msg(Context& context, Cursor& cursor, const Message
   const Transaction* transaction = msg->transaction();
 
   if (!cache_->is_hit(transaction->addr())) {
-    DirectoryEntry directory_entry;
+    DirectoryLine directory_entry;
     cc_model_->init(directory_entry);
     cache_->install(transaction->addr(), directory_entry);
   }
 
-  DirectoryEntry& directory_entry = cache_->lookup(transaction->addr());
+  DirectoryLine& directory_entry = cache_->lookup(transaction->addr());
   const CoherenceActions actions = cc_model_->get_actions(msg, directory_entry);
   execute(context, cursor, actions, msg, directory_entry);
   return actions.result();

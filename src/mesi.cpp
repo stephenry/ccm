@@ -507,9 +507,9 @@ CoherenceActions MesiAgentProtocol::get_actions(
 struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
   MesiSnoopFilterProtocolImpl() {}
 
-  void init(DirectoryEntry& l) const { l.set_state(MesiDirectoryLineState::I); }
+  void init(DirectoryLine& l) const { l.set_state(MesiDirectoryLineState::I); }
 
-  bool is_stable(const DirectoryEntry& dir_entry) {
+  bool is_stable(const DirectoryLine& dir_entry) {
     bool ret{false};
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
@@ -526,7 +526,7 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
     return ret;
   }
 
-  std::string to_string(const DirectoryEntry& dir_entry) const {
+  std::string to_string(const DirectoryLine& dir_entry) const {
     std::stringstream ss;
     ss << MesiDirectoryLineState::to_string(dir_entry.state());
     return ss.str();
@@ -537,7 +537,7 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
   }
 
   CoherenceActions get_actions(const Message* m,
-                               const DirectoryEntry& dir_entry) {
+                               const DirectoryLine& dir_entry) {
     CoherenceActions actions;
     switch (m->type()) {
       case MessageType::GetS:
@@ -571,7 +571,7 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
   }
 
  private:
-  void handle__GetS(const Message* m, const DirectoryEntry& dir_entry,
+  void handle__GetS(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
@@ -615,7 +615,7 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle__GetM(const Message* m, const DirectoryEntry& dir_entry,
+  void handle__GetM(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
@@ -657,7 +657,7 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle__PutS(const Message* m, const DirectoryEntry& dir_entry,
+  void handle__PutS(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     const bool is_last = false;  // TODO
 
@@ -694,7 +694,7 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle__PutM(const Message* m, const DirectoryEntry& dir_entry,
+  void handle__PutM(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I: {
@@ -748,7 +748,7 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle__PutE(const Message* m, const DirectoryEntry& dir_entry,
+  void handle__PutE(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
@@ -786,7 +786,7 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle__Data(const Message* m, const DirectoryEntry& dir_entry,
+  void handle__Data(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::S_D:
@@ -808,13 +808,13 @@ MesiSnoopFilterProtocol::MesiSnoopFilterProtocol() {
 
 MesiSnoopFilterProtocol::~MesiSnoopFilterProtocol() {}
 
-void MesiSnoopFilterProtocol::init(DirectoryEntry& l) const { impl_->init(l); }
+void MesiSnoopFilterProtocol::init(DirectoryLine& l) const { impl_->init(l); }
 
-bool MesiSnoopFilterProtocol::is_stable(const DirectoryEntry& l) const {
+bool MesiSnoopFilterProtocol::is_stable(const DirectoryLine& l) const {
   return impl_->is_stable(l);
 }
 
-std::string MesiSnoopFilterProtocol::to_string(const DirectoryEntry& l) const {
+std::string MesiSnoopFilterProtocol::to_string(const DirectoryLine& l) const {
   return impl_->to_string(l);
 }
 
@@ -823,7 +823,7 @@ std::string MesiSnoopFilterProtocol::to_string(state_t state) const {
 }
 
 CoherenceActions MesiSnoopFilterProtocol::get_actions(
-    const Message* m, const DirectoryEntry& dir_entry) const {
+    const Message* m, const DirectoryLine& dir_entry) const {
   return impl_->get_actions(m, dir_entry);
 }
 
@@ -831,7 +831,7 @@ MesiCoherenceProtocolValidator::MesiCoherenceProtocolValidator() {}
 
 bool MesiCoherenceProtocolValidator::validate_addr(
     addr_t addr, const std::vector<Entry<CacheLine> >& lines,
-    const DirectoryEntry& entry) const {
+    const DirectoryLine& entry) const {
   //
   return true;
 }

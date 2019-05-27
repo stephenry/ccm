@@ -62,7 +62,7 @@ TEST(MESI, MultipleSharersThenPromotion) {
       EXPECT_EQ(cache_line.state(), ccm::MesiAgentLineState::I);
   }
 
-  const ccm::DirectoryEntry directory_entry =
+  const ccm::DirectoryLine directory_entry =
       p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MesiDirectoryLineState::M);
 

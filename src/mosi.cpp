@@ -573,13 +573,13 @@ CoherenceActions MosiAgentProtocol::get_actions(
 struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
   MosiSnoopFilterProtocolImpl() {}
 
-  void init(DirectoryEntry& l) const { l.set_state(MosiDirectoryLineState::I); }
+  void init(DirectoryLine& l) const { l.set_state(MosiDirectoryLineState::I); }
 
-  bool is_stable(const DirectoryEntry& dir_entry) const {
+  bool is_stable(const DirectoryLine& dir_entry) const {
     return MosiDirectoryLineState::to_string(dir_entry.state());
   }
 
-  std::string to_string(const DirectoryEntry& dir_entry) const {
+  std::string to_string(const DirectoryLine& dir_entry) const {
     std::stringstream ss;
     ss << MosiDirectoryLineState::to_string(dir_entry.state());
     return ss.str();
@@ -590,7 +590,7 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
   }
 
   CoherenceActions get_actions(const Message* m,
-                               const DirectoryEntry& dir_entry) {
+                               const DirectoryLine& dir_entry) {
     CoherenceActions actions;
     switch (m->type()) {
       case MessageType::GetS:
@@ -620,7 +620,7 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
   }
 
  private:
-  void handle__GetS(const Message* m, const DirectoryEntry& dir_entry,
+  void handle__GetS(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MosiDirectoryLineState::I:
@@ -655,7 +655,7 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle__GetM(const Message* m, const DirectoryEntry& dir_entry,
+  void handle__GetM(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     const bool is_from_owner = false;  // TODO
 
@@ -716,7 +716,7 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle__PutS(const Message* m, const DirectoryEntry& dir_entry,
+  void handle__PutS(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     const bool is_last = false;  // TODO
 
@@ -749,7 +749,7 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle__PutM(const Message* m, const DirectoryEntry& dir_entry,
+  void handle__PutM(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     const bool data_is_from_owner = false;  // TODO
 
@@ -791,7 +791,7 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle__PutO(const Message* m, const DirectoryEntry& dir_entry,
+  void handle__PutO(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     const bool data_is_from_owner = false;  // TODO
 
@@ -838,13 +838,13 @@ MosiSnoopFilterProtocol::MosiSnoopFilterProtocol() {
 
 MosiSnoopFilterProtocol::~MosiSnoopFilterProtocol() {}
 
-void MosiSnoopFilterProtocol::init(DirectoryEntry& l) const { impl_->init(l); }
+void MosiSnoopFilterProtocol::init(DirectoryLine& l) const { impl_->init(l); }
 
-bool MosiSnoopFilterProtocol::is_stable(const DirectoryEntry& l) const {
+bool MosiSnoopFilterProtocol::is_stable(const DirectoryLine& l) const {
   return impl_->is_stable(l);
 }
 
-std::string MosiSnoopFilterProtocol::to_string(const DirectoryEntry& l) const {
+std::string MosiSnoopFilterProtocol::to_string(const DirectoryLine& l) const {
   return impl_->to_string(l);
 }
 
@@ -853,7 +853,7 @@ std::string MosiSnoopFilterProtocol::to_string(state_t state) const {
 }
 
 CoherenceActions MosiSnoopFilterProtocol::get_actions(
-    const Message* m, const DirectoryEntry& dir_entry) const {
+    const Message* m, const DirectoryLine& dir_entry) const {
   return impl_->get_actions(m, dir_entry);
 }
 
@@ -861,7 +861,7 @@ MosiCoherenceProtocolValidator::MosiCoherenceProtocolValidator() {}
 
 bool MosiCoherenceProtocolValidator::validate_addr(
     addr_t addr, const std::vector<Entry<CacheLine> >& lines,
-    const DirectoryEntry& entry) const {
+    const DirectoryLine& entry) const {
   // TODO
   return true;
 }

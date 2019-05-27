@@ -50,7 +50,7 @@ TEST(MOSI, SimpleLoadPromotion) {
   const ccm::CacheLine cache_line = agent.cache_line(addr);
   EXPECT_EQ(cache_line.state(), ccm::MosiAgentLineState::M);
 
-  const ccm::DirectoryEntry directory_entry =
+  const ccm::DirectoryLine directory_entry =
     p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MosiDirectoryLineState::M);
 }

@@ -477,11 +477,11 @@ const char *MsiDirectoryLineState::to_string(state_t s) {
 struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
   MsiSnoopFilterProtocolImpl() {}
 
-  void init(DirectoryEntry &l) const { l.set_state(MsiDirectoryLineState::I); }
+  void init(DirectoryLine &l) const { l.set_state(MsiDirectoryLineState::I); }
 
-  bool is_stable(const DirectoryEntry &l) const { return true; }
+  bool is_stable(const DirectoryLine &l) const { return true; }
 
-  std::string to_string(const DirectoryEntry &l) const {
+  std::string to_string(const DirectoryLine &l) const {
     std::stringstream ss;
     ss << MsiDirectoryLineState::to_string(l.state());
     return ss.str();
@@ -492,7 +492,7 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
   }
 
   CoherenceActions get_actions(const Message *m,
-                               const DirectoryEntry &dir_entry) {
+                               const DirectoryLine &dir_entry) {
     CoherenceActions actions;
     switch (m->type()) {
       case MessageType::GetS:
@@ -522,7 +522,7 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
   }
 
  private:
-  void handle_gets(const Message *m, const DirectoryEntry &dir_entry,
+  void handle_gets(const Message *m, const DirectoryLine &dir_entry,
                     CoherenceActions &a) const {
     switch (dir_entry.state()) {
       case MsiDirectoryLineState::I:
@@ -556,7 +556,7 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle_getm(const Message *m, const DirectoryEntry &dir_entry,
+  void handle_getm(const Message *m, const DirectoryLine &dir_entry,
                     CoherenceActions &a) const {
     switch (dir_entry.state()) {
       case MsiDirectoryLineState::I:
@@ -589,7 +589,7 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle_puts(const Message *m, const DirectoryEntry &dir_entry,
+  void handle_puts(const Message *m, const DirectoryLine &dir_entry,
                     CoherenceActions &a) const {
     const bool is_last = false;  // TODO
     switch (dir_entry.state()) {
@@ -621,7 +621,7 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle_putm(const Message *m, const DirectoryEntry &dir_entry,
+  void handle_putm(const Message *m, const DirectoryLine &dir_entry,
                     CoherenceActions &a) const {
     const bool is_data_from_owner = false;  // TODO
     switch (dir_entry.state()) {
@@ -660,7 +660,7 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle_data(const Message *m, const DirectoryEntry &dir_entry,
+  void handle_data(const Message *m, const DirectoryLine &dir_entry,
                     CoherenceActions &a) const {
     switch (dir_entry.state()) {
       case MsiDirectoryLineState::S_D:
@@ -685,13 +685,13 @@ MsiSnoopFilterProtocol::MsiSnoopFilterProtocol() {
 
 MsiSnoopFilterProtocol::~MsiSnoopFilterProtocol() {}
 
-void MsiSnoopFilterProtocol::init(DirectoryEntry &l) const { impl_->init(l); }
+void MsiSnoopFilterProtocol::init(DirectoryLine &l) const { impl_->init(l); }
 
-bool MsiSnoopFilterProtocol::is_stable(const DirectoryEntry &l) const {
+bool MsiSnoopFilterProtocol::is_stable(const DirectoryLine &l) const {
   return impl_->is_stable(l);
 }
 
-std::string MsiSnoopFilterProtocol::to_string(const DirectoryEntry &l) const {
+std::string MsiSnoopFilterProtocol::to_string(const DirectoryLine &l) const {
   return impl_->to_string(l);
 }
 
@@ -700,7 +700,7 @@ std::string MsiSnoopFilterProtocol::to_string(state_t l) const {
 }
 
 CoherenceActions MsiSnoopFilterProtocol::get_actions(
-    const Message *m, const DirectoryEntry &dir_entry) const {
+    const Message *m, const DirectoryLine &dir_entry) const {
   return impl_->get_actions(m, dir_entry);
 }
 
@@ -708,7 +708,7 @@ MsiCoherenceProtocolValidator::MsiCoherenceProtocolValidator() {}
 
 bool MsiCoherenceProtocolValidator::validate_addr(
     addr_t addr, const std::vector<Entry<CacheLine> > &lines,
-    const DirectoryEntry &entry) const {
+    const DirectoryLine &entry) const {
   bool pass = true;
 
   std::array<std::size_t, MsiAgentLineState::STATE_COUNT> state_count;

@@ -55,7 +55,7 @@ TEST(MOSI, SimpleInterventionFromM) {
   const ccm::CacheLine cache_line_1 = agent_1.cache_line(addr);
   EXPECT_EQ(cache_line_1.state(), ccm::MosiAgentLineState::S);
 
-  const ccm::DirectoryEntry directory_entry =
+  const ccm::DirectoryLine directory_entry =
     p.snoop_filter()->directory_entry(addr);
   EXPECT_EQ(directory_entry.state(), ccm::MosiDirectoryLineState::O);
 

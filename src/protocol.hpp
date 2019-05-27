@@ -227,13 +227,31 @@ class ProtocolBase {
   virtual Protocol::type protocol() const = 0;
 };
 
-class CacheLine {
+class CacheableEntity {
+#define CACHEABLE_ENTITY_FIELDS(__func)         \
+  __func(is_valid, bool, false)                 \
+  __func(base, addr_t, 0)
+ public:
+
+#define __declare_etters(__name, __type, __default)             \
+  __type __name() const { return __name ## _; }                 \
+  void set_ ## __name(__type __name) { __name ## _ = __name; }
+  CACHEABLE_ENTITY_FIELDS(__declare_etters)
+#undef __declare_etters
+
+private:
+#define __declare_fields(__name, __type, __default)     \
+  __type __name ## _{__default};
+      CACHEABLE_ENTITY_FIELDS(__declare_fields)
+#undef __declare_fields
+  
+};
+
+class CacheLine : public CacheableEntity {
  public:
   explicit CacheLine() { reset(); }
 
 #define CACHE_LINE_FIELDS(__func)               \
-  __func(is_valid, bool, false)                 \
-  __func(base, addr_t, 0)                       \
   __func(state, state_t, 0)                     \
   __func(inv_ack_expect, std::size_t, 0)        \
   __func(inv_ack_expect_valid, bool, false)     \
@@ -273,17 +291,14 @@ class AgentProtocol : public ProtocolBase {
 std::unique_ptr<AgentProtocol> agent_protocol_factory(
     Protocol::type protocol, const Platform & platform);
 
-class DirectoryEntry {
-  friend std::string to_string(const DirectoryEntry& d);
+class DirectoryLine : public CacheableEntity {
+  friend std::string to_string(const DirectoryLine& d);
 
  public:
   using state_type = state_t;
 
-  DirectoryEntry() {}
+  DirectoryLine() {}
 
-  void set_is_valid(bool v) {}
-  bool is_valid() const { return false; } // TODO: not implemented.
-  addr_t base() const { return 0; } // TODO: not implemented.
   state_t state() const;
   const std::vector<id_t>& sharers() const;
   std::size_t num_sharers() const;
@@ -302,19 +317,19 @@ class DirectoryEntry {
   std::optional<id_t> owner_; // TODO: consider refactoring this away.
 };
 
-std::string to_string(const DirectoryEntry& d);
+std::string to_string(const DirectoryLine& d);
 
 class SnoopFilterProtocol : public ProtocolBase {
  public:
   SnoopFilterProtocol() {}
 
-  virtual void init(DirectoryEntry& l) const = 0;
-  virtual bool is_stable(const DirectoryEntry& l) const = 0;
-  virtual std::string to_string(const DirectoryEntry& l) const = 0;
+  virtual void init(DirectoryLine& l) const = 0;
+  virtual bool is_stable(const DirectoryLine& l) const = 0;
+  virtual std::string to_string(const DirectoryLine& l) const = 0;
   virtual std::string to_string(state_t l) const = 0;
 
   virtual CoherenceActions get_actions(
-      const Message* t, const DirectoryEntry& dir_entry) const = 0;
+      const Message* t, const DirectoryLine& dir_entry) const = 0;
 };
 
 std::unique_ptr<SnoopFilterProtocol> snoop_filter_protocol_factory(
@@ -325,7 +340,7 @@ struct CacheVisitor {
 
   virtual void set_id(id_t id) {}
   virtual void add_line(addr_t addr, const CacheLine& cache_line) {}
-  virtual void add_line(addr_t addr, const DirectoryEntry& directory_entry) {}
+  virtual void add_line(addr_t addr, const DirectoryLine& directory_entry) {}
 };
 
 template <typename T>
@@ -343,17 +358,17 @@ class CoherenceProtocolValidator {
   bool validate() const;
   virtual bool validate_addr(addr_t addr,
                              const std::vector<Entry<CacheLine> >& lines,
-                             const DirectoryEntry& entry) const = 0;
+                             const DirectoryLine& entry) const = 0;
 
  protected:
   void add_cache_line(id_t id, addr_t addr, const CacheLine& cache_line);
   void add_dir_line(id_t id, addr_t addr,
-                    const DirectoryEntry& directory_entry);
+                    const DirectoryLine& directory_entry);
 
   void error(const char* str) const {}
 
   std::map<addr_t, std::vector<Entry<CacheLine> > > cache_lines_;
-  std::map<addr_t, DirectoryEntry> directory_lines_;
+  std::map<addr_t, DirectoryLine> directory_lines_;
 };
 
 std::unique_ptr<CoherenceProtocolValidator>

@@ -53,46 +53,46 @@ struct SnoopFilterOptions : CoherentAgentOptions {
 struct SnoopFilterCommandInvoker : CoherentActor {
   SnoopFilterCommandInvoker(const SnoopFilterOptions& opts);
 
-  DirectoryEntry directory_entry(std::size_t addr) const;
+  DirectoryLine directory_entry(std::size_t addr) const;
 
   void visit_cache(CacheVisitor* cache_visitor) const override;
   void execute(Context& context, Cursor& cursor,
                const CoherenceActions& actions, const Message* msg,
-               DirectoryEntry& d);
+               DirectoryLine& d);
 
  protected:
   std::unique_ptr<SnoopFilterProtocol> cc_model_;
-  std::unique_ptr<GenericCache<DirectoryEntry> > cache_;
+  std::unique_ptr<GenericCache<DirectoryLine> > cache_;
 
  private:
-  bool execute_update_state(Context& context, Cursor& cursor, DirectoryEntry& d,
+  bool execute_update_state(Context& context, Cursor& cursor, DirectoryLine& d,
                             state_t state_next);
   bool execute_set_owner_to_req(const Message* msg, Context& context,
-                                Cursor& cursor, DirectoryEntry& d);
+                                Cursor& cursor, DirectoryLine& d);
   bool execute_send_data_to_req(const Message* msg, Context& context,
-                                Cursor& cursor, DirectoryEntry& d,
+                                Cursor& cursor, DirectoryLine& d,
                                 const CoherenceActions& act);
   bool execute_send_inv_to_sharers(const Message* msg, Context& context,
-                                   Cursor& cursor, DirectoryEntry& d,
+                                   Cursor& cursor, DirectoryLine& d,
                                    const CoherenceActions& actions);
   bool execute_clear_sharers(const Message* msg, Context& context,
-                             Cursor& cursor, DirectoryEntry& d);
+                             Cursor& cursor, DirectoryLine& d);
   bool execute_add_req_to_sharers(const Message* msg, Context& context,
-                                  Cursor& cursor, DirectoryEntry& d);
+                                  Cursor& cursor, DirectoryLine& d);
   bool execute_del_req_from_sharers(const Message* msg, Context& context,
-                                    Cursor& cursor, DirectoryEntry& d);
+                                    Cursor& cursor, DirectoryLine& d);
   bool execute_del_owner(const Message* msg, Context& context, Cursor& cursor,
-                         DirectoryEntry& d);
+                         DirectoryLine& d);
   bool execute_add_owner_to_sharers(const Message* msg, Context& context,
-                                    Cursor& cursor, DirectoryEntry& d);
+                                    Cursor& cursor, DirectoryLine& d);
   bool execute_cpy_data_to_memory(const Message* msg, Context& context,
-                                  Cursor& cursor, DirectoryEntry& d);
+                                  Cursor& cursor, DirectoryLine& d);
   bool execute_send_puts_ack_to_req(const Message* msg, Context& context,
-                                    Cursor& cursor, DirectoryEntry& d);
+                                    Cursor& cursor, DirectoryLine& d);
   bool execute_send_putm_ack_to_req(const Message* msg, Context& context,
-                                    Cursor& cursor, DirectoryEntry& d);
+                                    Cursor& cursor, DirectoryLine& d);
   bool execute_send_fwd_gets_to_owner(const Message* msg, Context& context,
-                                      Cursor& cursor, DirectoryEntry& d,
+                                      Cursor& cursor, DirectoryLine& d,
                                       const CoherenceActions& actions);
   bool execute_send_pute_ack_to_req(const Message* msg, Context& context,
                                     Cursor& cursor);
@@ -102,7 +102,7 @@ struct SnoopFilterCommandInvoker : CoherentActor {
                                      Cursor& cursor,
                                      const CoherenceActions& actions);
   bool execute_send_fwd_getm_to_owner(const Message* msg, Context& context,
-                                      Cursor& cursor, DirectoryEntry& d,
+                                      Cursor& cursor, DirectoryLine& d,
                                       const CoherenceActions& actions);
 
   MessageDirector msgd_;

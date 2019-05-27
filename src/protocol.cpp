@@ -190,21 +190,21 @@ std::unique_ptr<AgentProtocol> agent_protocol_factory(
   }
 }
 
-state_t DirectoryEntry::state() const { return state_; }
-id_t DirectoryEntry::owner() const { return owner_.value(); }
-const std::vector<id_t>& DirectoryEntry::sharers() const { return sharers_; }
-std::size_t DirectoryEntry::num_sharers() const { return sharers_.size(); }
+state_t DirectoryLine::state() const { return state_; }
+id_t DirectoryLine::owner() const { return owner_.value(); }
+const std::vector<id_t>& DirectoryLine::sharers() const { return sharers_; }
+std::size_t DirectoryLine::num_sharers() const { return sharers_.size(); }
 
-void DirectoryEntry::set_state(state_t state) { state_ = state; }
-void DirectoryEntry::set_owner(id_t owner) { owner_ = owner; }
-void DirectoryEntry::clear_owner() { owner_.reset(); }
-void DirectoryEntry::add_sharer(id_t id) { sharers_.push_back(id); }
-void DirectoryEntry::remove_sharer(id_t id) {
+void DirectoryLine::set_state(state_t state) { state_ = state; }
+void DirectoryLine::set_owner(id_t owner) { owner_ = owner; }
+void DirectoryLine::clear_owner() { owner_.reset(); }
+void DirectoryLine::add_sharer(id_t id) { sharers_.push_back(id); }
+void DirectoryLine::remove_sharer(id_t id) {
   sharers_.erase(std::find(sharers_.begin(), sharers_.end(), id),
                  sharers_.end());
 }
-void DirectoryEntry::clear_sharers() { sharers_.clear(); }
-id_t DirectoryEntry::num_sharers_not_id(id_t id) const {
+void DirectoryLine::clear_sharers() { sharers_.clear(); }
+id_t DirectoryLine::num_sharers_not_id(id_t id) const {
   return sharers_.size() - std::count(sharers_.begin(), sharers_.end(), id);
 }
 
@@ -240,7 +240,7 @@ struct CoherenceProtocolValidator::ProtocolValidatorVisitor : CacheVisitor {
   void add_line(addr_t addr, const CacheLine& cache_line) override {
     validator_->add_cache_line(id_, addr, cache_line);
   }
-  void add_line(addr_t addr, const DirectoryEntry& directory_entry) override {
+  void add_line(addr_t addr, const DirectoryLine& directory_entry) override {
     validator_->add_dir_line(id_, addr, directory_entry);
   }
 
@@ -269,7 +269,7 @@ void CoherenceProtocolValidator::add_cache_line(id_t id, addr_t addr,
 }
 
 void CoherenceProtocolValidator::add_dir_line(
-    id_t id, addr_t addr, const DirectoryEntry& directory_entry) {
+    id_t id, addr_t addr, const DirectoryLine& directory_entry) {
   directory_lines_[addr] = directory_entry;
 }
 
