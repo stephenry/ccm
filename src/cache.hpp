@@ -72,7 +72,7 @@ enum class CacheType {
 
 struct CacheOptions {
 #define CACHE_OPTION_FIELDS(__func)                     \
-  __func(type, CacheType, CacheType::Invalid)           \
+  __func(type, CacheType, CacheType::InfiniteCapacity)  \
   __func(line_bytes, uint8_t, 64)                       \
   __func(ways_n, uint8_t, 4)                            \
   __func(size_bytes, std::size_t, (1<<15))
