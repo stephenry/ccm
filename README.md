@@ -9,7 +9,7 @@ protocols may be added trivially as they become available.
 
 In multi-processor systems, multiple agent may maintain copies of the
 same cache lines. Coherence protocols are used to maintain the Single
-Writer/Multiple Read (SWMR) invariant, whereby ownership of lines are
+Writer/Multiple Reader (SWMR) invariant, whereby ownership of lines are
 managed between caches in a correct and performant manner. Although
 coherency protocols may have a very significant bearing on the overall
 performance of a multiprocessor system, the ability to model their
@@ -52,7 +52,7 @@ requires a more detailed understanding of the system (from a
 micro-architectural perspective), beyond that which was available
 within the context of this work.
 
-# Useage
+# Usage
 
 Simulations are invoked (at present) by passing a JSON configuration
 file to the driver executable. This JSON file describes the agents
