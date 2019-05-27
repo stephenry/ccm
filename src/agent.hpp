@@ -146,7 +146,7 @@ class Agent : public CoherentAgentCommandInvoker {
   result_t handle_message(
       Context & context, Cursor & cursor, const Message * msg);
   result_t handle_transaction(
-      Context & context, Cursor & cursor, CommandArbitrator & arb);
+      Context & context, Cursor & cursor, const Transaction * t);
 
   CoherenceActions get_actions(Context& ctxt, Cursor& cursor, const Transaction *t);
   CoherenceActions get_actions(Context& ctxt, Cursor& cursor, const Message *msg);

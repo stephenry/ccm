@@ -229,13 +229,10 @@ class ProtocolBase {
 
 class CacheLine {
  public:
-  using state_type = state_t;
-  using ack_count_type = uint8_t;
-
   CacheLine() { reset(); }
 
 #define CACHE_LINE_FIELDS(__func)               \
-  __func(state, state_type, 0)                  \
+  __func(state, state_t, 0)                     \
   __func(inv_ack_expect, std::size_t, 0)        \
   __func(inv_ack_expect_valid, bool, false)     \
   __func(inv_ack_count, std::size_t, 0)
@@ -282,10 +279,10 @@ class DirectoryEntry {
 
   DirectoryEntry() {}
 
-  state_type state() const;
+  state_t state() const;
   const std::vector<id_t>& sharers() const;
   std::size_t num_sharers() const;
-  void set_state(state_type state);
+  void set_state(state_t state);
   void set_owner(id_t owner);
   id_t owner() const;
   void clear_owner();
@@ -295,7 +292,7 @@ class DirectoryEntry {
   id_t num_sharers_not_id(id_t id) const;
 
  private:
-  state_type state_;
+  state_t state_;
   std::vector<id_t> sharers_;
   std::optional<id_t> owner_; // TODO: consider refactoring this away.
 };

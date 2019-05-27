@@ -67,14 +67,14 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
   MsiAgentProtocolImpl(const Platform & platform) : platform_(platform) {}
 
   void init(CacheLine &l) const {
-    l.set_state(static_cast<CacheLine::state_type>(MsiAgentLineState::I));
+    l.set_state(MsiAgentLineState::I);
   }
 
   bool is_stable(const CacheLine &l) const {
     return MsiAgentLineState::is_stable(l.state());
   }
 
-  std::string to_string(CacheLine::state_type s) const {
+  std::string to_string(state_t s) const {
     return MsiAgentLineState::to_string(s);
   }
 
@@ -449,7 +449,7 @@ bool MsiAgentProtocol::is_stable(const CacheLine &l) const {
   return impl_->is_stable(l);
 }
 
-std::string MsiAgentProtocol::to_string(CacheLine::state_type s) const {
+std::string MsiAgentProtocol::to_string(state_t s) const {
   return impl_->to_string(s);
 }
 

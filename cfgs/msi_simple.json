@@ -10,9 +10,9 @@
               "options" : {
                   "stimulus" : [
                       { "cmd" : "load", "time" : 1000, "addr" : 1000 },
-                      { "cmd" : "load", "time" : 2000, "addr" : 1000 },
-                      { "cmd" : "load", "time" : 3000, "addr" : 1000 },
-                      { "cmd" : "load", "time" : 4000, "addr" : 1000 }
+                      { "cmd" : "load", "time" : 1020, "addr" : 1000 },
+                      { "cmd" : "load", "time" : 1040, "addr" : 1000 },
+                      { "cmd" : "load", "time" : 1060, "addr" : 1000 }
                   ]
               }
           }

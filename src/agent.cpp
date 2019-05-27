@@ -343,19 +343,26 @@ void Agent::eval(Context& context) {
       case CommandType::Message: {
         const TimeStamped<Message*> tsm{mq_.front()};
         Message * msg = tsm.t();
-        
+
+        bool commit{true};
         switch (handle_message(context, cursor, msg)) {
           case MessageResult::Stall:
+            commit = false;
             arb.disable_message_class(MessageType::to_class(msg->type()));
             break;
           case MessageResult::Commit:
-            mq_.pop_front();
-            msg->release();
             break;
+        }
+        if (commit) {
+          mq_.pop_front();
+          msg->release();
         }
       } break;
       case CommandType::Transaction: {
-        switch (handle_transaction(context, cursor, arb)) {
+        const TimeStamped<Transaction*> tst{tq_.front()};
+        const Transaction * t = tst.t();
+        bool commit{true};
+        switch (handle_transaction(context, cursor, t)) {
           case TransactionResult::Miss:
             ++stats_.misses_n;
             break;
@@ -363,9 +370,15 @@ void Agent::eval(Context& context) {
             ++stats_.hits_n;
             break;
           case TransactionResult::Consumed:
+            break;
           case TransactionResult::Blocked:
+            commit = false;
+            //            if (!actions.requires_eviction())
+              arb.disable_transactions();
             break;
         }
+        if (commit)
+          tq_.pop_front();
       } break;
       default:
         break;
@@ -391,10 +404,7 @@ result_t Agent::handle_message(Context & context, Cursor & cursor,
 }
 
 result_t Agent::handle_transaction(Context & context, Cursor & cursor,
-                                   CommandArbitrator & arb) {
-  const TimeStamped<Transaction *> tst{tq_.front()};
-  const Transaction * t = tst.t();
-  
+                                   const Transaction * t) {
   if (t->type() != TransactionType::replacement) {
     log_debug(cursor.time(), "Transaction TID=", t->tid(), " START");
     t->event(TransactionEvent::Start, cursor.time());
@@ -420,13 +430,10 @@ result_t Agent::handle_transaction(Context & context, Cursor & cursor,
     const bool do_commit = (actions.result() != TransactionResult::Blocked);
     if (do_commit) {
       execute(context, cursor, actions, t);
-      tq_.pop_front();
       if (actions.transaction_done()) {
         log_debug(cursor.time(), "Transaction TID=", t->tid(), " END");
         t->event(TransactionEvent::End, cursor.time());
       }
-    } else {
-      arb.disable_transactions();
     }
   }
   return actions.result();
@@ -478,9 +485,10 @@ CoherenceActions Agent::get_actions(
     actions = cc_model_->get_actions(t, cache_line);
     actions.set_cost(CoherenceActions::compute_cost(actions));
   } else {
-    actions.set_requires_eviction(false);
 #define CACHE_LOOKUP_PENALTY 1
     actions.set_cost(CACHE_LOOKUP_PENALTY);
+    actions.set_requires_eviction(false);
+    actions.set_result(TransactionResult::Blocked);
   }
   return actions;
 }

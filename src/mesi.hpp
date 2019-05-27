@@ -96,7 +96,7 @@ class MesiAgentProtocol : public AgentProtocol {
   //
   void init(CacheLine& l) const override;
   bool is_stable(const CacheLine& l) const override;
-  std::string to_string(CacheLine::state_type s) const override;
+  std::string to_string(state_t s) const override;
 
   //
   CoherenceActions get_actions(const Transaction* t,
@@ -122,7 +122,7 @@ class MesiSnoopFilterProtocol : public SnoopFilterProtocol {
   void init(DirectoryEntry& l) const override;
   bool is_stable(const DirectoryEntry& l) const override;
   std::string to_string(const DirectoryEntry& l) const override;
-  std::string to_string(CacheLine::state_type l) const override;
+  std::string to_string(state_t l) const override;
 
   //
   CoherenceActions get_actions(const Message* m,
