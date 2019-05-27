@@ -65,7 +65,9 @@ bool BasicPlatform::validate() const {
 }
 
 void BasicPlatform::construct_snoop_filter(std::size_t id) {
-  SnoopFilterOptions opts(4, platform_, CacheOptions());
+  ccm::CacheOptions cache_options;
+  cache_options.set_type(CacheType::FullyAssociative);
+  SnoopFilterOptions opts(4, platform_, cache_options);
   opts.set_logger_scope(top_->child_scope("SnoopFilter"));
 
   std::unique_ptr<SnoopFilter> snoop_filter =
@@ -76,7 +78,9 @@ void BasicPlatform::construct_snoop_filter(std::size_t id) {
 }
 
 void BasicPlatform::construct_agent(std::size_t id) {
-  AgentOptions opts(id, platform_, CacheOptions());
+  ccm::CacheOptions cache_options;
+  cache_options.set_type(CacheType::FullyAssociative);
+  AgentOptions opts(id, platform_, cache_options);
 
   std::stringstream ss;
   ss << "Agent" << id;

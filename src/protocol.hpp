@@ -229,9 +229,11 @@ class ProtocolBase {
 
 class CacheLine {
  public:
-  CacheLine() { reset(); }
+  explicit CacheLine() { reset(); }
 
 #define CACHE_LINE_FIELDS(__func)               \
+  __func(is_valid, bool, false)                 \
+  __func(base, addr_t, 0)                       \
   __func(state, state_t, 0)                     \
   __func(inv_ack_expect, std::size_t, 0)        \
   __func(inv_ack_expect_valid, bool, false)     \
@@ -279,6 +281,9 @@ class DirectoryEntry {
 
   DirectoryEntry() {}
 
+  void set_is_valid(bool v) {}
+  bool is_valid() const { return false; } // TODO: not implemented.
+  addr_t base() const { return 0; } // TODO: not implemented.
   state_t state() const;
   const std::vector<id_t>& sharers() const;
   std::size_t num_sharers() const;

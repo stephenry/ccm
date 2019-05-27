@@ -26,8 +26,10 @@
 //========================================================================== //
 
 #include "cache.hpp"
+#include "utility.hpp"
 
 namespace ccm {
+
 #ifdef ENABLE_JSON
 
 CacheOptions CacheOptions::from_json(nlohmann::json j) {
@@ -35,4 +37,42 @@ CacheOptions CacheOptions::from_json(nlohmann::json j) {
   return CacheOptions();
 }
 #endif
+
+CacheOptions::CacheOptions() { reset(); }
+
+void CacheOptions::reset() {
+#define __reset_fields(__name, __type, __default)     \
+  __type __name ## _{__default};
+  CACHE_OPTION_FIELDS(__reset_fields)
+#undef __reset_fields
+}
+
+CacheAddressFieldHelper::CacheAddressFieldHelper(const CacheOptions & opts)
+    : opts_(opts) {
+  precompute();
+}
+
+void CacheAddressFieldHelper::precompute() {
+  bits_for_line_ = log2ceil(opts_.line_bytes());
+  lines_n_ = (opts_.size_bytes() / opts_.line_bytes());
+  sets_n_ = (lines_n_ / opts_.ways_n());
+  bits_for_set_ = log2ceil(sets_n_);
+}
+
+std::size_t CacheAddressFieldHelper::offset(addr_t a) const {
+  return get_range(a, bits_for_line());
+}
+
+std::size_t CacheAddressFieldHelper::set(addr_t a) const {
+  return get_range(a, bits_for_line() + bits_for_set(), bits_for_set());
+}
+
+std::size_t CacheAddressFieldHelper::tag(addr_t a) const {
+  return a >> (bits_for_line() + bits_for_set());
+}
+
+std::size_t CacheAddressFieldHelper::base(addr_t a) const {
+  return a & ~mask(bits_for_line() - 1);
+}
+
 }  // namespace ccm

@@ -166,6 +166,11 @@ T mask(T t) {
   return (1 << t) - 1;
 }
 
+template <typename T, typename = std::is_integral<T>>
+T get_range(T & t, const std::size_t msb, const std::size_t lsb = 0) {
+  return (t >> lsb) & mask(msb - lsb);
+}
+
 }  // namespace ccm
 
 #endif

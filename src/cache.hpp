@@ -33,6 +33,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include <functional>
 #include "options.hpp"
 #ifdef ENABLE_JSON
 #  include <nlohmann/json.hpp>
@@ -41,6 +42,7 @@
 #include "platform.hpp"
 #include "utility.hpp"
 #include "protocol.hpp"
+#include "random.hpp"
 
 namespace ccm {
 class CacheLine;
@@ -63,78 +65,230 @@ enum class EvictionPolicy {
 };
 const char* to_string(EvictionPolicy p);
 
-enum class CacheType { FullyAssociative };
+enum class CacheType {
+  DirectMapped,
+  SetAssociative,
+  FullyAssociative,
+  InfiniteCapacity,
+  Invalid
+};
 
 struct CacheOptions {
+#define CACHE_OPTION_FIELDS(__func)                     \
+  __func(type, CacheType, CacheType::Invalid)           \
+  __func(line_bytes, uint8_t, 64)                       \
+  __func(ways_n, uint8_t, 4)                            \
+  __func(size_bytes, std::size_t, (1<<15))
+  
 #ifdef ENABLE_JSON
   static CacheOptions from_json(nlohmann::json j);
 #endif
+  CacheOptions();
 
-  CacheType type() const { return type_; }
-  void set_type(CacheType type) { type_ = type; }
-
-  uint32_t sets_n{1 << 10};
-  uint8_t ways_n{1};
-  uint8_t bytes_per_line{64};
-  EvictionPolicy eviction_policy{EvictionPolicy::Fixed};
+#define __declare_etters(__name,  __type, __default)            \
+  __type __name() const { return __name ## _; }                 \
+  void set_ ## __name(__type __name) { __name ## _ = __name; }
+  CACHE_OPTION_FIELDS(__declare_etters)
+#undef __declare_etters
 
  private:
-  CacheType type_;
+  void reset();
+
+#define __declare_fields(__name, __type, __default)     \
+  __type __name ## _{__default};
+  CACHE_OPTION_FIELDS(__declare_fields)
+#undef __declare_fields
 };
 
-class CacheAddressFormat {
+class CacheAddressFieldHelper {
+#define CACHE_ADDRESS_FIELD_HELPER_FIELDS(__func)       \
+  __func(bits_for_line, std::size_t)                    \
+  __func(bits_for_set, std::size_t)                     \
+  __func(lines_n, std::size_t)                          \
+  __func(sets_n, std::size_t)
+  
  public:
-  CacheAddressFormat() {}
-  CacheAddressFormat(std::size_t bytes_per_line, std::size_t sets_n)
-      : bytes_per_line_(bytes_per_line), sets_n_(sets_n) {
-    l2c_bytes_per_line_ = log2ceil(bytes_per_line_);
-    mask_bytes_per_line_ = mask(l2c_bytes_per_line_);
+  CacheAddressFieldHelper(const CacheOptions & opts);
 
-    l2c_sets_n_ = log2ceil(sets_n_);
-  }
-
-  addr_t offset(addr_t a) const { return (a & mask_bytes_per_line_); }
-  addr_t set(addr_t a) const { return (a >> l2c_bytes_per_line_); }
-  addr_t tag(addr_t a) const { return set(a) >> l2c_sets_n_; }
+#define __declare_getters(__field, __type)      \
+  __type __field() const { return __field ## _; }
+  CACHE_ADDRESS_FIELD_HELPER_FIELDS(__declare_getters)
+#undef __declare_getters
+  
+  std::size_t offset(addr_t a) const;
+  std::size_t set(addr_t a) const;
+  std::size_t tag(addr_t a) const;
+  std::size_t base(addr_t a) const;
 
  private:
-  std::size_t bytes_per_line_, l2c_bytes_per_line_, mask_bytes_per_line_;
-  std::size_t sets_n_, l2c_sets_n_;
+  void precompute();
+#define __declare_fields(__field, __type)       \
+  __type __field ## _;
+  CACHE_ADDRESS_FIELD_HELPER_FIELDS(__declare_fields)
+#undef __declare_fields
+  const CacheOptions & opts_;
 };
 
 template <typename T>
 class GenericCache {
  public:
-  GenericCache(const CacheOptions& opts) : opts_(opts) {}
+  GenericCache() {}
   virtual ~GenericCache() {}
 
-  CacheOptions cache_options() const { return opts_; }
-
-  virtual bool requires_eviction(addr_t addr) const = 0;
   virtual bool is_hit(addr_t addr) const = 0;
+  virtual bool requires_eviction(addr_t addr) const = 0;
+  virtual const T & nominate_evictee(addr_t addr) const = 0;
 
+  virtual const T& lookup(addr_t addr) const = 0;
   virtual T& lookup(addr_t addr) = 0;
 
   virtual void visit(CacheVisitor* visitor) = 0;
   virtual void install(addr_t addr, const T& t) = 0;
   virtual bool evict(addr_t addr) = 0;
+};
 
+template<typename T>
+class SetAssociativeCache : public GenericCache<T> {
+ public:
+  SetAssociativeCache(const CacheOptions & opts)
+      : GenericCache<T>(), opts_(opts), fields_(opts) {
+    lines_.resize(fields_.lines_n());
+  }
+  bool is_hit(addr_t addr) const override {
+    bool found{false};
+    enumerate_ways(addr, [&](const T & t) -> bool {
+        if (!found && t.is_valid() && (t.base() == fields_.base(addr)))
+          found = true;
+        return !found;
+      });
+    return found;
+  }
+  bool requires_eviction(addr_t addr) const override {
+    bool found{false};
+    std::size_t ways_used_n{0};
+    enumerate_ways(addr, [&](const T & t) -> bool {
+        if (found || !t.is_valid())
+          return false;
+
+        ++ways_used_n;
+        found = (t.base() == fields_.base(addr));
+        return !found;
+      });
+    return !found && (ways_used_n == opts_.ways_n());
+  }
+  const T & nominate_evictee(addr_t addr) const override {
+    Random::UniformRandomInterval rnd{opts_.ways_n() - 1, 0};
+
+    const T * evictee{std::addressof(t_invalid_)};
+    int evict_way{rnd()};
+    enumerate_ways(addr, [&](const T & t) -> bool {
+        const bool sel_evictee = !t.is_valid() || (evict_way-- == 0);
+        if (sel_evictee)
+          evictee = std::addressof(t);
+        return !sel_evictee;
+      });
+    return *evictee;
+  }
+  virtual bool evict(addr_t addr) override {
+    bool did_evict{false};
+    enumerate_ways(addr, [&](T & t) -> bool {
+        if (!t.is_valid())
+          return true;
+
+        did_evict = (t.base() == fields_.base(addr));
+        if (did_evict)
+          t.set_is_valid(false);
+        return !did_evict;
+      });
+    return false;
+  }
+  const T & lookup(addr_t addr) const override {
+    const T * line{std::addressof(t_invalid_)};
+    enumerate_ways(addr, [&](const T & t) -> bool {
+        if (!t.is_valid())
+          return true;
+
+        if (t.base() == fields_.base(addr))
+          line = std::addressof(t);
+
+        return (line == std::addressof(t_invalid_));
+      });
+    return *line;
+  }
+  T & lookup(addr_t addr) override {
+    T * line{std::addressof(t_invalid_)};
+    enumerate_ways(addr, [&](T & t) -> bool {
+        if (!t.is_valid())
+          return true;
+
+        if (t.base() == fields_.base(addr))
+          line = std::addressof(t);
+
+        return (line == std::addressof(t_invalid_));
+      });
+    return *line;
+  }
+  virtual void visit(CacheVisitor* visitor) override {
+    for (T & t : lines_)
+      visitor->add_line(t.base(), t);
+  }
+  virtual void install(addr_t addr, const T& t) override {
+    const bool did_hit = is_hit(addr);
+    enumerate_ways(addr, [&](T & slot) -> bool {
+        bool do_continue{true};
+        if (!did_hit && !slot.is_valid()) {
+          slot = t;
+          do_continue = false;
+        } else if (did_hit && slot.is_valid() && (slot.base() == fields_.base(addr))) {
+          slot = t;
+          do_continue = true;
+        }
+        return do_continue;
+      });
+  }
  private:
+  template<typename FN>
+  void enumerate_ways(addr_t addr, FN && f) const {
+    const std::size_t way_base = opts_.ways_n() * fields_.set(addr);
+    for (std::size_t way_off = 0; way_off < opts_.ways_n(); ++way_off) {
+      const T & line = lines_[way_base + way_off];
+      if (!f(std::cref(line)))
+        return;
+    }
+  }
+  template<typename FN>
+  void enumerate_ways(addr_t addr, FN && f) {
+    const std::size_t way_base = opts_.ways_n() * fields_.set(addr);
+    for (std::size_t way_off = 0; way_off < opts_.ways_n(); ++way_off) {
+      T & line = lines_[way_base + way_off];
+      if (!f(std::ref(line)))
+        return;
+    }
+  }
+  T t_invalid_;
+  std::vector<T> lines_;
+  const CacheAddressFieldHelper fields_;
   const CacheOptions opts_;
 };
 
 template <typename T>
 class FullyAssociativeCache : public GenericCache<T> {
  public:
-  FullyAssociativeCache(const CacheOptions& opts) : GenericCache<T>(opts) {}
+  FullyAssociativeCache(const CacheOptions& opts)
+      : GenericCache<T>(), opts_(opts), fields_(opts) {}
 
   bool requires_eviction(addr_t addr) const override {
     // TODO
     return false;
   }
+  const T & nominate_evictee(addr_t addr) const override { return t_invalid_; }
 
   bool is_hit(addr_t addr) const override {
     return (cache_.find(addr) != cache_.end());
+  }
+
+  const T& lookup(addr_t addr) const override {
+    return cache_.at(addr);
   }
 
   T& lookup(addr_t addr) override {
@@ -157,15 +311,34 @@ class FullyAssociativeCache : public GenericCache<T> {
   }
 
  private:
+  T t_invalid_;
   std::unordered_map<addr_t, T> cache_;
+  const CacheAddressFieldHelper fields_;
+  const CacheOptions opts_;
 };
 
 template <typename T>
 std::unique_ptr<GenericCache<T> > cache_factory(const CacheOptions& opts) {
   switch (opts.type()) {
+    case CacheType::DirectMapped: {
+      // A direct mapped cache is simply a set-associative cache with
+      // a way count of 1.
+      //
+      CacheOptions dm_opts{opts};
+      dm_opts.set_ways_n(1);
+      return std::make_unique<SetAssociativeCache<T> >(dm_opts);
+    } break;
+    case CacheType::SetAssociative:
+      return std::make_unique<SetAssociativeCache<T> >(opts);
+      break;
     case CacheType::FullyAssociative:
       return std::make_unique<FullyAssociativeCache<T> >(opts);
-    default:;
+      break;
+    case CacheType::InfiniteCapacity:
+      return std::make_unique<FullyAssociativeCache<T> >(opts);
+    default:
+      return nullptr;
+      break;
   }
 }
 
