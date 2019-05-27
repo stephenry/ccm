@@ -502,29 +502,23 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
     CoherenceActions actions;
     switch (m->type()) {
       case MessageType::GetS:
-        handle__GetS(m, dir_entry, actions);
+        handle_gets(m, dir_entry, actions);
         break;
-
       case MessageType::GetM:
-        handle__GetM(m, dir_entry, actions);
+        handle_getm(m, dir_entry, actions);
         break;
-
       case MessageType::PutS:
-        handle__PutS(m, dir_entry, actions);
+        handle_puts(m, dir_entry, actions);
         break;
-
       case MessageType::PutM:
-        handle__PutM(m, dir_entry, actions);
+        handle_putm(m, dir_entry, actions);
         break;
-
       case MessageType::PutE:
-        handle__PutE(m, dir_entry, actions);
+        handle_pute(m, dir_entry, actions);
         break;
-
       case MessageType::Data:
-        handle__Data(m, dir_entry, actions);
+        handle_data(m, dir_entry, actions);
         break;
-
       default:
         actions.set_error(true);
     }
@@ -532,7 +526,7 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
   }
 
  private:
-  void handle__GetS(const Message* m, const DirectoryLine& dir_entry,
+  void handle_gets(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
@@ -542,12 +536,10 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MesiDirectoryLineState::E);
         break;
-
       case MesiDirectoryLineState::S:
         a.append_command(SnoopFilterCommand::SendDataToReq);
         a.append_command(SnoopFilterCommand::AddReqToSharers);
         break;
-
       case MesiDirectoryLineState::E:
         a.append_command(SnoopFilterCommand::SendFwdGetSToOwner);
         a.set_fwd_id(m->src_id());
@@ -557,7 +549,6 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MesiDirectoryLineState::S_D);
         break;
-
       case MesiDirectoryLineState::M:
         a.append_command(SnoopFilterCommand::SendFwdGetSToOwner);
         a.set_fwd_id(m->src_id());
@@ -565,18 +556,16 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
         a.append_command(SnoopFilterCommand::AddReqToSharers);
         a.append_command(SnoopFilterCommand::DelOwner);
         break;
-
       case MesiDirectoryLineState::S_D:
         // TODO: stall
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__GetM(const Message* m, const DirectoryLine& dir_entry,
+  void handle_getm(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
@@ -585,7 +574,6 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MesiDirectoryLineState::M);
         break;
-
       case MesiDirectoryLineState::S:
         a.append_command(SnoopFilterCommand::SendDataToReq);
         a.set_ack_count(dir_entry.num_sharers_not_id(m->src_id()));
@@ -595,30 +583,26 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MesiDirectoryLineState::M);
         break;
-
       case MesiDirectoryLineState::E:
         a.append_command(SnoopFilterCommand::SendFwdGetMToOwner);
         a.append_command(SnoopFilterCommand::SetOwnerToReq);
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MesiDirectoryLineState::M);
         break;
-
       case MesiDirectoryLineState::M:
         a.append_command(SnoopFilterCommand::SendFwdGetMToOwner);
         a.append_command(SnoopFilterCommand::SetOwnerToReq);
         break;
-
       case MesiDirectoryLineState::S_D:
         // TODO: Stall
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__PutS(const Message* m, const DirectoryLine& dir_entry,
+  void handle_puts(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     const bool is_last = false;  // TODO
 
@@ -626,7 +610,6 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
       case MesiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
-
       case MesiDirectoryLineState::S:
         a.append_command(SnoopFilterCommand::DelReqFromSharers);
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
@@ -635,27 +618,23 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
           a.set_next_state(MesiDirectoryLineState::I);
         }
         break;
-
       case MesiDirectoryLineState::E:
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
-
       case MesiDirectoryLineState::M:
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
-
       case MesiDirectoryLineState::S_D:
         a.append_command(SnoopFilterCommand::DelReqFromSharers);
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__PutM(const Message* m, const DirectoryLine& dir_entry,
+  void handle_putm(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I: {
@@ -664,7 +643,6 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
         if (!is_from_owner)
           a.append_command(SnoopFilterCommand::SendPutMAckToReq);
       } break;
-
       case MesiDirectoryLineState::S: {
         const bool is_from_owner = (m->src_id() == dir_entry.owner());
 
@@ -673,7 +651,6 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
           a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         }
       } break;
-
       case MesiDirectoryLineState::E: {
         const bool is_from_owner = (m->src_id() == dir_entry.owner());
 
@@ -685,7 +662,6 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
           a.set_next_state(MesiDirectoryLineState::I);
         }
       } break;
-
       case MesiDirectoryLineState::M: {
         const bool is_from_owner = (m->src_id() == dir_entry.owner());
 
@@ -697,30 +673,26 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
           a.set_next_state(MesiDirectoryLineState::I);
         }
       } break;
-
       case MesiDirectoryLineState::S_D: {
         a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         a.append_command(SnoopFilterCommand::DelReqFromSharers);
       } break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__PutE(const Message* m, const DirectoryLine& dir_entry,
+  void handle_pute(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendPutEAckToReq);
         break;
-
       case MesiDirectoryLineState::S:
         a.append_command(SnoopFilterCommand::DelReqFromSharers);
         a.append_command(SnoopFilterCommand::SendPutEAckToReq);
         break;
-
       case MesiDirectoryLineState::E: {
         const bool is_from_owner = (m->src_id() == dir_entry.owner());
 
@@ -731,23 +703,20 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
           a.set_next_state(MesiDirectoryLineState::I);
         }
       } break;
-
       case MesiDirectoryLineState::M:
         a.append_command(SnoopFilterCommand::SendPutEAckToReq);
         break;
-
       case MesiDirectoryLineState::S_D:
         a.append_command(SnoopFilterCommand::DelReqFromSharers);
         a.append_command(SnoopFilterCommand::SendPutEAckToReq);
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__Data(const Message* m, const DirectoryLine& dir_entry,
+  void handle_data(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MesiDirectoryLineState::S_D:
@@ -755,7 +724,6 @@ struct MesiSnoopFilterProtocol::MesiSnoopFilterProtocolImpl {
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MesiDirectoryLineState::S);
         break;
-
       default:
         a.set_error(true);
         break;
