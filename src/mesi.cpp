@@ -75,7 +75,6 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
       case MesiAgentLineState::E:
         ret = true;
         break;
-
       default:
         ret = false;
         break;
@@ -225,14 +224,12 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
       case MesiAgentLineState::II_A:
         a.set_result(TransactionResult::Blocked);
         break;
-        
       case MesiAgentLineState::S:
         a.append_command(CoherentAgentCommand::EmitPutS);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MesiAgentLineState::SI_A);
         a.set_result(TransactionResult::Consumed);
         break;
-        
       case MesiAgentLineState::M:
         a.append_command(CoherentAgentCommand::EmitPutM);
         a.append_command(CoherentAgentCommand::EmitDataToDir);
@@ -240,14 +237,12 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
         a.set_next_state(MesiAgentLineState::MI_A);
         a.set_result(TransactionResult::Consumed);
         break;
-        
       case MesiAgentLineState::E:
         a.append_command(CoherentAgentCommand::EmitPutE);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MesiAgentLineState::EI_A);
         a.set_result(TransactionResult::Consumed);
         break;
-
       default:
         a.set_error(true);
         break;
@@ -401,7 +396,6 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
           a.set_error(true);
           break;
       }
-
     } else if (is_data_from_dir_ack_zero || is_data_from_owner) {
       switch (cache_line.state()) {
         case MesiAgentLineState::IS_D:
@@ -421,7 +415,6 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
           a.set_error(true);
           break;
       }
-
     } else if (is_data_from_dir_ack_non_zero) {
       a.append_command(CoherentAgentCommand::SetAckExpectCount);
       a.set_ack_count(m->ack_count());
