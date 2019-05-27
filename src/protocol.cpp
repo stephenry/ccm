@@ -236,7 +236,7 @@ CoherenceProtocolValidator::CoherenceProtocolValidator() {}
 struct CoherenceProtocolValidator::ProtocolValidatorVisitor : CacheVisitor {
   ProtocolValidatorVisitor(CoherenceProtocolValidator* validator)
       : validator_(validator) {}
-  void set_id(id_t id) /*override*/ { id_ = id; }
+  void set_id(id_t id) override { id_ = id; }
   void add_line(addr_t addr, const CacheLine& cache_line) override {
     validator_->add_cache_line(id_, addr, cache_line);
   }
@@ -289,6 +289,9 @@ coherence_protocol_validator_factory(Protocol::type protocol) {
       return std::make_unique<MosiCoherenceProtocolValidator>();
       break;
 #endif
+    default:
+      return nullptr;
+      break;
   }
 }
 

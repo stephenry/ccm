@@ -282,26 +282,21 @@ class FullyAssociativeCache : public GenericCache<T> {
     return false;
   }
   const T & nominate_evictee(addr_t addr) const override { return t_invalid_; }
-
   bool is_hit(addr_t addr) const override {
     return (cache_.find(addr) != cache_.end());
   }
-
   const T& lookup(addr_t addr) const override {
     return cache_.at(addr);
   }
-
   T& lookup(addr_t addr) override {
     if (!is_hit(addr))
       throw std::domain_error("Address is not present in cache.");
 
     return cache_[addr];
   }
-
   void visit(CacheVisitor* visitor) override {
     for (auto& [addr, t] : cache_) visitor->add_line(addr, t);
   }
-
   void install(addr_t addr, const T& t) override { cache_[addr] = t; }
   bool evict(addr_t addr) override {
     auto it = cache_.find(addr);
@@ -309,7 +304,43 @@ class FullyAssociativeCache : public GenericCache<T> {
     if (found) cache_.erase(it);
     return found;
   }
+ private:
+  T t_invalid_;
+  std::unordered_map<addr_t, T> cache_;
+  const CacheAddressFieldHelper fields_;
+  const CacheOptions opts_;
+};
 
+template <typename T>
+class InfiniteCapacityCache : public GenericCache<T> {
+ public:
+  InfiniteCapacityCache(const CacheOptions& opts)
+      : GenericCache<T>(), opts_(opts), fields_(opts) {}
+
+  bool requires_eviction(addr_t addr) const override { return false; }
+  const T & nominate_evictee(addr_t addr) const override { return t_invalid_; }
+  bool is_hit(addr_t addr) const override {
+    return (cache_.find(addr) != cache_.end());
+  }
+  const T& lookup(addr_t addr) const override {
+    return cache_.at(addr);
+  }
+  T& lookup(addr_t addr) override {
+    if (!is_hit(addr))
+      throw std::domain_error("Address is not present in cache.");
+
+    return cache_[addr];
+  }
+  void visit(CacheVisitor* visitor) override {
+    for (auto& [addr, t] : cache_) visitor->add_line(addr, t);
+  }
+  void install(addr_t addr, const T& t) override { cache_[addr] = t; }
+  bool evict(addr_t addr) override {
+    auto it = cache_.find(addr);
+    const bool found = (it != cache_.end());
+    if (found) cache_.erase(it);
+    return found;
+  }
  private:
   T t_invalid_;
   std::unordered_map<addr_t, T> cache_;
@@ -335,7 +366,7 @@ std::unique_ptr<GenericCache<T> > cache_factory(const CacheOptions& opts) {
       return std::make_unique<FullyAssociativeCache<T> >(opts);
       break;
     case CacheType::InfiniteCapacity:
-      return std::make_unique<FullyAssociativeCache<T> >(opts);
+      return std::make_unique<InfiniteCapacityCache<T> >(opts);
     default:
       return nullptr;
       break;
