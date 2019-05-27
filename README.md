@@ -40,7 +40,7 @@ process is restarted.
 Each agent in the system implements a model to denote the cost of each
 operation executed during the Epoch. As the model executes, agents
 incur the cost of each operation (such as the issue of a message to
-the snoop controller). Operations are themselve indivisible and may
+the snoop controller). Operations are themselves indivisible and may
 transverse multiple Epochs, in this case, the agent blockes until
 simulation time advances beyond the local time of the agent.
 
@@ -48,8 +48,9 @@ An alternative simualtion model is the Discrete-Timed Event (DTE)
 model, as seen in libraries such as SystemC or languages such as
 Verilog. Although the DTE approach results in a more accurate model,
 as it more closely models the notion of time between agents, it
-requires a more detailed understanding of the system, beyond that
-which was available within the context of this work.
+requires a more detailed understanding of the system (from a
+micro-architectural perspective), beyond that which was available
+within the context of this work.
 
 # Useage
 
