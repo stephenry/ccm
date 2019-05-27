@@ -93,10 +93,10 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
     CoherenceActions actions;
     switch (t->type()) {
       case TransactionType::load:
-        handle__Load(t, cache_line, actions);
+        handle_load(t, cache_line, actions);
         break;
       case TransactionType::store:
-        handle__Store(t, cache_line, actions);
+        handle_store(t, cache_line, actions);
         break;
       case TransactionType::replacement:
         handle_replacement(t, cache_line, actions);
@@ -113,24 +113,20 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
     CoherenceActions actions;
     switch (m->type()) {
       case MessageType::FwdGetS:
-        handle__FwdGetS(m, cache_line, actions);
+        handle_fwd_gets(m, cache_line, actions);
         break;
-
       case MessageType::FwdGetM:
-        handle__FwdGetM(m, cache_line, actions);
+        handle_fwd_getm(m, cache_line, actions);
         break;
-
       case MessageType::Inv:
-        handle__Inv(m, cache_line, actions);
+        handle_inv(m, cache_line, actions);
         break;
-
       case MessageType::PutS:
       case MessageType::PutM:
-        handle__PutAck(m, cache_line, actions);
+        handle_put_ack(m, cache_line, actions);
         break;
-
       case MessageType::Data:
-        handle__Data(m, cache_line, actions);
+        handle_data(m, cache_line, actions);
         break;
 
       default:
@@ -140,7 +136,7 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
   }
 
  private:
-  void handle__Load(const Transaction* t, const CacheLine& cache_line,
+  void handle_load(const Transaction* t, const CacheLine& cache_line,
                     CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MesiAgentLineState::I:
@@ -149,13 +145,11 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
         a.set_next_state(MesiAgentLineState::IS_D);
         a.set_result(TransactionResult::Miss);
         break;
-
       case MesiAgentLineState::IS_D:
       case MesiAgentLineState::IM_AD:
       case MesiAgentLineState::IM_A:
         a.set_result(TransactionResult::Blocked);
         break;
-
       case MesiAgentLineState::S:
       case MesiAgentLineState::SM_AD:
       case MesiAgentLineState::SM_A:
@@ -163,21 +157,19 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
       case MesiAgentLineState::E:
         a.set_result(TransactionResult::Hit);
         break;
-
       case MesiAgentLineState::MI_A:
       case MesiAgentLineState::EI_A:
       case MesiAgentLineState::SI_A:
       case MesiAgentLineState::II_A:
         a.set_result(TransactionResult::Blocked);
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__Store(const Transaction* t, const CacheLine& cache_line,
+  void handle_store(const Transaction* t, const CacheLine& cache_line,
                      CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MesiAgentLineState::I:
@@ -186,40 +178,33 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
         a.set_next_state(MesiAgentLineState::IM_AD);
         a.set_result(TransactionResult::Miss);
         break;
-
       case MesiAgentLineState::IS_D:
       case MesiAgentLineState::IM_AD:
       case MesiAgentLineState::IM_A:
         a.set_result(TransactionResult::Miss);
         break;
-
       case MesiAgentLineState::S:
         a.append_command(CoherentAgentCommand::EmitGetM);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MesiAgentLineState::SM_AD);
         break;
-
       case MesiAgentLineState::SM_AD:
       case MesiAgentLineState::SM_A:
         a.set_result(TransactionResult::Miss);
         break;
-
       case MesiAgentLineState::E:
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MesiAgentLineState::M);
         [[fallthrough]];
-
       case MesiAgentLineState::M:
         a.set_result(TransactionResult::Hit);
         break;
-
       case MesiAgentLineState::MI_A:
       case MesiAgentLineState::EI_A:
       case MesiAgentLineState::SI_A:
       case MesiAgentLineState::II_A:
         a.set_result(TransactionResult::Miss);
         break;
-
       default:
         a.set_error(true);
         break;
@@ -269,7 +254,7 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
     }
   }
 
-  void handle__FwdGetS(const Message* m, const CacheLine& cache_line,
+  void handle_fwd_gets(const Message* m, const CacheLine& cache_line,
                        CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MesiAgentLineState::IM_AD:
@@ -278,7 +263,6 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
       case MesiAgentLineState::SM_A:
         a.set_result(MessageResult::Stall);
         break;
-
       case MesiAgentLineState::M:
       case MesiAgentLineState::E:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
@@ -287,7 +271,6 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
         a.set_next_state(MesiAgentLineState::S);
         a.set_result(MessageResult::Commit);
         break;
-
       case MesiAgentLineState::MI_A:
       case MesiAgentLineState::EI_A:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
@@ -296,14 +279,13 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
         a.set_next_state(MesiAgentLineState::SI_A);
         a.set_result(MessageResult::Commit);
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__FwdGetM(const Message* m, const CacheLine& cache_line,
+  void handle_fwd_getm(const Message* m, const CacheLine& cache_line,
                        CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MesiAgentLineState::IM_AD:
@@ -312,7 +294,6 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
       case MesiAgentLineState::SM_A:
         a.set_result(MessageResult::Stall);
         break;
-
       case MesiAgentLineState::M:
       case MesiAgentLineState::E:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
@@ -320,7 +301,6 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
         a.set_next_state(MesiAgentLineState::I);
         a.set_result(MessageResult::Commit);
         break;
-
       case MesiAgentLineState::MI_A:
       case MesiAgentLineState::EI_A:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
@@ -328,14 +308,13 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
         a.set_next_state(MesiAgentLineState::II_A);
         a.set_result(MessageResult::Commit);
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__Inv(const Message* m, const CacheLine& cache_line,
+  void handle_inv(const Message* m, const CacheLine& cache_line,
                    CoherenceActions& a) const {
     if (m->is_ack()) {
       a.append_command(CoherentAgentCommand::IncAckCount);
@@ -347,7 +326,6 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
             a.set_next_state(MesiAgentLineState::M);
             a.set_result(MessageResult::Commit);
             break;
-
           default:
             a.set_error(true);
         }
@@ -359,28 +337,24 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
         case MesiAgentLineState::IS_D:
           a.set_result(MessageResult::Stall);
           break;
-
         case MesiAgentLineState::S:
           a.append_command(CoherentAgentCommand::EmitInvAck);
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MesiAgentLineState::I);
           a.set_result(MessageResult::Commit);
           break;
-
         case MesiAgentLineState::SM_AD:
           a.append_command(CoherentAgentCommand::EmitInvAck);
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MesiAgentLineState::IM_AD);
           a.set_result(MessageResult::Commit);
           break;
-
         case MesiAgentLineState::SI_A:
           a.append_command(CoherentAgentCommand::EmitInvAck);
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MesiAgentLineState::II_A);
           a.set_result(MessageResult::Commit);
           break;
-
         default:
           a.set_error(true);
           break;
@@ -388,7 +362,7 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
     }
   }
 
-  void handle__PutAck(const Message* m, const CacheLine& cache_line,
+  void handle_put_ack(const Message* m, const CacheLine& cache_line,
                       CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MesiAgentLineState::MI_A:
@@ -399,14 +373,13 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
         a.set_next_state(MesiAgentLineState::I);
         a.set_result(MessageResult::Commit);
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__Data(const Message* m, const CacheLine& cache_line,
+  void handle_data(const Message* m, const CacheLine& cache_line,
                     CoherenceActions& a) const {
     const bool is_from_dir = platform_.is_valid_snoop_filter_id(m->src_id());
     const bool is_exclusive_data_from_dir = is_from_dir && m->is_exclusive();
@@ -424,7 +397,6 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
           a.set_result(MessageResult::Commit);
           a.set_transaction_done(true);
           break;
-
         default:
           a.set_error(true);
           break;
@@ -438,7 +410,6 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
           a.set_result(MessageResult::Commit);
           a.set_transaction_done(true);
           break;
-
         case MesiAgentLineState::IM_AD:
         case MesiAgentLineState::SM_AD:
           a.append_command(CoherentAgentCommand::UpdateState);
@@ -446,7 +417,6 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
           a.set_result(MessageResult::Commit);
           a.set_transaction_done(true);
           break;
-
         default:
           a.set_error(true);
           break;
@@ -461,13 +431,11 @@ struct MesiAgentProtocol::MesiAgentProtocolImpl {
           a.set_next_state(MesiAgentLineState::IM_A);
           a.set_result(MessageResult::Commit);
           break;
-
         case MesiAgentLineState::SM_AD:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MesiAgentLineState::SM_A);
           a.set_result(MessageResult::Commit);
           break;
-
         default:
           a.set_error(true);
           break;

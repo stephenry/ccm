@@ -83,7 +83,6 @@ bool MosiDirectoryLineState::is_stable(state_t state) {
     case MosiDirectoryLineState::M:
       ret = true;
       break;
-
     default:
       ret = false;
       break;
@@ -111,10 +110,10 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
     CoherenceActions actions;
     switch (t->type()) {
       case TransactionType::load:
-        handle__Load(t, cache_line, actions);
+        handle_load(t, cache_line, actions);
         break;
       case TransactionType::store:
-        handle__Store(t, cache_line, actions);
+        handle_store(t, cache_line, actions);
         break;
       case TransactionType::replacement:
         handle_replacement(t, cache_line, actions);
@@ -131,29 +130,23 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
     CoherenceActions actions;
     switch (m->type()) {
       case MessageType::FwdGetS:
-        handle__FwdGetS(m, cache_line, actions);
+        handle_fwd_gets(m, cache_line, actions);
         break;
-
       case MessageType::FwdGetM:
-        handle__FwdGetM(m, cache_line, actions);
+        handle_fwd_getm(m, cache_line, actions);
         break;
-
       case MessageType::Inv:
-        handle__Inv(m, cache_line, actions);
+        handle_inv(m, cache_line, actions);
         break;
-
       case MessageType::PutS:
       case MessageType::PutM:
-        handle__PutAck(m, cache_line, actions);
+        handle_put_ack(m, cache_line, actions);
         break;
-
       case MessageType::Data:
-        handle__Data(m, cache_line, actions);
+        handle_data(m, cache_line, actions);
         break;
-
       case MessageType::AckCount:
-        handle__AckCount(m, cache_line, actions);
-
+        handle_ack_count(m, cache_line, actions);
       default:
         actions.set_error(true);
         break;
@@ -162,7 +155,7 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
   }
 
  private:
-  void handle__Load(const Transaction* t, const CacheLine& cache_line,
+  void handle_load(const Transaction* t, const CacheLine& cache_line,
                     CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MosiAgentLineState::I:
@@ -171,13 +164,11 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
         a.set_next_state(MosiAgentLineState::IS_D);
         a.set_result(TransactionResult::Miss);
         break;
-
       case MosiAgentLineState::IS_D:
       case MosiAgentLineState::IM_AD:
       case MosiAgentLineState::IM_A:
         a.set_result(TransactionResult::Blocked);
         break;
-
       case MosiAgentLineState::S:
       case MosiAgentLineState::SM_AD:
       case MosiAgentLineState::SM_A:
@@ -185,31 +176,27 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
         a.set_result(TransactionResult::Hit);
         a.set_transaction_done(true);
         break;
-
       case MosiAgentLineState::MI_A:
         a.set_result(TransactionResult::Blocked);
         break;
-
       case MosiAgentLineState::O:
       case MosiAgentLineState::OM_AC:
       case MosiAgentLineState::OM_A:
         a.set_result(TransactionResult::Hit);
         a.set_transaction_done(true);
         break;
-
       case MosiAgentLineState::OI_A:
       case MosiAgentLineState::SI_A:
       case MosiAgentLineState::II_A:
         a.set_result(TransactionResult::Blocked);
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__Store(const Transaction* t, const CacheLine& cache_line,
+  void handle_store(const Transaction* t, const CacheLine& cache_line,
                      CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MosiAgentLineState::I:
@@ -218,34 +205,28 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
         a.set_next_state(MosiAgentLineState::IM_AD);
         a.set_result(TransactionResult::Miss);
         break;
-
       case MosiAgentLineState::IS_D:
       case MosiAgentLineState::IM_AD:
       case MosiAgentLineState::IM_A:
         a.set_result(TransactionResult::Blocked);
         break;
-
       case MosiAgentLineState::S:
         a.append_command(CoherentAgentCommand::EmitGetM);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MosiAgentLineState::SM_AD);
         a.set_result(TransactionResult::Miss);
         break;
-
       case MosiAgentLineState::SM_AD:
       case MosiAgentLineState::SM_A:
         a.set_result(TransactionResult::Blocked);
         break;
-
       case MosiAgentLineState::M:
         a.set_result(TransactionResult::Hit);
         a.set_transaction_done(true);
         break;
-
       case MosiAgentLineState::MI_A:
         a.set_result(TransactionResult::Blocked);
         break;
-
       case MosiAgentLineState::O:
         a.append_command(CoherentAgentCommand::EmitGetM);
         a.append_command(CoherentAgentCommand::UpdateState);
@@ -253,7 +234,6 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
         a.set_result(TransactionResult::Hit);
         a.set_transaction_done(true);
         break;
-
       case MosiAgentLineState::OM_AC:
       case MosiAgentLineState::OM_A:
       case MosiAgentLineState::OI_A:
@@ -261,7 +241,6 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
       case MosiAgentLineState::II_A:
         a.set_result(TransactionResult::Blocked);
         break;
-
       default:
         a.set_error(true);
         break;
@@ -284,14 +263,12 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
       case MosiAgentLineState::II_A:
         a.set_result(TransactionResult::Blocked);
         break;
-
       case MosiAgentLineState::S:
         a.append_command(CoherentAgentCommand::EmitPutS);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MosiAgentLineState::SI_A);
         a.set_result(TransactionResult::Consumed);
         break;
-
       case MosiAgentLineState::M:
         a.append_command(CoherentAgentCommand::EmitPutM);
         a.append_command(CoherentAgentCommand::EmitDataToDir);
@@ -299,7 +276,6 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
         a.set_next_state(MosiAgentLineState::MI_A);
         a.set_result(TransactionResult::Consumed);
         break;
-
       case MosiAgentLineState::O:
         a.append_command(CoherentAgentCommand::EmitPutO);
         a.append_command(CoherentAgentCommand::EmitDataToDir);
@@ -307,14 +283,13 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
         a.set_next_state(MosiAgentLineState::OI_A);
         a.set_result(TransactionResult::Consumed);
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__FwdGetS(const Message* m, const CacheLine& cache_line,
+  void handle_fwd_gets(const Message* m, const CacheLine& cache_line,
                        CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MosiAgentLineState::IM_AD:
@@ -323,21 +298,18 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
       case MosiAgentLineState::SM_A:
         a.set_result(MessageResult::Stall);
         break;
-
       case MosiAgentLineState::M:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MosiAgentLineState::O);
         a.set_result(MessageResult::Commit);
         break;
-
       case MosiAgentLineState::MI_A:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MosiAgentLineState::OI_A);
         a.set_result(MessageResult::Commit);
         break;
-
       case MosiAgentLineState::O:
       case MosiAgentLineState::OM_AC:
       case MosiAgentLineState::OM_A:
@@ -345,14 +317,13 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
         a.append_command(CoherentAgentCommand::EmitDataToReq);
         a.set_result(MessageResult::Commit);
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__FwdGetM(const Message* m, const CacheLine& cache_line,
+  void handle_fwd_getm(const Message* m, const CacheLine& cache_line,
                        CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MosiAgentLineState::IM_AD:
@@ -361,54 +332,47 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
       case MosiAgentLineState::SM_A:
         a.set_result(MessageResult::Stall);
         break;
-
       case MosiAgentLineState::M:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MosiAgentLineState::I);
         a.set_result(MessageResult::Commit);
         break;
-
       case MosiAgentLineState::MI_A:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MosiAgentLineState::II_A);
         a.set_result(MessageResult::Commit);
         break;
-
       case MosiAgentLineState::O:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MosiAgentLineState::I);
         a.set_result(MessageResult::Commit);
         break;
-
       case MosiAgentLineState::OM_AC:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MosiAgentLineState::IM_AD);
         a.set_result(MessageResult::Commit);
         break;
-
       case MosiAgentLineState::OM_A:
         a.set_result(MessageResult::Stall);
         break;
-
       case MosiAgentLineState::OI_A:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MosiAgentLineState::II_A);
         a.set_result(MessageResult::Commit);
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__Inv(const Message* m, const CacheLine& cache_line,
-                   CoherenceActions& a) const {
+  void handle_inv(const Message* m, const CacheLine& cache_line,
+                  CoherenceActions& a) const {
     if (m->is_ack()) {
       a.append_command(CoherentAgentCommand::IncAckCount);
 
@@ -431,28 +395,24 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
         case MosiAgentLineState::IS_D:
           a.set_result(MessageResult::Stall);
           break;
-
         case MosiAgentLineState::S:
           a.append_command(CoherentAgentCommand::EmitInvAck);
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MosiAgentLineState::I);
           a.set_result(MessageResult::Commit);
           break;
-
         case MosiAgentLineState::SM_AD:
           a.append_command(CoherentAgentCommand::EmitInvAck);
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MosiAgentLineState::IM_AD);
           a.set_result(MessageResult::Commit);
           break;
-
         case MosiAgentLineState::SI_A:
           a.append_command(CoherentAgentCommand::EmitInvAck);
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MosiAgentLineState::II_A);
           a.set_result(MessageResult::Commit);
           break;
-
         default:
           a.set_error(true);
           break;
@@ -460,7 +420,7 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
     }
   }
 
-  void handle__PutAck(const Message* m, const CacheLine& cache_line,
+  void handle_put_ack(const Message* m, const CacheLine& cache_line,
                       CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MosiAgentLineState::MI_A:
@@ -471,15 +431,14 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
         a.set_next_state(MosiAgentLineState::I);
         a.set_result(MessageResult::Commit);
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__Data(const Message* m, const CacheLine& cache_line,
-                    CoherenceActions& a) const {
+  void handle_data(const Message* m, const CacheLine& cache_line,
+                   CoherenceActions& a) const {
     const bool is_from_dir = platform_.is_valid_snoop_filter_id(m->src_id());
     const bool is_data_from_dir_ack_zero = is_from_dir && (m->ack_count() == 0);
     const bool is_data_from_dir_ack_non_zero =
@@ -494,14 +453,12 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
           a.set_next_state(MosiAgentLineState::S);
           a.set_transaction_done(true);
           break;
-
         case MosiAgentLineState::IM_AD:
         case MosiAgentLineState::SM_AD:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MosiAgentLineState::M);
           a.set_transaction_done(true);
           break;
-
         default:
           a.set_error(true);
           break;
@@ -513,12 +470,10 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MosiAgentLineState::IM_A);
           break;
-
         case MosiAgentLineState::SM_AD:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MosiAgentLineState::SM_A);
           break;
-
         default:
           a.set_error(true);
           break;
@@ -526,14 +481,13 @@ struct MosiAgentProtocol::MosiAgentProtocolImpl {
     }
   }
 
-  void handle__AckCount(const Message* m, const CacheLine& cache_line,
+  void handle_ack_count(const Message* m, const CacheLine& cache_line,
                         CoherenceActions& a) const {
     switch (cache_line.state()) {
       case MosiAgentLineState::OM_AC:
         a.append_command(CoherentAgentCommand::SetAckExpectCount);
         a.set_ack_count(m->ack_count());
         break;
-
       default:
         a.set_error(true);
         break;
@@ -594,25 +548,20 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
     CoherenceActions actions;
     switch (m->type()) {
       case MessageType::GetS:
-        handle__GetS(m, dir_entry, actions);
+        handle_gets(m, dir_entry, actions);
         break;
-
       case MessageType::GetM:
-        handle__GetM(m, dir_entry, actions);
+        handle_getm(m, dir_entry, actions);
         break;
-
       case MessageType::PutS:
-        handle__PutS(m, dir_entry, actions);
+        handle_puts(m, dir_entry, actions);
         break;
-
       case MessageType::PutM:
-        handle__PutM(m, dir_entry, actions);
+        handle_putm(m, dir_entry, actions);
         break;
-
       case MessageType::PutO:
-        handle__PutM(m, dir_entry, actions);
+        handle_puto(m, dir_entry, actions);
         break;
-
       default:
         actions.set_error(true);
     }
@@ -620,7 +569,7 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
   }
 
  private:
-  void handle__GetS(const Message* m, const DirectoryLine& dir_entry,
+  void handle_gets(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     switch (dir_entry.state()) {
       case MosiDirectoryLineState::I:
@@ -629,18 +578,15 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MosiDirectoryLineState::S);
         break;
-
       case MosiDirectoryLineState::S:
         a.append_command(SnoopFilterCommand::SendDataToReq);
         a.append_command(SnoopFilterCommand::AddReqToSharers);
         break;
-
       case MosiDirectoryLineState::O:
         a.append_command(SnoopFilterCommand::SendFwdGetSToOwner);
         a.set_fwd_id(m->src_id());
         a.append_command(SnoopFilterCommand::AddReqToSharers);
         break;
-
       case MosiDirectoryLineState::M:
         a.append_command(SnoopFilterCommand::SendFwdGetSToOwner);
         a.set_fwd_id(m->src_id());
@@ -648,14 +594,13 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MosiDirectoryLineState::O);
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__GetM(const Message* m, const DirectoryLine& dir_entry,
+  void handle_getm(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     const bool is_from_owner = false;  // TODO
 
@@ -668,7 +613,6 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
           a.append_command(SnoopFilterCommand::UpdateState);
           a.set_next_state(MosiDirectoryLineState::O);
           break;
-
         default:
           a.set_error(true);
           break;
@@ -682,7 +626,6 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
           a.append_command(SnoopFilterCommand::UpdateState);
           a.set_next_state(MosiDirectoryLineState::M);
           break;
-
         case MosiDirectoryLineState::S:
           a.append_command(SnoopFilterCommand::SendDataToReq);
           a.append_command(SnoopFilterCommand::SetOwnerToReq);
@@ -691,7 +634,6 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
           a.append_command(SnoopFilterCommand::UpdateState);
           a.set_next_state(MosiDirectoryLineState::M);
           break;
-
         case MosiDirectoryLineState::O:
           a.append_command(SnoopFilterCommand::SendFwdGetMToOwner);
           a.set_ack_count(2);
@@ -702,13 +644,11 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
           a.append_command(SnoopFilterCommand::UpdateState);
           a.set_next_state(MosiDirectoryLineState::M);
           break;
-
         case MosiDirectoryLineState::M:
           a.append_command(SnoopFilterCommand::SendFwdGetMToOwner);
           a.set_fwd_id(m->src_id());
           a.append_command(SnoopFilterCommand::SetOwnerToReq);
           break;
-
         default:
           a.set_error(true);
           break;
@@ -716,7 +656,7 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
     }
   }
 
-  void handle__PutS(const Message* m, const DirectoryLine& dir_entry,
+  void handle_puts(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     const bool is_last = false;  // TODO
 
@@ -724,7 +664,6 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
       case MosiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
-
       case MosiDirectoryLineState::S:
         a.append_command(SnoopFilterCommand::DelReqFromSharers);
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
@@ -733,23 +672,20 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
           a.set_next_state(MosiDirectoryLineState::I);
         }
         break;
-
       case MosiDirectoryLineState::O:
         a.append_command(SnoopFilterCommand::DelReqFromSharers);
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
-
       case MosiDirectoryLineState::M:
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__PutM(const Message* m, const DirectoryLine& dir_entry,
+  void handle_putm(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     const bool data_is_from_owner = false;  // TODO
 
@@ -758,12 +694,10 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
         if (!data_is_from_owner)
           a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         break;
-
       case MosiDirectoryLineState::S:
         a.append_command(SnoopFilterCommand::DelReqFromSharers);
         a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         break;
-
       case MosiDirectoryLineState::O:
         a.append_command(SnoopFilterCommand::DelReqFromSharers);
         a.append_command(SnoopFilterCommand::SendPutMAckToReq);
@@ -774,7 +708,6 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
           a.set_next_state(MosiDirectoryLineState::I);
         }
         break;
-
       case MosiDirectoryLineState::M:
         a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         if (data_is_from_owner) {
@@ -784,14 +717,13 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
           a.set_next_state(MosiDirectoryLineState::I);
         }
         break;
-
       default:
         a.set_error(true);
         break;
     }
   }
 
-  void handle__PutO(const Message* m, const DirectoryLine& dir_entry,
+  void handle_puto(const Message* m, const DirectoryLine& dir_entry,
                     CoherenceActions& a) const {
     const bool data_is_from_owner = false;  // TODO
 
@@ -800,14 +732,12 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
         if (!data_is_from_owner)
           a.append_command(SnoopFilterCommand::SendPutOAckToReq);
         break;
-
       case MosiDirectoryLineState::S:
         if (!data_is_from_owner) {
           a.append_command(SnoopFilterCommand::DelReqFromSharers);
           a.append_command(SnoopFilterCommand::SendPutOAckToReq);
         }
         break;
-
       case MosiDirectoryLineState::O:
         a.append_command(SnoopFilterCommand::SendPutOAckToReq);
         if (data_is_from_owner) {
@@ -819,12 +749,10 @@ struct MosiSnoopFilterProtocol::MosiSnoopFilterProtocolImpl {
           a.append_command(SnoopFilterCommand::DelReqFromSharers);
         }
         break;
-
       case MosiDirectoryLineState::M:
         if (!data_is_from_owner)
           a.append_command(SnoopFilterCommand::SendPutOAckToReq);
         break;
-
       default:
         a.set_error(true);
         break;
