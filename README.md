@@ -1,7 +1,9 @@
 # Introduction
 
 Presented is an implementation of a loosely-timed performance model
-for the cache coherency protocols discussed in [1].
+for the cache coherency protocols discussed in [1]. The model
+presently supports the: MSI, MESI and MOSI protocols. Additional
+protocols may be added trivially as they become available.
 
 ## Background
 
