@@ -67,18 +67,22 @@ performance merits; although this does not exist at present.
 build git:(master)> ./driver/ccmd < ../cfgs/msi_simple.json
 ```
 
-On running the simple example, a load command is issued by 'agent0'
-and the line installed in the SHARED state in its cache. Three load
-commands are then issued to the same line and they complete
-immediately upon the hit to the local cache.
+On running the simple example, a load command is issued by 'agent0'.
+A subsequent load to the same line is issued however this command is
+blocked on the current transaction to the same line that is already in
+flight but yet to complete. The line is eventually installed in the
+requestor cache and the initiating transaction completes. The three
+subsequent load operation to the same line complete immediately upon
+the hit to the local cache.
 
 ```
 [top.agent0@1000]: Transaction TID=0 START
 [top.agent0@1010]: Execute: UpdateState
-[top.agent0@1010]: Update state; current: IS_D previous: I
+[top.agent0@1010]: Update state; current: IS_D previousat I
 [top.agent0@1020]: Execute: EmitGetS
 [top.agent0@1020]: Sending GetS to home directory: '{type:GetS, src_id:0, dst_id:4, transaction:'{type:0, addr:1000, tid:0}, is_ack:0}
 [top.agent0@1060]: Transaction TID=1 START
+[top.agent0@1070]: Transaction TID=1 BLOCKED
 [top.snoopfilter@1040]: Execute: SendDataToReq
 [top.snoopfilter@1040]: Sending data to requester: '{type:Data, src_id:4, dst_id:0, transaction:'{type:0, addr:1000, tid:0}, is_ack:0, ack_count:0, is_exclusive:0}
 [top.snoopfilter@1040]: Execute: AddReqToSharers
@@ -95,6 +99,13 @@ immediately upon the hit to the local cache.
 [top.agent0@1120]: Transaction TID=3 START
 [top.agent0@1130]: Transaction TID=3 END
 ```
+
+In this simple example, there is at most one transaction in flight
+however this is not a limitation of the model (simply an artifact of
+the stimulus). In the case where loads to multiple lines were issued,
+multiple transaction would be in flight concurrently subject to any
+limitation on the agent's maximum in-flight capacity (a
+parameterization of the model).
 
 More sophisticated scenarios can be found in the unit tests.
 

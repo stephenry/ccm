@@ -434,6 +434,8 @@ result_t Agent::handle_transaction(Context & context, Cursor & cursor,
         log_debug(cursor.time(), "Transaction TID=", t->tid(), " END");
         t->event(TransactionEvent::End, cursor.time());
       }
+    } else {
+      log_debug(cursor.time(), "Transaction TID=", t->tid(), " BLOCKED");
     }
   }
   return actions.result();
