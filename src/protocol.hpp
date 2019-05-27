@@ -34,6 +34,7 @@
 #include <optional>
 #include "types.hpp"
 #include "options.hpp"
+#include "cache.hpp"
 #ifdef ENABLE_JSON
 #  include <nlohmann/json.hpp>
 #endif
@@ -43,10 +44,6 @@ namespace ccm {
 class Message;
 class Transaction;
 class Platform;
-
-using result_t = uint8_t;
-using state_t = uint8_t;
-using command_t = uint8_t;
 
 struct Protocol {
   using type = uint8_t;
@@ -227,32 +224,11 @@ class ProtocolBase {
   virtual Protocol::type protocol() const = 0;
 };
 
-class CacheableEntity {
-#define CACHEABLE_ENTITY_FIELDS(__func)         \
-  __func(is_valid, bool, false)                 \
-  __func(base, addr_t, 0)
- public:
-
-#define __declare_etters(__name, __type, __default)             \
-  __type __name() const { return __name ## _; }                 \
-  void set_ ## __name(__type __name) { __name ## _ = __name; }
-  CACHEABLE_ENTITY_FIELDS(__declare_etters)
-#undef __declare_etters
-
-private:
-#define __declare_fields(__name, __type, __default)     \
-  __type __name ## _{__default};
-      CACHEABLE_ENTITY_FIELDS(__declare_fields)
-#undef __declare_fields
-  
-};
-
 class CacheLine : public CacheableEntity {
  public:
   explicit CacheLine() { reset(); }
 
 #define CACHE_LINE_FIELDS(__func)               \
-  __func(state, state_t, 0)                     \
   __func(inv_ack_expect, std::size_t, 0)        \
   __func(inv_ack_expect_valid, bool, false)     \
   __func(inv_ack_count, std::size_t, 0)
@@ -295,14 +271,10 @@ class DirectoryLine : public CacheableEntity {
   friend std::string to_string(const DirectoryLine& d);
 
  public:
-  using state_type = state_t;
-
   DirectoryLine() {}
 
-  state_t state() const;
   const std::vector<id_t>& sharers() const;
   std::size_t num_sharers() const;
-  void set_state(state_t state);
   void set_owner(id_t owner);
   id_t owner() const;
   void clear_owner();
@@ -334,14 +306,6 @@ class SnoopFilterProtocol : public ProtocolBase {
 
 std::unique_ptr<SnoopFilterProtocol> snoop_filter_protocol_factory(
     Protocol::type protocol);
-
-struct CacheVisitor {
-  virtual ~CacheVisitor() {}
-
-  virtual void set_id(id_t id) {}
-  virtual void add_line(addr_t addr, const CacheLine& cache_line) {}
-  virtual void add_line(addr_t addr, const DirectoryLine& directory_entry) {}
-};
 
 template <typename T>
 using Entry = std::tuple<id_t, const T>;

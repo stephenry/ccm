@@ -190,12 +190,10 @@ std::unique_ptr<AgentProtocol> agent_protocol_factory(
   }
 }
 
-state_t DirectoryLine::state() const { return state_; }
 id_t DirectoryLine::owner() const { return owner_.value(); }
 const std::vector<id_t>& DirectoryLine::sharers() const { return sharers_; }
 std::size_t DirectoryLine::num_sharers() const { return sharers_.size(); }
 
-void DirectoryLine::set_state(state_t state) { state_ = state; }
 void DirectoryLine::set_owner(id_t owner) { owner_ = owner; }
 void DirectoryLine::clear_owner() { owner_.reset(); }
 void DirectoryLine::add_sharer(id_t id) { sharers_.push_back(id); }

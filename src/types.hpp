@@ -35,6 +35,9 @@ namespace ccm {
 using addr_t = std::size_t;
 using id_t = std::size_t;
 using Time = std::size_t;
+using state_t = uint8_t;
+using result_t = uint8_t;
+using command_t = uint8_t;
 
 } // namespace ccm
 

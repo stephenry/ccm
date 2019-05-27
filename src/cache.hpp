@@ -39,14 +39,11 @@
 #  include <nlohmann/json.hpp>
 #endif
 #include "common.hpp"
-#include "platform.hpp"
 #include "utility.hpp"
-#include "protocol.hpp"
+#include "types.hpp"
 #include "random.hpp"
 
 namespace ccm {
-class CacheLine;
-class DirectoryEntry;
 
 // clang-format off
 #define EVICTION_POLICIES(__func)               \
@@ -129,6 +126,37 @@ class CacheAddressFieldHelper {
   const CacheOptions & opts_;
 };
 
+class CacheableEntity {
+#define CACHEABLE_ENTITY_FIELDS(__func)         \
+  __func(state, state_t, 0)                     \
+  __func(is_valid, bool, false)                 \
+  __func(base, addr_t, 0)
+ public:
+
+#define __declare_etters(__name, __type, __default)             \
+  __type __name() const { return __name ## _; }                 \
+  void set_ ## __name(__type __name) { __name ## _ = __name; }
+  CACHEABLE_ENTITY_FIELDS(__declare_etters)
+#undef __declare_etters
+
+  private:
+#define __declare_fields(__name, __type, __default)     \
+  __type __name ## _{__default};
+  CACHEABLE_ENTITY_FIELDS(__declare_fields)
+#undef __declare_fields
+};
+
+class CacheLine;
+class DirectoryLine;
+
+struct CacheVisitor {
+  virtual ~CacheVisitor() {}
+
+  virtual void set_id(id_t id) {}
+  virtual void add_line(addr_t addr, const CacheLine& cache_line) {}
+  virtual void add_line(addr_t addr, const DirectoryLine& directory_entry) {}
+};
+
 template <typename T>
 class GenericCache {
  public:
@@ -143,8 +171,9 @@ class GenericCache {
   virtual T& lookup(addr_t addr) = 0;
 
   virtual void visit(CacheVisitor* visitor) = 0;
-  virtual void install(addr_t addr, const T& t) = 0;
+  virtual bool install(addr_t addr, const T& t) = 0;
   virtual bool evict(addr_t addr) = 0;
+  virtual void reset() = 0;
 };
 
 template<typename T>
@@ -200,7 +229,7 @@ class SetAssociativeCache : public GenericCache<T> {
           t.set_is_valid(false);
         return !did_evict;
       });
-    return false;
+    return did_evict;
   }
   const T & lookup(addr_t addr) const override {
     const T * line{std::addressof(t_invalid_)};
@@ -232,19 +261,28 @@ class SetAssociativeCache : public GenericCache<T> {
     for (T & t : lines_)
       visitor->add_line(t.base(), t);
   }
-  virtual void install(addr_t addr, const T& t) override {
+  virtual bool install(addr_t addr, const T& t) override {
     const bool did_hit = is_hit(addr);
+    bool did_install{false};
+    T t_install{t};
+    t_install.set_is_valid(true);
+    t_install.set_base(fields_.base(addr));
     enumerate_ways(addr, [&](T & slot) -> bool {
         bool do_continue{true};
-        if (!did_hit && !slot.is_valid()) {
-          slot = t;
-          do_continue = false;
-        } else if (did_hit && slot.is_valid() && (slot.base() == fields_.base(addr))) {
-          slot = t;
-          do_continue = true;
+        if (!did_install && !slot.is_valid()) {
+          slot = t_install;
+          did_install = true;
+        } else if (did_install && slot.is_valid() && (slot.base() == fields_.base(addr))) {
+          slot = t_install;
+          did_install = true;
         }
         return do_continue;
       });
+    return did_install;
+  }
+  void reset() override {
+    for (T & t : lines_)
+      t.set_is_valid(false);
   }
  private:
   template<typename FN>
@@ -297,13 +335,17 @@ class FullyAssociativeCache : public GenericCache<T> {
   void visit(CacheVisitor* visitor) override {
     for (auto& [addr, t] : cache_) visitor->add_line(addr, t);
   }
-  void install(addr_t addr, const T& t) override { cache_[addr] = t; }
+  bool install(addr_t addr, const T& t) override {
+    cache_[addr] = t;
+    return true;
+  }
   bool evict(addr_t addr) override {
     auto it = cache_.find(addr);
     const bool found = (it != cache_.end());
     if (found) cache_.erase(it);
     return found;
   }
+  void reset() override { cache_.clear(); }
  private:
   T t_invalid_;
   std::unordered_map<addr_t, T> cache_;
@@ -334,13 +376,18 @@ class InfiniteCapacityCache : public GenericCache<T> {
   void visit(CacheVisitor* visitor) override {
     for (auto& [addr, t] : cache_) visitor->add_line(addr, t);
   }
-  void install(addr_t addr, const T& t) override { cache_[addr] = t; }
+  bool install(addr_t addr, const T& t) override {
+    cache_[addr] = t;
+    cache_[addr].set_is_valid(true);
+    return true;
+  }
   bool evict(addr_t addr) override {
     auto it = cache_.find(addr);
     const bool found = (it != cache_.end());
     if (found) cache_.erase(it);
     return found;
   }
+  void reset() override { cache_.clear(); }
  private:
   T t_invalid_;
   std::unordered_map<addr_t, T> cache_;
