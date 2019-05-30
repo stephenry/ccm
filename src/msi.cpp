@@ -105,24 +105,19 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
       case MessageType::FwdGetS:
         handle_fwd_gets(m, cache_line, actions);
         break;
-
       case MessageType::FwdGetM:
         handle_fwd_getm(m, cache_line, actions);
         break;
-
       case MessageType::Inv:
         handle_inv(m, cache_line, actions);
         break;
-
       case MessageType::PutS:
       case MessageType::PutM:
         handle_put_ack(m, cache_line, actions);
         break;
-
       case MessageType::Data:
         handle_data(m, cache_line, actions);
         break;
-
       default:
         actions.set_error(true);
     }
@@ -140,7 +135,6 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
         a.set_next_state(MsiAgentLineState::IS_D);
         a.set_result(TransactionResult::Miss);
         break;
-
       case MsiAgentLineState::IS_D:
       case MsiAgentLineState::IM_AD:
       case MsiAgentLineState::IM_A:
@@ -149,7 +143,6 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
       case MsiAgentLineState::II_A:
         a.set_result(TransactionResult::Blocked);
         break;
-
       case MsiAgentLineState::S:
       case MsiAgentLineState::SM_AD:
       case MsiAgentLineState::SM_A:
@@ -157,7 +150,6 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
         a.set_result(TransactionResult::Hit);
         a.set_transaction_done(true);
         break;
-
       default:
         a.set_error(true);
     }
@@ -172,7 +164,6 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
         a.set_next_state(MsiAgentLineState::IM_AD);
         a.set_result(TransactionResult::Miss);
         break;
-
       case MsiAgentLineState::IS_D:
       case MsiAgentLineState::IM_AD:
       case MsiAgentLineState::IM_A:
@@ -183,19 +174,16 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
       case MsiAgentLineState::II_A:
         a.set_result(TransactionResult::Blocked);
         break;
-
       case MsiAgentLineState::S:
         a.append_command(CoherentAgentCommand::EmitGetM);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::SM_AD);
         a.set_result(TransactionResult::Miss);
         break;
-
       case MsiAgentLineState::M:
         a.set_result(TransactionResult::Hit);
         a.set_transaction_done(true);
         break;
-
       default:
         a.set_error(true);
     }
@@ -209,14 +197,12 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
         a.set_next_state(MsiAgentLineState::SI_A);
         a.set_result(TransactionResult::Consumed);
         break;
-
       case MsiAgentLineState::M:
         a.append_command(CoherentAgentCommand::EmitPutM);
         a.append_command(CoherentAgentCommand::EmitDataToDir);
         a.set_next_state(MsiAgentLineState::MI_A);
         a.set_result(TransactionResult::Consumed);
         break;
-      
       case MsiAgentLineState::IS_D:
       case MsiAgentLineState::IM_AD:
       case MsiAgentLineState::IM_A:
@@ -229,7 +215,6 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
         // in- flight.
         a.set_result(TransactionResult::Blocked);
         break;
-      
       default:
         // State: [I]; cannot evict a line that is not installed in
         // the cache.
@@ -246,7 +231,6 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
       case MsiAgentLineState::SM_A:
         a.set_result(MessageResult::Stall);
         break;
-
       case MsiAgentLineState::M:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
         a.append_command(CoherentAgentCommand::EmitDataToDir);
@@ -254,7 +238,6 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
         a.set_next_state(MsiAgentLineState::S);
         a.set_result(MessageResult::Commit);
         break;
-
       case MsiAgentLineState::MI_A:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
         a.append_command(CoherentAgentCommand::EmitDataToDir);
@@ -262,7 +245,6 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
         a.set_next_state(MsiAgentLineState::SI_A);
         a.set_result(MessageResult::Commit);
         break;
-
       default:
         a.set_error(true);
     }
@@ -277,21 +259,18 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
       case MsiAgentLineState::SM_A:
         a.set_result(MessageResult::Stall);
         break;
-
       case MsiAgentLineState::M:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::S);
         a.set_result(MessageResult::Commit);
         break;
-
       case MsiAgentLineState::MI_A:
         a.append_command(CoherentAgentCommand::EmitDataToReq);
         a.append_command(CoherentAgentCommand::UpdateState);
         a.set_next_state(MsiAgentLineState::SI_A);
         a.set_result(MessageResult::Commit);
         break;
-
       default:
         a.set_error(true);
     }
@@ -312,7 +291,6 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
             a.set_next_state(MsiAgentLineState::M);
             a.set_result(MessageResult::Commit);
             break;
-
           default:
             a.set_error(true);
         }
@@ -326,28 +304,24 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
         case MsiAgentLineState::IS_D:
           a.set_result(MessageResult::Stall);
           break;
-
         case MsiAgentLineState::S:
           a.append_command(CoherentAgentCommand::EmitInvAck);
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::I);
           a.set_result(MessageResult::Commit);
           break;
-
         case MsiAgentLineState::SM_AD:
           a.append_command(CoherentAgentCommand::EmitInvAck);
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::IM_AD);
           a.set_result(MessageResult::Commit);
           break;
-
         case MsiAgentLineState::SI_A:
           a.append_command(CoherentAgentCommand::EmitInvAck);
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::II_A);
           a.set_result(MessageResult::Commit);
           break;
-
         default:
           a.set_error(true);
       }
@@ -364,7 +338,6 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
         a.set_next_state(MsiAgentLineState::I);
         a.set_result(MessageResult::Commit);
         break;
-
       default:
         a.set_error(true);
     }
@@ -391,19 +364,16 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
           a.set_transaction_done(true);
           a.set_result(MessageResult::Commit);
           break;
-
         case MsiAgentLineState::IM_AD:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::M);
           a.set_result(MessageResult::Commit);
           break;
-
         case MsiAgentLineState::SM_AD:
           a.append_command(CoherentAgentCommand::UpdateState);
           a.set_next_state(MsiAgentLineState::M);
           a.set_result(MessageResult::Commit);
           break;
-
         default:
           a.set_error(true);
       }
@@ -419,7 +389,6 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
           a.set_next_state(MsiAgentLineState::IM_A);
           a.set_result(MessageResult::Commit);
           break;
-
         case MsiAgentLineState::SM_AD:
           a.append_command(CoherentAgentCommand::SetAckExpectCount);
           a.set_ack_count(m->ack_count());
@@ -427,7 +396,6 @@ struct MsiAgentProtocol::MsiAgentProtocolImpl {
           a.set_next_state(MsiAgentLineState::SM_A);
           a.set_result(MessageResult::Commit);
           break;
-
         default:
           a.set_error(true);
       }
