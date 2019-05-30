@@ -18,12 +18,11 @@ limited. Furthermore, a coherency system has a large number of
 parameterizations that unknown trade-off in terms of performance
 and/or silicon cost.
 
-The purpose of this work is to sketch out a rough proof of concept
-cache coherency performance model using freely available coherency
-protocol specifications [1]. The model is not intended to be either
-fully representative of a full system, nor is it remotely production
-quality.
-
+__DISCLAIMER:__ *The purpose of this work is to sketch out a rough
+proof of concept cache coherency performance model using freely
+available coherency protocol specifications [1]. The model is not
+intended to be either fully representative of a full system, nor is it
+remotely production quality.*
 
 # Theory of operation
 
