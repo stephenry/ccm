@@ -134,6 +134,14 @@ More sophisticated scenarios can be found in the unit tests.
   author did not consider it relevant to the work at hand to architect
   such protocols within the context of this work.
 
+- __Evictions__ The code to handle cache evictions is present in both
+  the agents and snoopfilters but this remains untested. The cache
+  models have the notion of eviction but this is again
+  untested. Snoopfilter initiated recalls are not implemented as these
+  were neither discussed in [1] nor presented as part of the protocol
+  specification.
+
+
 # References
 
 [1]: Sorin, D. J. et. al "A Primer on Memory Consistency and Cache Coherence", Synthesis Lectures on Computer Architecture, Morgan & Claypool Publishers, 2011.
