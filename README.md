@@ -111,6 +111,23 @@ More sophisticated scenarios can be found in the unit tests.
 
 # Remaining work
 
+- __Protocol Validation__ More extensive validation of the possible
+  protocol transititions is required.
+
+- __Performance Reporting__ Although somewhat contradictory, although
+  the objective of this work is to model performance, there are few
+  performance metrics extracted from the simulation. Due to the
+  limited time, available to work on this project the majority of
+  focus was placed on the simulation model, as this was the more
+  interesting part of the problem. Performance counters and the
+  related statistics are fairly trivial to add to the codebase should
+  this be necessary.
+
+- __Validation and Error Checking__ At present, minimal validation is
+  performed on the JSON project file. If this file is malformed, not
+  only will the driver not report this, most likely the simulation
+  will fail.
+
 # References
 
 [1]: Sorin, D. J. et. al "A Primer on Memory Consistency and Cache Coherence", Synthesis Lectures on Computer Architecture, Morgan & Claypool Publishers, 2011.
