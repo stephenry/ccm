@@ -84,8 +84,11 @@ void Builder::setup_sim(Sim * sim, nlohmann::json & j) {
 }
 
 std::unique_ptr<Sim> Builder::construct(nlohmann::json & j) {
+  // Run Design Rule Check (DRC) on JSON to determine whether it is
+  // valid.
   Builder::drc(j);
-  
+
+  // Default simulator object (to be populated).
   std::unique_ptr<Sim> sim = std::make_unique<Sim>();
 
   // Setup logger
@@ -100,6 +103,7 @@ std::unique_ptr<Sim> Builder::construct(nlohmann::json & j) {
   for (nlohmann::json & j_agent : j["agents"])
     sim->add_actor(AgentBuilder::construct(
         sim->platform(), l, j_agent, agent_cost));
+
   // Snoopfilters
   SnoopFilterCostModel snoopfilter_cost;
   if (has_key(j, "costs") && has_key(j["costs"], "snoopfilter"))
