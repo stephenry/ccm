@@ -54,6 +54,28 @@
             "latency" : 10
         }
     },
+    "costs" : {
+        "agent" : {
+            "EmitGetS" : 4,
+            "EmitGetM" : 4,
+            "EmitPutS" : 4,
+            "EmitPutM" : 4,
+            "EmitPutE" : 4,
+            "EmitPutO" : 4,
+            "EmitDataToReq" : 16,
+            "EmitDataToDir" : 16,
+            "EmitInvAck" : 4
+        },
+        "snoopfilter" : {
+            "SendPutSAckToReq" : 4,
+            "SendPutMAckToReq" : 4,
+            "SendPutEAckToReq" : 4,
+            "SendPutOAckToReq" : 4,
+            "SendAckCountToReq" : 4,
+            "SendFwdGetMToOwner" : 4,
+            "SendFwdGetSToOwner" : 4
+        }
+    },
     "loglevel" : "debug",
     "sim" : {
         "epoch_period" : 100,
