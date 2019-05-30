@@ -466,23 +466,18 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
       case MessageType::GetS:
         handle_gets(m, dir_entry, actions);
         break;
-
       case MessageType::GetM:
         handle_getm(m, dir_entry, actions);
         break;
-
       case MessageType::PutS:
         handle_puts(m, dir_entry, actions);
         break;
-
       case MessageType::PutM:
         handle_putm(m, dir_entry, actions);
         break;
-
       case MessageType::Data:
         handle_data(m, dir_entry, actions);
         break;
-
       default:
         actions.set_error(true);
     }
@@ -500,13 +495,11 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::S);
         break;
-
       case MsiDirectoryLineState::S:
         a.set_ack_count(0);
         a.append_command(SnoopFilterCommand::SendDataToReq);
         a.append_command(SnoopFilterCommand::AddReqToSharers);
         break;
-
       case MsiDirectoryLineState::M:
         a.append_command(SnoopFilterCommand::SendFwdGetSToOwner);
         a.append_command(SnoopFilterCommand::AddReqToSharers);
@@ -514,11 +507,9 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::S);
         break;
-
       case MsiDirectoryLineState::S_D:
         a.set_result(MessageResult::Stall);
         break;
-
       default:
         a.set_error(true);
     }
@@ -534,7 +525,6 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::M);
         break;
-
       case MsiDirectoryLineState::S:
         a.append_command(SnoopFilterCommand::SendDataToReq);
         a.set_ack_count(dir_entry.num_sharers_not_id(m->src_id()));
@@ -544,14 +534,11 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::M);
         break;
-
       case MsiDirectoryLineState::M:
         break;
-
       case MsiDirectoryLineState::S_D:
         a.set_result(MessageResult::Stall);
         break;
-
       default:
         a.set_error(true);
     }
@@ -564,7 +551,6 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
       case MsiDirectoryLineState::I:
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
-
       case MsiDirectoryLineState::S:
         a.append_command(SnoopFilterCommand::DelReqFromSharers);
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
@@ -573,17 +559,14 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
           a.set_next_state(MsiDirectoryLineState::I);
         }
         break;
-
       case MsiDirectoryLineState::M:
         a.append_command(SnoopFilterCommand::DelReqFromSharers);
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
-
       case MsiDirectoryLineState::S_D:
         a.append_command(SnoopFilterCommand::DelReqFromSharers);
         a.append_command(SnoopFilterCommand::SendPutSAckToReq);
         break;
-
       default:
         a.set_error(true);
     }
@@ -598,14 +581,12 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
           a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         }
         break;
-
       case MsiDirectoryLineState::S:
         if (!is_data_from_owner) {
           a.append_command(SnoopFilterCommand::DelReqFromSharers);
           a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         }
         break;
-
       case MsiDirectoryLineState::M:
         a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         if (is_data_from_owner) {
@@ -615,14 +596,12 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
           a.set_next_state(MsiDirectoryLineState::I);
         }
         break;
-
       case MsiDirectoryLineState::S_D:
         if (!is_data_from_owner) {
           a.append_command(SnoopFilterCommand::DelReqFromSharers);
           a.append_command(SnoopFilterCommand::SendPutMAckToReq);
         }
         break;
-
       default:
         a.set_error(true);
     }
@@ -636,7 +615,6 @@ struct MsiSnoopFilterProtocol::MsiSnoopFilterProtocolImpl {
         a.append_command(SnoopFilterCommand::UpdateState);
         a.set_next_state(MsiDirectoryLineState::S);
         break;
-
       default:
         a.set_error(true);
     }
