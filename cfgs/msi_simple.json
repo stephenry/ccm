@@ -1,39 +1,45 @@
 {
     "protocol" : "msi",
     "name" : "top",
+    "caches" : [
+        { "name" : "cache0",
+          "type" : "Infinite" },
+        { "name" : "cache1",
+          "type" : "Infinite" }
+    ],
     "agents" : [
         { "id" : 0,
           "name" : "agent0",
-          "cache_options" : [],
+          "cache" : "cache0",
           "transaction_source" : {
               "type" : "programmatic",
               "options" : {
                   "stimulus" : [
                       { "cmd" : "load", "time" : 1000, "addr" : 1000 },
-                      { "cmd" : "load", "time" : 1020, "addr" : 1000 },
-                      { "cmd" : "load", "time" : 1040, "addr" : 1000 },
-                      { "cmd" : "load", "time" : 1060, "addr" : 1000 }
+                      { "cmd" : "load", "time" : 1020, "addr" : 2000 },
+                      { "cmd" : "load", "time" : 1040, "addr" : 3000 },
+                      { "cmd" : "load", "time" : 1060, "addr" : 4000 }
                   ]
               }
           }
         },
         { "id" : 1,
           "name" : "agent1",
-          "cache_options" : [],
+          "cache" : "cache0",
           "transaction_source" : {
               "type" : "null"
           }
         },
         { "id" : 2,
           "name" : "agent2",
-          "cache_options" : [],
+          "cache" : "cache0",
           "transaction_source" : {
               "type" : "null"
           }
         },
         { "id" : 3,
           "name" : "agent3",
-          "cache_options" : [],
+          "cache" : "cache0",
           "transaction_source" : {
               "type" : "null"
           }
@@ -42,7 +48,7 @@
     "snoopfilters" : [
         { "id" : 4,
           "name" : "snoopfilter",
-          "cache_options" : [],
+          "cache" : "cache1",
           "aperture" : { "type" : "contiguous",
                          "lo" : 0,
                          "hi" : 10000 }
@@ -52,6 +58,28 @@
         "type" : "fixedlatency",
         "options" : {
             "latency" : 10
+        }
+    },
+    "costs" : {
+        "agent" : {
+            "EmitGetS" : 4,
+            "EmitGetM" : 4,
+            "EmitPutS" : 4,
+            "EmitPutM" : 4,
+            "EmitPutE" : 4,
+            "EmitPutO" : 4,
+            "EmitDataToReq" : 16,
+            "EmitDataToDir" : 16,
+            "EmitInvAck" : 4
+        },
+        "snoopfilter" : {
+            "SendPutSAckToReq" : 4,
+            "SendPutMAckToReq" : 4,
+            "SendPutEAckToReq" : 4,
+            "SendPutOAckToReq" : 4,
+            "SendAckCountToReq" : 4,
+            "SendFwdGetMToOwner" : 4,
+            "SendFwdGetSToOwner" : 4
         }
     },
     "loglevel" : "debug",

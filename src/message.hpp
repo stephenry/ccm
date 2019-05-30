@@ -67,6 +67,10 @@ struct MessageClass {
   __func(PutM, Request, 4)                      \
   __func(PutE, Request, 4)                      \
   __func(PutO, Request, 4)                      \
+  __func(PutSAck, Response, 4)                  \
+  __func(PutMAck, Response, 4)                  \
+  __func(PutEAck, Response, 4)                  \
+  __func(PutOAck, Response, 4)                  \
   __func(FwdGetS, Snoop, 4)                     \
   __func(FwdGetM, Snoop, 4)                     \
   __func(Inv, Request, 4)                       \
@@ -85,7 +89,7 @@ struct MessageType {
   };
 
   static const char *to_string(type b);
-  static int to_cost(type b);
+  static int to_default_cost(type b);
   static MessageClass::type to_class(type m);
 };
 

@@ -39,6 +39,9 @@ std::string to_string(const Time &t) {
   return ss.str();
 }
 
+void Cursor::set_time_to_greater(std::size_t newtime) {
+  set_time(std::max(time(), newtime));
+}
 void Cursor::advance(std::size_t steps) { set_time(time() + (step() * steps)); }
 
 Epoch::Epoch(Time start, Time duration, Time step)

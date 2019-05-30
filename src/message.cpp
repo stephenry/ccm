@@ -43,7 +43,7 @@ const char* MessageType::to_string(type e) {
   }
 }
 
-int MessageType::to_cost(type b) {
+int MessageType::to_default_cost(type b) {
   switch (b) {
 #define __to_str(__name, _class, __cost)        \
     case __name: return __cost;                 \

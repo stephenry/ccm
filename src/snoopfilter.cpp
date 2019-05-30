@@ -40,8 +40,8 @@ SnoopFilterOptions SnoopFilterOptions::from_json(
 #endif
 
 SnoopFilterCommandInvoker::SnoopFilterCommandInvoker(
-    const SnoopFilterOptions& opts)
-    : opts_(opts), msgd_(opts), CoherentActor(opts) {
+    const SnoopFilterOptions& opts, const SnoopFilterCostModel & costs)
+    : opts_(opts), costs_(costs), msgd_(opts), CoherentActor(opts) {
   cc_model_ = snoop_filter_protocol_factory(opts.protocol());
   cache_ = cache_factory<DirectoryLine>(opts.cache_options());
 }
@@ -125,7 +125,7 @@ void SnoopFilterCommandInvoker::execute(Context& context, Cursor& cursor,
         break;
     }
     if (!updated_cursor)
-      cursor.advance(CoherentAgentCommand::to_cost(cmd));
+      cursor.advance(costs_.cost(cmd));
   }
 }
 
@@ -190,7 +190,7 @@ bool SnoopFilterCommandInvoker::execute_send_inv_to_sharers(
     log_debug(cursor.time(), "Sending invalidation to agent: ", to_string(*out));
     context.emit_message(TimeStamped{cursor.time(), out});
 
-    cursor.advance(MessageType::to_cost(MessageType::Inv));
+    cursor.advance(costs_.cost(MessageType::Inv));
   }
 
   return true;
@@ -403,8 +403,9 @@ bool SnoopFilterCommandInvoker::execute_send_fwd_getm_to_owner(
   return false;
 }
 
-SnoopFilter::SnoopFilter(const SnoopFilterOptions& opts)
-    : SnoopFilterCommandInvoker(opts), opts_(opts) {
+SnoopFilter::SnoopFilter(const SnoopFilterOptions& opts,
+                         const SnoopFilterCostModel & cm)
+    : SnoopFilterCommandInvoker(opts, cm), opts_(opts) {
   set_logger_scope(opts.logger_scope());
 }
 
@@ -414,29 +415,58 @@ void SnoopFilter::eval(Context& context) {
   const Epoch epoch = context.epoch();
   Cursor cursor = epoch.cursor();
 
+  // Check if global simulation time has reached the current time of
+  // the snoop filter and, if not, break for the next round.
+  //
   if (!epoch.in_interval(time())) return;
-
-  cursor.set_time(std::max(time(), cursor.time()));
 
   MessageQueueManager::Proxy mqp{mq_};
   do {
-    if (!mq_.is_active()) break;
-
+    // Recompute the next message to be processed.
+    //
     mqp.recompute_front();
+
+    // If no messages are present, break and await next round.
+    //
+    if (!mqp.is_active()) break;
+    
     const TimeStamped<Message *> ts{mqp.front()};
     const Message * msg = ts.t();
+
+    // Check if the time of the next message lies within the current epoch.
+    //
+    if (!epoch.in_interval(ts.time())) break;
+
+    // If the message can be processed in the current Epoch, advance the
+    // time of the filter to the greater of the current time and the
+    // message time.
+    //
+    cursor.set_time_to_greater(ts.time());
     
     switch (handle_msg(context, cursor, msg)) {
       case MessageResult::Commit:
+        // The message has completed successfully and the snoop
+        // filters state has been updated; deallocate the message
+        // (return to the message free-pool) and pop the message from
+        // the queue manager.
+        //
         msg->release();
         mqp.pop_front();
         break;
       case MessageResult::Stall:
+        // The protocol has caused the current message to block therefore
+        // reattempt arbitration by disabling the current message class and
+        // choose from the remaining message classes, if available.
+        //
         mqp.add_disregard_class(MessageType::to_class(msg->type()));
         break;
     }
   } while (epoch.in_interval(cursor.time()));
 
+  // Advance the time of the snoopfilter to the greater of the cursor
+  // (if a message has been processed) or the end of the current Epoch
+  // (if there is remaining unused time in the current Epoch).
+  //
   set_time(std::max(cursor.time(), epoch.end()));
 }
 
@@ -457,9 +487,10 @@ result_t SnoopFilter::handle_msg(Context& context, Cursor& cursor, const Message
 #ifdef ENABLE_JSON
 
 std::unique_ptr<SnoopFilter> SnoopFilterBuilder::construct(
-    const Platform & platform, LoggerScope * l, nlohmann::json j) {
+    const Platform & platform, LoggerScope * l, nlohmann::json j,
+    const SnoopFilterCostModel & cm) {
   return std::make_unique<SnoopFilter>(
-      SnoopFilterOptions::from_json(platform, l, j));
+      SnoopFilterOptions::from_json(platform, l, j), cm);
 }
 #endif
 

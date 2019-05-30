@@ -94,11 +94,19 @@ std::unique_ptr<Sim> Builder::construct(nlohmann::json & j) {
   LoggerScope * l = sim->logger_.top(j["name"]);
 
   // Agents
+  AgentCostModel agent_cost;
+  if (has_key(j, "costs") && has_key(j["costs"], "agent"))
+    agent_cost = AgentCostModel::from_json(j["costs"]["agent"]);
   for (nlohmann::json & j_agent : j["agents"])
-    sim->add_actor(AgentBuilder::construct(sim->platform(), l, j_agent));
+    sim->add_actor(AgentBuilder::construct(
+        sim->platform(), l, j_agent, agent_cost));
   // Snoopfilters
+  SnoopFilterCostModel snoopfilter_cost;
+  if (has_key(j, "costs") && has_key(j["costs"], "snoopfilter"))
+    snoopfilter_cost = SnoopFilterCostModel::from_json(j["costs"]["snoopfilter"]);
   for (nlohmann::json & j_snoop : j["snoopfilters"])
-    sim->add_actor(SnoopFilterBuilder::construct(sim->platform(), l, j_snoop));
+    sim->add_actor(SnoopFilterBuilder::construct(
+        sim->platform(), l, j_snoop, snoopfilter_cost));
 
   // Interconnect
   sim->add_interconnect(InterconnectModel::from_json(j["interconnect"]));

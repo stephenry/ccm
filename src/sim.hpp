@@ -52,6 +52,7 @@ class Cursor {
 
  public:
   void set_time(Time time) { time_ = time; }
+  void set_time_to_greater(Time newtime);
   void advance(std::size_t steps);
 
   Time time() const { return time_; }

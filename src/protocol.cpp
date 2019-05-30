@@ -70,6 +70,34 @@ Protocol::type Protocol::from_json(nlohmann::json j) {
 }
 #endif
 
+command_t CoherentAgentCommand::from_string(const std::string & s) {
+  static const std::map<std::string, command_t> str_to_cmd{
+#define __declare_pair(__cmd) { #__cmd, __cmd },
+    AGENT_COMMANDS(__declare_pair)
+#undef __declare_pair
+  };
+  // TODO: Improve error checking
+  command_t cmd;
+  auto it = str_to_cmd.find(s);
+  if (it != str_to_cmd.end())
+    cmd = it->second;
+  return cmd;
+}
+
+command_t SnoopFilterCommand::from_string(const std::string & s) {
+  static const std::map<std::string, command_t> str_to_cmd{
+#define __declare_pair(__cmd) { #__cmd, __cmd },
+    SNOOP_FILTER_COMMANDS(__declare_pair)
+#undef __declare_pair
+  };
+  // TODO: Improve error checking
+  command_t cmd;
+  auto it = str_to_cmd.find(s);
+  if (it != str_to_cmd.end())
+    cmd = it->second;
+  return cmd;
+}
+
 const char* CoherentAgentCommand::to_string(command_t command) {
     switch (command) {
       // clang-format off
@@ -84,42 +112,95 @@ const char* CoherentAgentCommand::to_string(command_t command) {
   }
 }
 
-std::size_t CoherentAgentCommand::to_cost(command_t command) {
-  std::size_t cost{0};
-  switch (command) {
-    case CoherentAgentCommand::UpdateState:
-      cost += 1;
-      break;
-    case CoherentAgentCommand::IncAckCount:
-      cost += 0;
-      break;
-    case CoherentAgentCommand::SetAckExpectCount:
-      cost += 0;
-      break;
-    case CoherentAgentCommand::EmitGetS:
-      cost += MessageType::to_cost(MessageType::GetS);
-      break;
-    case CoherentAgentCommand::EmitGetM:
-      cost += MessageType::to_cost(MessageType::GetM);
-      break;
-    case CoherentAgentCommand::EmitPutS:
-      cost += MessageType::to_cost(MessageType::PutS);
-      break;
-    case CoherentAgentCommand::EmitDataToReq:
-      cost += MessageType::to_cost(MessageType::Data);
-      break;
-    case CoherentAgentCommand::EmitDataToDir:
-      cost += MessageType::to_cost(MessageType::Data);
-      break;
-  }
-  return cost;
-};
+CostModel::CostModel() {}
 
-std::size_t CoherenceActions::compute_cost(const CoherenceActions & actions) {
+std::size_t CostModel::cost(command_t cmd) const {
   std::size_t cost{0};
-  for (command_t cmd : actions.commands())
-    cost += CoherentAgentCommand::to_cost(cmd);
+  auto it = command_to_cost_.find(cmd);
+  if (it != command_to_cost_.end())
+    cost = it->second;
   return cost;
+}
+#ifdef ENABLE_JSON
+
+AgentCostModel AgentCostModel::from_json(nlohmann::json & j) {
+  AgentCostModel m;
+  m.set_defaults();
+  for (auto & [cmds, cost] : j.items()) {
+    const command_t cmd{CoherentAgentCommand::from_string(cmds)};
+    if (m.command_to_cost_.count(cmd))
+      m.command_to_cost_[cmd] = cost;
+  }
+  return m;
+}
+#endif
+#ifdef ENABLE_JSON
+
+SnoopFilterCostModel SnoopFilterCostModel::from_json(nlohmann::json & j) {
+  SnoopFilterCostModel m;
+  m.set_defaults();
+  for (auto & [cmds, cost] : j.items()) {
+    const command_t cmd{SnoopFilterCommand::from_string(cmds)};
+    if (m.command_to_cost_.count(cmd))
+      m.command_to_cost_[cmd] = cost;
+  }
+  return m;
+}
+#endif
+
+AgentCostModel::AgentCostModel() { set_defaults(); }
+
+void AgentCostModel::set_defaults() {
+#define INSERT_COST(cmd, cost)                                          \
+  command_to_cost_.insert(std::make_pair(CoherentAgentCommand::cmd, cost))
+#define INSERT_MESSAGE_COST(cmd, msg)                                   \
+  command_to_cost_.insert(std::make_pair(                               \
+      CoherentAgentCommand::cmd, MessageType::to_default_cost(MessageType::msg)))
+
+  INSERT_COST(UpdateState, 0);
+  INSERT_COST(IncAckCount, 0);
+  INSERT_COST(SetAckExpectCount, 0);
+  INSERT_MESSAGE_COST(EmitGetS, GetS);
+  INSERT_MESSAGE_COST(EmitGetM, GetM);
+  INSERT_MESSAGE_COST(EmitPutS, PutS);
+  INSERT_MESSAGE_COST(EmitPutM, PutM);
+  INSERT_MESSAGE_COST(EmitPutE, PutE);
+  INSERT_MESSAGE_COST(EmitPutO, PutO);
+  INSERT_MESSAGE_COST(EmitDataToReq, Data);
+  INSERT_MESSAGE_COST(EmitDataToDir, Data);
+  INSERT_MESSAGE_COST(EmitInvAck, Inv);
+#undef INSERT_COST
+#undef INSERT_MESSAGE_COST
+}
+
+SnoopFilterCostModel::SnoopFilterCostModel() { set_defaults(); }
+
+void SnoopFilterCostModel::set_defaults() {
+#define INSERT_COST(cmd, cost)                                          \
+  command_to_cost_.insert(std::make_pair(SnoopFilterCommand::cmd, cost))
+#define INSERT_MESSAGE_COST(cmd, msg)                                   \
+  command_to_cost_.insert(std::make_pair(                               \
+      SnoopFilterCommand::cmd, MessageType::to_default_cost(MessageType::msg)))
+
+  INSERT_COST(UpdateState, 0);
+  INSERT_COST(SetOwnerToReq, 0);
+  INSERT_COST(SendDataToReq, 0);
+  INSERT_COST(SendInvToSharers, 0);
+  INSERT_COST(ClearSharers, 0);
+  INSERT_COST(AddReqToSharers, 0);
+  INSERT_COST(DelReqFromSharers, 0);
+  INSERT_COST(DelOwner, 0);
+  INSERT_COST(AddOwnerToSharers, 0);
+  INSERT_MESSAGE_COST(CpyDataToMemory, Data);
+  INSERT_MESSAGE_COST(SendPutSAckToReq, PutSAck);
+  INSERT_MESSAGE_COST(SendPutMAckToReq, PutMAck);
+  INSERT_MESSAGE_COST(SendPutEAckToReq, PutEAck);
+  INSERT_MESSAGE_COST(SendPutOAckToReq, PutOAck);
+  INSERT_MESSAGE_COST(SendAckCountToReq, AckCount);
+  INSERT_MESSAGE_COST(SendFwdGetMToOwner, FwdGetM);
+  INSERT_MESSAGE_COST(SendFwdGetSToOwner, FwdGetS);
+#undef INSERT_COST
+#undef INSERT_MESSAGE_COST
 }
 
 const char* to_string(TransactionResult r) {

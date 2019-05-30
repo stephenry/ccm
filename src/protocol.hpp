@@ -90,10 +90,9 @@ struct CoherentAgentCommand {
   // clang-format on
   };
 
+  static command_t from_string(const std::string & s);
   static const char* to_string(command_t command);
-  static std::size_t to_cost(base_type b);
 };
-
 
 // clang-format off
 #define SNOOP_FILTER_COMMANDS(__func)           \
@@ -124,8 +123,36 @@ struct SnoopFilterCommand {
 #undef __declare_state
     // clang-format on
   };
-
+  static command_t from_string(const std::string & s);
   static const char* to_string(command_t command);
+};
+
+class CostModel {
+ public:
+  explicit CostModel();
+  std::size_t cost(command_t cmd) const;
+ protected:
+  std::map<command_t, std::size_t> command_to_cost_;
+};
+
+class AgentCostModel : public CostModel {
+ public:
+  explicit AgentCostModel();
+#ifdef ENABLE_JSON
+  static AgentCostModel from_json(nlohmann::json & j);
+#endif
+ private:
+  void set_defaults();
+};
+
+class SnoopFilterCostModel : public CostModel {
+ public:
+  explicit SnoopFilterCostModel();
+#ifdef ENABLE_JSON
+  static SnoopFilterCostModel from_json(nlohmann::json & j);
+#endif
+ private:
+  void set_defaults();
 };
 
 // clang-format off
@@ -197,7 +224,7 @@ struct CoherenceActions {
     commands_.push_back(static_cast<command_t>(cmd));
   }
 
-  static std::size_t compute_cost(const CoherenceActions & actions);
+  //  static std::size_t compute_cost(const CoherenceActions & actions);
 
  private:
   void reset() {

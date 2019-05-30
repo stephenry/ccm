@@ -51,7 +51,8 @@ struct SnoopFilterOptions : CoherentAgentOptions {
 };
 
 struct SnoopFilterCommandInvoker : CoherentActor {
-  SnoopFilterCommandInvoker(const SnoopFilterOptions& opts);
+  SnoopFilterCommandInvoker(const SnoopFilterOptions& opts,
+                            const SnoopFilterCostModel & costs);
 
   DirectoryLine directory_entry(std::size_t addr) const;
 
@@ -107,10 +108,12 @@ struct SnoopFilterCommandInvoker : CoherentActor {
 
   MessageDirector msgd_;
   const SnoopFilterOptions opts_;
+  const SnoopFilterCostModel costs_;
 };
 
 struct SnoopFilter : SnoopFilterCommandInvoker {
-  SnoopFilter(const SnoopFilterOptions& opts);
+  SnoopFilter(const SnoopFilterOptions& opts,
+              const SnoopFilterCostModel & cm = SnoopFilterCostModel{});
 
   bool is_active() const override { return mq_.is_active(); }
   void apply(TimeStamped<Message*> ts) override;
@@ -125,7 +128,8 @@ struct SnoopFilter : SnoopFilterCommandInvoker {
 
 struct SnoopFilterBuilder {
   static std::unique_ptr<SnoopFilter> construct(
-      const Platform & platform, LoggerScope * l, nlohmann::json j);
+      const Platform & platform, LoggerScope * l, nlohmann::json j,
+      const SnoopFilterCostModel & cm);
 };
 #endif
 

@@ -63,7 +63,7 @@ void Memory::handle_msg(Context &context, Cursor &cursor,
                         TimeStamped<Message *> ts) {
   const Message *msg = ts.t();
   CCM_AGENT_ASSERT(msg->type() == MessageType::Data);
-  cursor.advance(MessageType::to_cost(msg->type()));
+  //  cursor.advance(MessageType::to_cost(msg->type()));
   log_debug(cursor.time(), "Write-back to memory:", to_string(*msg));
   msg->release();
 }

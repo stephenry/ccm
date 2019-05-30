@@ -47,8 +47,8 @@ AgentOptions AgentOptions::from_json(
 #endif
 
 CoherentAgentCommandInvoker::CoherentAgentCommandInvoker(
-    const CoherentAgentOptions& opts)
-    : CoherentActor(opts), msgd_(opts) {
+    const CoherentAgentOptions& opts, const AgentCostModel & costs)
+    : CoherentActor(opts), costs_(costs), msgd_(opts) {
   cc_model_ = agent_protocol_factory(opts.protocol(), opts.platform());
   cache_ = cache_factory<CacheLine>(opts.cache_options());
 }
@@ -91,7 +91,7 @@ void CoherentAgentCommandInvoker::execute(Context& context,
       default:
         break;
     }
-    cursor.advance(CoherentAgentCommand::to_cost(cmd));
+    cursor.advance(costs_.cost(cmd));
   }
 }
 
@@ -125,7 +125,7 @@ void CoherentAgentCommandInvoker::execute(Context& context,
       default:
         break;
     }
-    cursor.advance(CoherentAgentCommand::to_cost(cmd));
+    cursor.advance(costs_.cost(cmd));
   }
 }
 
@@ -309,8 +309,8 @@ void Agent::CommandArbitrator::arbitrate() {
   frontier_ = top.second;
 }
 
-Agent::Agent(const AgentOptions& opts)
-    : CoherentAgentCommandInvoker(opts), opts_(opts) {
+Agent::Agent(const AgentOptions& opts, const AgentCostModel & cm)
+    : CoherentAgentCommandInvoker(opts, cm), opts_(opts) {
   set_time(0);
   set_logger_scope(opts.logger_scope());
 }
@@ -325,28 +325,44 @@ void Agent::eval(Context& context) {
   //
   if (!epoch.in_interval(time())) return;
 
-  // As the current time may not fall on a Epoch boundary, advance to
-  // the 'time' location within the current Epoch and proceed from
-  // there.
+  // If there are no pending transactions, poll the transaction source
+  // unit to populate the pending transaction queue.
   //
-  cursor.set_time(std::max(time(), cursor.time()));
-
   if (!tq_.is_active()) fetch_transactions(10);
 
   CommandArbitrator arb{tq_, mq_};
   do {
+    // Arbitrate between pending messages and transactions and pick
+    // the oldest command in the queues.
+    //
     arb.arbitrate();
 
+    // If no commands are available or there are commands available
+    // but lay beyond the boundary of the current simulation Epoch,
+    // block until simulation time advances.
+    //
     if (!arb.is_valid() || !epoch.in_interval(arb.frontier())) break;
-    
+
     switch (arb.command_type()) {
       case CommandType::Message: {
+        // Process Message:
+        
         const TimeStamped<Message*> tsm{mq_.front()};
         Message * msg = tsm.t();
 
+        // Advance agent time to the beginning of the message, if
+        // applicable.
+        //
+        cursor.set_time_to_greater(tsm.time());
+        
         bool commit{true};
         switch (handle_message(context, cursor, msg)) {
           case MessageResult::Stall:
+            // Due to the protocol, the current message could not
+            // commit, retry further messages (should the Epoch
+            // interval permit) by disabling the current message class
+            // from the next round of arbitration.
+            //
             commit = false;
             arb.disable_message_class(MessageType::to_class(msg->type()));
             break;
@@ -354,13 +370,22 @@ void Agent::eval(Context& context) {
             break;
         }
         if (commit) {
-          mq_.pop_front();
+          // Message commits; return message to free pool and pop
+          // message from message queue.
           msg->release();
+          mq_.pop_front();
         }
       } break;
       case CommandType::Transaction: {
+        // Process Transaction:
+        
         const TimeStamped<Transaction*> tst{tq_.front()};
         const Transaction * t = tst.t();
+
+        // Advance agent time to the beginning of the transaction, if
+        // applicable.
+        cursor.set_time_to_greater(tst.time());
+
         bool commit{true};
         switch (handle_transaction(context, cursor, t)) {
           case TransactionResult::Miss:
@@ -385,6 +410,10 @@ void Agent::eval(Context& context) {
     }
   } while (epoch.in_interval(cursor.time()));
 
+  // Advance the time of the agent to the greater of the cursor (if a
+  // message has been processed) or the end of the current Epoch (if
+  // there is remaining unused time in the current Epoch).
+  //
   set_time(std::max(cursor.time(), epoch.end()));
 }
 
@@ -485,10 +514,7 @@ CoherenceActions Agent::get_actions(
     }
     CacheLine & cache_line = cache_->lookup(t->addr());
     actions = cc_model_->get_actions(t, cache_line);
-    actions.set_cost(CoherenceActions::compute_cost(actions));
   } else {
-#define CACHE_LOOKUP_PENALTY 1
-    actions.set_cost(CACHE_LOOKUP_PENALTY);
     actions.set_requires_eviction(false);
     actions.set_result(TransactionResult::Blocked);
   }
@@ -508,9 +534,10 @@ bool Agent::is_active() const {
 #ifdef ENABLE_JSON
 
 std::unique_ptr<Agent> AgentBuilder::construct(
-    const Platform & platform, LoggerScope * l, nlohmann::json j) {
+    const Platform & platform, LoggerScope * l, nlohmann::json & j,
+    const AgentCostModel & cm) {
   std::unique_ptr<Agent> agent =
-      std::make_unique<Agent>(AgentOptions::from_json(platform, l, j));
+      std::make_unique<Agent>(AgentOptions::from_json(platform, l, j), cm);
   agent->set_transaction_source(
       TransactionSource::from_json(j["transaction_source"]));
   return std::move(agent);

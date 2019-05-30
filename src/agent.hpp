@@ -54,7 +54,8 @@ struct AgentOptions : CoherentAgentOptions {
 struct CoherentAgentCommandInvoker : CoherentActor {
   using ack_count_type = std::size_t;
 
-  CoherentAgentCommandInvoker(const CoherentAgentOptions& opts);
+  CoherentAgentCommandInvoker(const CoherentAgentOptions& opts,
+                              const AgentCostModel & costs = AgentCostModel{});
 
   void visit_cache(CacheVisitor* cache_visitor) const override;
   void execute(Context& context, Cursor& cursor,
@@ -93,6 +94,7 @@ struct CoherentAgentCommandInvoker : CoherentActor {
                             const Message* msg);
 
   MessageDirector msgd_;
+  const AgentCostModel costs_;
 };
 
 class Agent : public CoherentAgentCommandInvoker {
@@ -126,7 +128,7 @@ class Agent : public CoherentAgentCommandInvoker {
   };
   
  public:
-  Agent(const AgentOptions& opts);
+  Agent(const AgentOptions& opts, const AgentCostModel & cm = AgentCostModel{});
 
   bool is_active() const override;
   Protocol::type protocol() const { return opts_.protocol(); }
@@ -163,7 +165,8 @@ class Agent : public CoherentAgentCommandInvoker {
 
 struct AgentBuilder {
   static std::unique_ptr<Agent> construct(
-      const Platform & platform, LoggerScope * l, nlohmann::json j);
+      const Platform & platform, LoggerScope * l, nlohmann::json & j,
+      const AgentCostModel & cm);
 };
 #endif
 
