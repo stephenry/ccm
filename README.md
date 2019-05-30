@@ -8,14 +8,15 @@ protocols may be added trivially as they become available.
 ## Background
 
 In multi-processor systems, multiple agent may maintain copies of the
-same cache lines. Coherence protocols are used to maintain the Single
-Writer/Multiple Reader (SWMR) invariant, whereby ownership of lines are
-managed between caches in a correct and performant manner. Although
-coherency protocols may have a very significant bearing on the overall
-performance of a multiprocessor system, the ability to model their
-behavior at a high-level is quite limited. Furthermore, a coherency
-system has a large number of parameterizations that unknown trade-off
-in terms of performance and/or silicon cost.
+same cache lines. Coherence protocols are used to maintain the
+Single-Writer/Multiple-Reader (SWMR) invariant, whereby ownership of
+lines are managed between caches in a correct and performant
+manner. Although coherency protocols may have a very significant
+bearing on the overall performance of a multiprocessor system, the
+ability to model their behavior at a high-level is quite
+limited. Furthermore, a coherency system has a large number of
+parameterizations that unknown trade-off in terms of performance
+and/or silicon cost.
 
 The purpose of this work is to sketch out a rough proof of concept
 cache coherency performance model using freely available coherency
