@@ -15,8 +15,8 @@ manner. Although coherency protocols may have a very significant
 bearing on the overall performance of a multiprocessor system, the
 ability to model their behavior at a high-level is quite
 limited. Furthermore, a coherency system has a large number of
-parameterizations that unknown trade-off in terms of performance
-and/or silicon cost.
+parameterizations that result in unknown trade-off in terms of
+performance and/or silicon cost.
 
 __DISCLAIMER:__ *The purpose of this work is to sketch out a rough
 proof of concept cache coherency performance model using freely
